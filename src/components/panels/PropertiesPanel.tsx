@@ -41,6 +41,9 @@ export default function PropertiesPanel() {
   useEffect(() => {
     if (currentNode) {
       setNodeData(currentNode.data)
+      // 选中节点时自动展开面板
+      setIsCollapsed(false)
+      setEditing(false)
     }
   }, [currentNode])
 
@@ -58,28 +61,9 @@ export default function PropertiesPanel() {
     // TODO: 删除节点
   }
 
-  // 没有选中节点时的显示
+  // 没有选中节点时，完全不显示面板
   if (!hasSelection) {
-    return (
-      <div
-        className={cn(
-          'fixed right-0 top-0 bottom-0 z-40',
-          'w-64 transition-all duration-325 ease-in-out',
-          'bg-card/80 backdrop-blur-md',
-          'border-l border-border/50',
-          'panel-slide-right'
-        )}
-      >
-        <div className="flex items-center justify-between border-b border-border/50 p-4">
-          <h2 className="font-semibold text-foreground">{t('panel.properties')}</h2>
-        </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-muted-foreground/80">
-            选择一个节点以查看属性
-          </p>
-        </div>
-      </div>
-    )
+    return null
   }
 
   // 收起状态：显示节点基本信息
