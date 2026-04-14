@@ -1,41 +1,53 @@
-import { useState } from 'react'
-import { Edit2, Trash2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { ChevronLeft, ChevronRight, Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useAppSelector } from '@/store/hooks'
 import { selectSelectedNodes } from '@/store/slices/uiSlice'
+import { selectNodes } from '@/store/slices/canvasSlice'
 import { useI18n } from '@/hooks/useI18n'
 import type { NodeData, NodeStatus } from '@/types'
 import { cn } from '@/lib/utils'
 
+// 节点图标映射
+const nodeIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  task: () => '📋',
+  event: () => '📅',
+  milestone: () => '🏁',
+  decision: () => '🔀',
+  data: () => '💾',
+  start: () => '🚀',
+  end: () => '✅',
+  custom: () => '✨',
+}
+
 export default function PropertiesPanel() {
   const { t } = useI18n()
   const selectedNodes = useAppSelector(selectSelectedNodes)
+  const allNodes = useAppSelector(selectNodes)
   const [editing, setEditing] = useState(false)
   const [nodeData, setNodeData] = useState<Partial<NodeData>>({})
+  const [isCollapsed, setIsCollapsed] = useState(false)
 
   const selectedNodeId = selectedNodes[0]
   const hasSelection = selectedNodeId !== undefined
 
-  if (!hasSelection) {
-    return (
-      <div className={cn(
-        'flex h-full w-64 flex-col border-l border-border bg-card',
-        'panel-slide-right'
-      )}>
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="font-semibold">{t('panel.properties')}</h2>
-        </div>
-        <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-muted-foreground">
-            选择一个节点以查看属性
-          </p>
-        </div>
-      </div>
-    )
-  }
+  // 获取当前选中节点的完整数据
+  const currentNode = allNodes.find((node: { id: string }) => node.id === selectedNodeId)
+
+  // 同步节点数据到本地状态
+  useEffect(() => {
+    if (currentNode) {
+      setNodeData(currentNode.data)
+    }
+  }, [currentNode])
+
+  // 切换折叠状态
+  const handleToggleCollapse = useCallback(() => {
+    setIsCollapsed((prev) => !prev)
+  }, [])
 
   const handleSave = () => {
     // TODO: 保存节点数据
@@ -46,16 +58,128 @@ export default function PropertiesPanel() {
     // TODO: 删除节点
   }
 
+  // 没有选中节点时的显示
+  if (!hasSelection) {
+    return (
+      <div
+        className={cn(
+          'fixed right-0 top-0 bottom-0 z-40',
+          'w-64 transition-all duration-325 ease-in-out',
+          'bg-card/80 backdrop-blur-md',
+          'border-l border-border/50',
+          'panel-slide-right'
+        )}
+      >
+        <div className="flex items-center justify-between border-b border-border/50 p-4">
+          <h2 className="font-semibold text-foreground">{t('panel.properties')}</h2>
+        </div>
+        <div className="flex flex-1 items-center justify-center">
+          <p className="text-sm text-muted-foreground/80">
+            选择一个节点以查看属性
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // 收起状态：显示节点基本信息
+  if (isCollapsed && currentNode) {
+    const NodeIcon = nodeIconMap[currentNode.data.type] || nodeIconMap.task
+
+    return (
+      <div
+        className={cn(
+          'fixed right-0 top-0 z-40',
+          'w-16 transition-all duration-325 ease-in-out',
+          'bg-card/80 backdrop-blur-md',
+          'border-l border-y border-border/50',
+          'rounded-l-lg shadow-lg hover:shadow-xl',
+          'panel-slide-right'
+        )}
+      >
+        <div className="flex flex-col items-center justify-center h-full py-4 space-y-3">
+          {/* 展开/收起按钮 */}
+          <button
+            onClick={handleToggleCollapse}
+            className={cn(
+              'w-8 h-8 rounded-full',
+              'bg-card/90 backdrop-blur-sm',
+              'border border-border',
+              'flex items-center justify-center',
+              'transition-all duration-200',
+              'hover:scale-110 hover:bg-primary hover:border-primary',
+              'hover:text-primary-foreground',
+              'hover:shadow-md',
+              'cursor-pointer'
+            )}
+            aria-label="展开属性面板"
+            title="展开属性面板（快捷键: F1）"
+          >
+            <ChevronLeft className="w-4 h-4 text-muted-foreground hover:text-primary-foreground transition-colors" />
+          </button>
+
+          {/* 节点图标 */}
+          <div className="flex items-center justify-center">
+            <NodeIcon className="text-2xl" />
+          </div>
+
+          {/* 节点标题 */}
+          <div className="px-2">
+            <p className="text-xs font-medium text-foreground line-clamp-2 text-center">
+              {currentNode.data.label || '未命名节点'}
+            </p>
+          </div>
+
+          {/* 节点状态 */}
+          {currentNode.data.status && (
+            <div className="px-2">
+              <Badge
+                variant="secondary"
+                className={cn('text-[10px]', currentNode.data.status === 'completed' && 'bg-green-500/20 text-green-500')}
+              >
+                {t(`status.${currentNode.data.status}`)}
+              </Badge>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // 展开状态：显示完整内容
   return (
-    <div className={cn(
-      'flex h-full w-64 flex-col border-l border-border bg-card',
-      'transition-all duration-300 ease-out',
-      'panel-slide-right'
-    )}>
+    <div
+      className={cn(
+        'fixed right-0 top-0 bottom-0 z-40 flex flex-col',
+        'w-64 transition-all duration-325 ease-in-out',
+        'bg-card/80 backdrop-blur-md', // 与左侧一致的80%不透明
+        'border-l border-border/50',
+        'panel-slide-right'
+      )}
+    >
       {/* 头部 */}
-      <div className="flex items-center justify-between border-b border-border p-4">
-        <h2 className="font-semibold">{t('panel.properties')}</h2>
+      <div className="flex items-center justify-between border-b border-border/50 p-4">
+        <h2 className="font-semibold text-foreground">{t('panel.properties')}</h2>
         <div className="flex gap-1">
+          {/* 展开/收起按钮 */}
+          <button
+            onClick={handleToggleCollapse}
+            className={cn(
+              'w-6 h-6 rounded',
+              'bg-card/90 backdrop-blur-sm',
+              'border border-border/50',
+              'flex items-center justify-center',
+              'transition-all duration-200',
+              'hover:scale-110 hover:bg-card',
+              'cursor-pointer'
+            )}
+            aria-label="收起属性面板"
+            title="收起属性面板（快捷键: F1）"
+          >
+            <ChevronRight className="w-3 h-3 text-muted-foreground" />
+          </button>
+
+          {/* 编辑按钮 */}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -63,6 +187,8 @@ export default function PropertiesPanel() {
           >
             <Edit2 className="h-3 w-3" />
           </Button>
+
+          {/* 删除按钮 */}
           <Button variant="ghost" size="icon-xs" onClick={handleDelete}>
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -74,8 +200,8 @@ export default function PropertiesPanel() {
         <div className="space-y-4">
           {/* 节点 ID */}
           <div>
-            <Label className="text-xs text-muted-foreground">ID</Label>
-            <p className="text-sm font-mono">{selectedNodeId}</p>
+            <Label className="text-xs text-muted-foreground/80">ID</Label>
+            <p className="text-sm font-mono text-foreground/90">{selectedNodeId}</p>
           </div>
 
           {/* 节点标题 */}
@@ -91,7 +217,7 @@ export default function PropertiesPanel() {
                 placeholder="输入标题"
               />
             ) : (
-              <p className="text-sm">{nodeData.label || '未命名节点'}</p>
+              <p className="text-sm text-foreground/90">{nodeData.label || '未命名节点'}</p>
             )}
           </div>
 
@@ -108,7 +234,7 @@ export default function PropertiesPanel() {
                 placeholder="输入描述"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground/80">
                 {nodeData.description || '无描述'}
               </p>
             )}
@@ -167,7 +293,7 @@ export default function PropertiesPanel() {
                 {Object.entries(nodeData.metadata).map(([key, value]) => (
                   <div
                     key={key}
-                    className="flex justify-between text-xs text-muted-foreground"
+                    className="flex justify-between text-xs text-muted-foreground/80"
                   >
                     <span>{key}:</span>
                     <span>{String(value)}</span>
@@ -178,8 +304,8 @@ export default function PropertiesPanel() {
           )}
 
           {/* 时间戳 */}
-          <div className="space-y-2 border-t border-border pt-4">
-            <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="space-y-2 border-t border-border/50 pt-4">
+            <div className="flex justify-between text-xs text-muted-foreground/80">
               <span>创建时间:</span>
               <span>
                 {nodeData.createdAt
@@ -187,7 +313,7 @@ export default function PropertiesPanel() {
                   : '-'}
               </span>
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-xs text-muted-foreground/80">
               <span>更新时间:</span>
               <span>
                 {nodeData.updatedAt
@@ -201,7 +327,7 @@ export default function PropertiesPanel() {
 
       {/* 底部操作按钮 */}
       {editing && (
-        <div className="border-t border-border p-4">
+        <div className="border-t border-border/50 p-4">
           <Button
             className="w-full"
             size="sm"
