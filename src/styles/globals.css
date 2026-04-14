@@ -147,7 +147,8 @@
   }
 
   .react-flow__node.selected {
-    @apply ring-2 ring-primary;
+    /* 移除选中状态的外框边缘 - 用户要求不显示 */
+    /* @apply ring-2 ring-primary; */
   }
 
   .react-flow__edge-path {
@@ -406,14 +407,15 @@
       0 0 0 1px hsl(168 70% 45% / 0.5);
   }
 
-  /* 选中状态 - 保持50%比例，添加发光 */
+  /* 选中状态 - 保持50%比例，移除外框边缘 */
   .card-node.selected {
     transform: translate3d(0, 0, 0) scale(0.5);
+    /* 移除外框边缘，保留阴影 */
     box-shadow:
-      0 0 0 2px hsl(var(--primary)),
-      0 0 20px hsl(168 70% 45% / 0.5),
+      /* 0 0 0 2px hsl(var(--primary)), */ /* 移除外框 */
+      0 0 20px hsl(168 70% 45% / 0.3), /* 减弱发光效果 */
       0 10px 30px -5px hsl(0 0% 0% / 0.3);
-    animation: select-pulse 2s ease-in-out infinite;
+    /* animation: select-pulse 2s ease-in-out infinite; */ /* 移除脉冲动画 */
   }
 
   /* 拖拽状态 - 保持50%比例，增强阴影 */
