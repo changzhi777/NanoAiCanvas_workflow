@@ -1,0 +1,255 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base Nova - Neutral 暗色主题 (OKLCH) */
+    --background: 0 0% 7%; /* oklch(0.07 0.015 180) */
+    --foreground: 0 0% 98%; /* oklch(0.985 0 0) */
+
+    --card: 0 0% 12%; /* oklch(0.12 0.02 160) */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 98%;
+
+    /* 主色调（青绿色） */
+    --primary: 168 70% 45%; /* oklch(0.68 0.15 145) */
+    --primary-foreground: 0 0% 7%;
+
+    --secondary: 168 15% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 168 15% 15%;
+    --muted-foreground: 0 0% 65%;
+
+    /* 强调色（亮青绿） */
+    --accent: 168 80% 55%; /* oklch(0.78 0.12 150) */
+    --accent-foreground: 0 0% 7%;
+
+    /* 危险色（红色） */
+    --destructive: 25 80% 50%; /* oklch(0.55 0.2 25) */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 168 15% 20%;
+    --input: 168 15% 20%;
+    --ring: 168 70% 45%;
+
+    /* 圆角 */
+    --radius: 0.75rem;
+
+    /* 图表颜色 */
+    --chart-1: 168 70% 45%;
+    --chart-2: 180 70% 50%;
+    --chart-3: 250 70% 45%;
+    --chart-4: 310 75% 55%;
+    --chart-5: 30 75% 50%;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 168 70% 42%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 168 80% 50%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 168 70% 42%;
+    --chart-1: 168 70% 42%;
+    --chart-2: 180 70% 47%;
+    --chart-3: 250 70% 42%;
+    --chart-4: 310 72% 52%;
+    --chart-5: 30 75% 47%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* 装饰性光晕效果 */
+  .bg-orb-top-right {
+    background: radial-gradient(
+      circle,
+      hsl(168 70% 45% / 0.1) 0%,
+      transparent 70%
+    );
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(80px);
+    top: -10%;
+    right: -5%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-orb-bottom-left {
+    background: radial-gradient(
+      circle,
+      hsl(230 70% 50% / 0.1) 0%,
+      transparent 70%
+    );
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    filter: blur(80px);
+    bottom: -10%;
+    left: -5%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bg-orb-center {
+    background: radial-gradient(
+      circle,
+      hsl(168 70% 45% / 0.05) 0%,
+      transparent 70%
+    );
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    filter: blur(60px);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+/* React Flow 样式定制 */
+@layer components {
+  .react-flow__node {
+    @apply cursor-pointer;
+  }
+
+  .react-flow__node.selected {
+    @apply ring-2 ring-primary;
+  }
+
+  .react-flow__edge-path {
+    @apply stroke-border;
+  }
+
+  .react-flow__edge.selected .react-flow__edge-path {
+    @apply stroke-primary;
+  }
+
+  .react-flow__handle {
+    @apply w-3 h-3 border-2 border-border bg-background;
+  }
+
+  .react-flow__handle.react-flow__handle-top {
+    @apply top-0;
+  }
+
+  .react-flow__handle.react-flow__handle-bottom {
+    @apply bottom-0;
+  }
+
+  .react-flow__handle.react-flow__handle-left {
+    @apply left-0;
+  }
+
+  .react-flow__handle.react-flow__handle-right {
+    @apply right-0;
+  }
+
+  .react-flow__controls {
+    @apply bg-card border border-border;
+  }
+
+  .react-flow__controls-button {
+    @apply bg-card border-b border-border fill-foreground hover:bg-muted;
+  }
+
+  .react-flow__minimap {
+    @apply bg-card border border-border;
+  }
+
+  .react-flow__background {
+    @apply bg-background;
+  }
+}
+
+/* 滚动条样式 */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+}
+
+/* 动画效果 */
+@layer utilities {
+  .animate-in {
+    animation: enter 0.3s ease-out;
+  }
+
+  .animate-out {
+    animation: exit 0.2s ease-in;
+  }
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes exit {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+}

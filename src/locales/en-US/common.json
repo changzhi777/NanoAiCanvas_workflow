@@ -1,0 +1,50 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "export": "Export",
+    "import": "Import",
+    "search": "Search",
+    "filter": "Filter",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About"
+  },
+  "canvas": {
+    "title": "NanoAiCanvas",
+    "newNode": "New Node",
+    "selectTemplate": "Select Template",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out",
+    "fitView": "Fit View",
+    "undo": "Undo",
+    "redo": "Redo",
+    "autosave": "Autosave"
+  },
+  "nodes": {
+    "task": "Task",
+    "event": "Event",
+    "milestone": "Milestone",
+    "decision": "Decision",
+    "data": "Data",
+    "start": "Start",
+    "end": "End",
+    "custom": "Custom"
+  },
+  "status": {
+    "notStarted": "Not Started",
+    "inProgress": "In Progress",
+    "completed": "Completed",
+    "blocked": "Blocked"
+  },
+  "panel": {
+    "properties": "Properties",
+    "templates": "Templates",
+    "history": "History",
+    "layers": "Layers"
+  }
+}

@@ -1,0 +1,74 @@
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* React Flow 样式定制 */
+.react-flow__node {
+  cursor: grab;
+}
+
+.react-flow__node.selected {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.react-flow__edge-path {
+  stroke: hsl(var(--border));
+  stroke-width: 2;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: hsl(var(--primary));
+  stroke-width: 3;
+}
+
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border: 2px solid hsl(var(--border));
+  background: hsl(var(--background));
+  transition: all 0.2s;
+}
+
+.react-flow__handle:hover {
+  width: 16px;
+  height: 16px;
+  border-color: hsl(var(--primary));
+}
+
+.react-flow__controls {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  fill: hsl(var(--foreground));
+  transition: all 0.2s;
+}
+
+.react-flow__controls-button:hover {
+  background: hsl(var(--muted));
+}
+
+.react-flow__minimap {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+}
+
+.react-flow__background {
+  background: hsl(var(--background));
+}
+
+/* 选择框 */
+.react-flow__selection {
+  background: hsl(var(--primary) / 0.1);
+  border: 1px solid hsl(var(--primary));
+}
