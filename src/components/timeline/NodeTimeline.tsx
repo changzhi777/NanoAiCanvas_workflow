@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react'
+import { memo, useState } from 'react'
 import { Clock, User, GitBranch, Link2, CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -27,7 +27,7 @@ interface NodeTimelineProps {
   maxEvents?: number
 }
 
-const NodeTimeline = memo(({ nodeId, events, maxEvents = 10 }: NodeTimelineProps) => {
+const NodeTimeline = memo(({ nodeId: _nodeId, events, maxEvents = 10 }: NodeTimelineProps) => {
   const [selectedEvent, setSelectedEvent] = useState<number | null>(null)
 
   // 按时间倒序排序

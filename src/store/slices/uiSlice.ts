@@ -9,11 +9,16 @@ interface UIState {
     history: boolean
     layers: boolean
   }
+  // 向后兼容的别名
+  showProperties: boolean
+  showTemplates: boolean
   contextMenu: {
     open: boolean
     position: { x: number; y: number }
     target: string | null
   }
+  showToolbar: boolean
+  showShortcutPanel: boolean
 }
 
 const initialState: UIState = {
@@ -25,11 +30,15 @@ const initialState: UIState = {
     history: false,
     layers: false,
   },
+  showProperties: true,
+  showTemplates: true,
   contextMenu: {
     open: false,
     position: { x: 0, y: 0 },
     target: null,
   },
+  showToolbar: false,
+  showShortcutPanel: false,
 }
 
 const uiSlice = createSlice({
@@ -43,10 +52,21 @@ const uiSlice = createSlice({
       state.selectedEdges = action.payload
     },
     togglePanel: (state, action: PayloadAction<keyof UIState['panelOpen']>) => {
-      state.panelOpen[action.payload] = !state.panelOpen[action.payload]
+      const panel = action.payload
+      const newValue = !state.panelOpen[panel]
+      state.panelOpen[panel] = newValue
+
+      // 同步更新向后兼容的字段
+      if (panel === 'properties') state.showProperties = newValue
+      if (panel === 'templates') state.showTemplates = newValue
     },
     setPanelOpen: (state, action: PayloadAction<{ panel: keyof UIState['panelOpen']; open: boolean }>) => {
-      state.panelOpen[action.payload.panel] = action.payload.open
+      const { panel, open } = action.payload
+      state.panelOpen[panel] = open
+
+      // 同步更新向后兼容的字段
+      if (panel === 'properties') state.showProperties = open
+      if (panel === 'templates') state.showTemplates = open
     },
     openContextMenu: (state, action: PayloadAction<{ x: number; y: number; target: string | null }>) => {
       state.contextMenu = {
@@ -58,6 +78,18 @@ const uiSlice = createSlice({
     closeContextMenu: (state) => {
       state.contextMenu.open = false
     },
+    toggleToolbar: (state) => {
+      state.showToolbar = !state.showToolbar
+    },
+    setToolbarVisible: (state, action: PayloadAction<boolean>) => {
+      state.showToolbar = action.payload
+    },
+    toggleShortcutPanel: (state) => {
+      state.showShortcutPanel = !state.showShortcutPanel
+    },
+    setShortcutPanelVisible: (state, action: PayloadAction<boolean>) => {
+      state.showShortcutPanel = action.payload
+    },
   },
 })
 
@@ -68,10 +100,16 @@ export const {
   setPanelOpen,
   openContextMenu,
   closeContextMenu,
+  toggleToolbar,
+  setToolbarVisible,
+  toggleShortcutPanel,
+  setShortcutPanelVisible,
 } = uiSlice.actions
 
 export const selectSelectedNodes = (state: any) => state.ui.selectedNodes
 export const selectSelectedEdges = (state: any) => state.ui.selectedEdges
 export const selectPanelOpen = (state: any) => state.ui.panelOpen
+export const selectShowToolbar = (state: any) => state.ui.showToolbar
+export const selectShowShortcutPanel = (state: any) => state.ui.showShortcutPanel
 
 export default uiSlice.reducer

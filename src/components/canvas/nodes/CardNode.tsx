@@ -72,6 +72,13 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
   const [hoverZone, setHoverZone] = useState<string | null>(null)
   const nodeRef = useRef<HTMLDivElement>(null)
 
+  // 设置节点显示比例为50%
+  useEffect(() => {
+    if (nodeRef.current && !isDragging) {
+      nodeRef.current.style.transform = 'scale(0.5)'
+    }
+  }, [isDragging])
+
   // 检测状态变化
   useEffect(() => {
     if (prevStatus !== data.status) {
@@ -538,7 +545,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
             </div>
 
             {/* 迷你趋势图 */}
-            {data.stats.trend && data.stats.trend.length > 0 && (
+            {data.stats?.trend && data.stats.trend.length > 0 && (
               <svg
                 className="w-full h-4"
                 viewBox="0 0 60 20"
@@ -546,7 +553,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
               >
                 <polyline
                   points={data.stats.trend
-                    .map((v, i) => `${i * (60 / (data.stats.trend!.length - 1))},${20 - v * 0.2}`)
+                    .map((v, i, arr) => `${i * (60 / (arr.length - 1))},${20 - v * 0.2}`)
                     .join(' ')}
                   fill="none"
                   stroke="hsl(var(--primary))"

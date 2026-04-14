@@ -11,6 +11,7 @@ import {
 } from 'reactflow'
 import { addNode as dbAddNode, addEdge as dbAddEdge, updateNode, deleteNode, deleteEdge } from '../db'
 import type { NodeData, EdgeData } from '@/types'
+import type { RootState } from '../store'
 
 interface CanvasState {
   nodes: Node<NodeData>[]
@@ -100,19 +101,27 @@ const canvasSlice = createSlice({
       state.edges = applyEdgeChanges(action.payload, state.edges)
     },
     onConnect: (state, action: PayloadAction<Connection>) => {
+      const connection = action.payload
+      if (!connection.source || !connection.target) {
+        return
+      }
+
       const newEdge: Edge<EdgeData> = {
-        ...action.payload,
         id: `edge_${Date.now()}`,
+        source: connection.source,
+        target: connection.target,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
         type: 'smoothstep',
         animated: false,
         data: {
           id: `edge_${Date.now()}`,
-          source: action.payload.source,
-          target: action.payload.target,
+          source: connection.source,
+          target: connection.target,
           createdAt: Date.now(),
         },
       }
-      state.edges = addEdge({ ...newEdge, animated: false }, state.edges)
+      state.edges = addEdge(newEdge, state.edges)
     },
     setViewport: (state, action: PayloadAction<Partial<typeof state.viewport>>) => {
       state.viewport = { ...state.viewport, ...action.payload }

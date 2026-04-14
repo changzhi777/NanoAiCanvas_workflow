@@ -1,6 +1,5 @@
 import { memo, useState, useEffect } from 'react'
-import { AlertTriangle, Users } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { AlertTriangle } from 'lucide-react'
 
 interface EditingUser {
   userId: string
@@ -16,7 +15,7 @@ interface EditConflictIndicatorProps {
 }
 
 const EditConflictIndicator = memo(
-  ({ nodeId, editingUsers, currentUserId }: EditConflictIndicatorProps) => {
+  ({ nodeId: _nodeId, editingUsers, currentUserId }: EditConflictIndicatorProps) => {
     const [visible, setVisible] = useState(false)
 
     // 过滤出正在编辑此节点的其他用户

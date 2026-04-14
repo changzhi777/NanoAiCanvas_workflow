@@ -80,7 +80,7 @@ export default function Toolbar() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
         try {
-          const text = await file.text()
+          await file.text()
           // TODO: 导入数据逻辑
           toast.success(t('common.import'))
         } catch (error) {

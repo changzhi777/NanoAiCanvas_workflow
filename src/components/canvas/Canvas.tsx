@@ -14,7 +14,6 @@ import {
   onNodesChange,
   onEdgesChange,
   onConnect,
-  setViewport,
 } from '@/store/slices/canvasSlice'
 import CardNode from './nodes/CardNode'
 import './canvas.css'
@@ -29,7 +28,8 @@ export default function Canvas() {
   const nodes = useAppSelector(selectNodes)
   const edges = useAppSelector(selectEdges)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const { zoomIn, zoomOut, fitView } = useReactFlow()
+  // 预留的缩放控制功能（将来用于工具栏缩放按钮）
+  void useReactFlow()
 
   // 处理节点变化
   const handleNodesChange = useCallback(
@@ -55,14 +55,6 @@ export default function Canvas() {
     [dispatch],
   )
 
-  // 处理视图变化
-  const handleViewportChange = useCallback(
-    (viewport: any) => {
-      dispatch(setViewport(viewport))
-    },
-    [dispatch],
-  )
-
   return (
     <div className="canvas-wrapper" ref={reactFlowWrapper}>
       {/* 背景装饰光晕 */}
@@ -76,7 +68,6 @@ export default function Canvas() {
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
-        onViewportChange={handleViewportChange}
         nodeTypes={nodeTypes}
         fitView
         className="bg-background"

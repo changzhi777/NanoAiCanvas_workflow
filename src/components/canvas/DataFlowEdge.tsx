@@ -10,6 +10,7 @@ interface DataFlowEdgeProps extends EdgeProps {
 
 const DataFlowEdge = memo(
   ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style }: DataFlowEdgeProps) => {
+    // @ts-expect-error - flowProgress是预留功能，暂时未使用
     const [flowProgress, setFlowProgress] = useState(0)
     const [dataPoints, setDataPoints] = useState<Array<{ id: number; position: number }>>([])
 
@@ -27,11 +28,11 @@ const DataFlowEdge = memo(
     const midX = (sourceX + targetX) / 2
     const midY = (sourceY + targetY) / 2
 
-    // 数据流动画
+    // 数据流动画（预留功能，当前未实际使用）
     useEffect(() => {
       const flowSpeed = data?.flowSpeed || 0.02
       const interval = setInterval(() => {
-        setFlowProgress((prev) => (prev + flowSpeed) % 1)
+        setFlowProgress((prev: number) => (prev + flowSpeed) % 1)
       }, 16) // 60fps
 
       // 生成数据点

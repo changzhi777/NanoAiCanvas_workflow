@@ -1,13 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { useAppDispatch } from '@/store/hooks'
 import { addNodeAsync } from '@/store/slices/canvasSlice'
 import { useReactFlow } from 'reactflow'
 import { useI18n } from '@/hooks/useI18n'
-import type { NodeData, NodeType } from '@/types'
+import type { NodeData } from '@/types'
+import { NodeType } from '@/types'
 import { generateId } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
@@ -20,49 +20,49 @@ const nodeTemplates: Array<{
   color: string
 }> = [
   {
-    type: 'task',
+    type: NodeType.TASK,
     icon: '📋',
     label: 'nodes.task',
     description: '任务节点',
     color: '#3b82f6',
   },
   {
-    type: 'event',
+    type: NodeType.EVENT,
     icon: '📅',
     label: 'nodes.event',
     description: '事件节点',
     color: '#8b5cf6',
   },
   {
-    type: 'milestone',
+    type: NodeType.MILESTONE,
     icon: '🏁',
     label: 'nodes.milestone',
     description: '里程碑节点',
     color: '#f59e0b',
   },
   {
-    type: 'decision',
+    type: NodeType.DECISION,
     icon: '🔀',
     label: 'nodes.decision',
     description: '决策节点',
     color: '#ec4899',
   },
   {
-    type: 'data',
+    type: NodeType.DATA,
     icon: '💾',
     label: 'nodes.data',
     description: '数据节点',
     color: '#10b981',
   },
   {
-    type: 'start',
+    type: NodeType.START,
     icon: '🚀',
     label: 'nodes.start',
     description: '开始节点',
     color: '#22c55e',
   },
   {
-    type: 'end',
+    type: NodeType.END,
     icon: '🏁',
     label: 'nodes.end',
     description: '结束节点',
@@ -74,6 +74,11 @@ export default function NodeTemplatesPanel() {
   const { t } = useI18n()
   const dispatch = useAppDispatch()
   const { getViewport } = useReactFlow()
+
+  // 进场动画
+  useEffect(() => {
+    // 组件挂载时触发动画
+  }, [])
 
   // 创建新节点
   const handleCreateNode = useCallback(
@@ -103,7 +108,11 @@ export default function NodeTemplatesPanel() {
   )
 
   return (
-    <div className="flex h-64 w-64 flex-col border-r border-border bg-card">
+    <div className={cn(
+      'flex h-64 w-64 flex-col border-r border-border bg-card',
+      'transition-all duration-300 ease-out',
+      'panel-slide-left'
+    )}>
       {/* 头部 */}
       <div className="flex items-center justify-between border-b border-border p-4">
         <h2 className="font-semibold">{t('panel.templates')}</h2>

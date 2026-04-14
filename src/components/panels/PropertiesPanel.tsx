@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { X, Edit2, Trash2 } from 'lucide-react'
+import { Edit2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppSelector } from '@/store/hooks'
 import { selectSelectedNodes } from '@/store/slices/uiSlice'
 import { useI18n } from '@/hooks/useI18n'
@@ -22,7 +21,10 @@ export default function PropertiesPanel() {
 
   if (!hasSelection) {
     return (
-      <div className="flex h-full w-64 flex-col border-l border-border bg-card">
+      <div className={cn(
+        'flex h-full w-64 flex-col border-l border-border bg-card',
+        'panel-slide-right'
+      )}>
         <div className="flex items-center justify-between border-b border-border p-4">
           <h2 className="font-semibold">{t('panel.properties')}</h2>
         </div>
@@ -45,7 +47,11 @@ export default function PropertiesPanel() {
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-l border-border bg-card">
+    <div className={cn(
+      'flex h-full w-64 flex-col border-l border-border bg-card',
+      'transition-all duration-300 ease-out',
+      'panel-slide-right'
+    )}>
       {/* 头部 */}
       <div className="flex items-center justify-between border-b border-border p-4">
         <h2 className="font-semibold">{t('panel.properties')}</h2>

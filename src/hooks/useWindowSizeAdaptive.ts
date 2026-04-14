@@ -22,7 +22,7 @@ export const useWindowSizeAdaptive = () => {
     }
 
     // 添加防抖
-    let timeoutId: NodeJS.Timeout
+    let timeoutId: ReturnType<typeof setTimeout>
     const debouncedResize = () => {
       clearTimeout(timeoutId)
       timeoutId = setTimeout(handleResize, 200)

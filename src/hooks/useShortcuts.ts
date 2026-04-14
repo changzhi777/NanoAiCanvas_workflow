@@ -1,6 +1,10 @@
 import { useEffect } from 'react'
 import { useAppDispatch } from '@/store/hooks'
-import { togglePanel } from '@/store/slices/uiSlice'
+import {
+  togglePanel,
+  toggleToolbar,
+  toggleShortcutPanel
+} from '@/store/slices/uiSlice'
 
 export function useShortcuts() {
   const dispatch = useAppDispatch()
@@ -82,6 +86,18 @@ export function useShortcuts() {
       if (e.key === 'F2') {
         e.preventDefault()
         dispatch(togglePanel('templates'))
+      }
+
+      // Ctrl/Cmd + B: 切换工具栏
+      if (cmdOrCtrl && e.key === 'b') {
+        e.preventDefault()
+        dispatch(toggleToolbar())
+      }
+
+      // ?: 显示快捷键面板
+      if (e.key === '?' && !cmdOrCtrl && !e.shiftKey) {
+        e.preventDefault()
+        dispatch(toggleShortcutPanel())
       }
     }
 
