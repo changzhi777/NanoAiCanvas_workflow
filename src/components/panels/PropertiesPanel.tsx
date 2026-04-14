@@ -29,7 +29,8 @@ export default function PropertiesPanel() {
   const allNodes = useAppSelector(selectNodes)
   const [editing, setEditing] = useState(false)
   const [nodeData, setNodeData] = useState<Partial<NodeData>>({})
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true) // 默认折叠
+  const [isHovering, setIsHovering] = useState(false)
 
   const selectedNodeId = selectedNodes[0]
   const hasSelection = selectedNodeId !== undefined
@@ -61,71 +62,121 @@ export default function PropertiesPanel() {
     // TODO: 删除节点
   }
 
-  // 没有选中节点时，完全不渲染
-  if (!hasSelection) {
-    return null
-  }
-
-  // 收起状态：显示节点基本信息
-  if (isCollapsed && currentNode) {
-    const NodeIcon = nodeIconMap[currentNode.data.type] || nodeIconMap.task
-
+  // 折叠状态：显示折叠条（默认状态，始终显示）
+  if (isCollapsed) {
     return (
       <div
         className={cn(
-          'fixed right-0 top-0 bottom-0 z-40',
-          'w-16 h-full',
-          'bg-card/80 backdrop-blur-md',
-          'border-l border-y border-border/50',
-          'rounded-l-lg shadow-lg hover:shadow-xl',
-          // 添加进场动画
-          'animate-in slide-in-from-right-4 duration-325 ease-in-out'
+          'fixed right-0 top-0 bottom-0 z-40 flex',
+          'transition-all duration-325 ease-in-out'
         )}
       >
-        <div className="flex flex-col items-center justify-center h-full py-4 space-y-3">
-          {/* 展开/收起按钮 */}
-          <button
-            onClick={handleToggleCollapse}
-            className={cn(
-              'w-8 h-8 rounded-full',
-              'bg-card/90 backdrop-blur-sm',
-              'border border-border',
-              'flex items-center justify-center',
-              'transition-all duration-200',
-              'hover:scale-110 hover:bg-primary hover:border-primary',
-              'hover:text-primary-foreground',
-              'hover:shadow-md',
-              'cursor-pointer'
-            )}
-            aria-label="展开属性面板"
-            title="展开属性面板（快捷键: F1）"
-          >
-            <ChevronLeft className="w-4 h-4 text-muted-foreground hover:text-primary-foreground transition-colors" />
-          </button>
-
-          {/* 节点图标 */}
-          <div className="flex items-center justify-center">
-            <NodeIcon className="text-2xl" />
-          </div>
-
-          {/* 节点标题 */}
-          <div className="px-2">
-            <p className="text-xs font-medium text-foreground line-clamp-2 text-center">
-              {currentNode.data.label || '未命名节点'}
-            </p>
-          </div>
-
-          {/* 节点状态 */}
-          {currentNode.data.status && (
-            <div className="px-2">
-              <Badge
-                variant="secondary"
-                className={cn('text-[10px]', currentNode.data.status === 'completed' && 'bg-green-500/20 text-green-500')}
-              >
-                {t(`status.${currentNode.data.status}`)}
-              </Badge>
-            </div>
+        {/* 边缘触发区域（鼠标移入自动展开） */}
+        <div
+          onMouseEnter={() => {
+            if (!hasSelection) {
+              // 没有选中节点时，鼠标移入边缘也展开预览
+              setIsHovering(true)
+            }
+          }}
+          onMouseLeave={() => {
+            setIsHovering(false)
+          }}
+          className={cn(
+            'absolute right-0 top-0 bottom-0 w-4', // 4px触发区域
+            'cursor-pointer', // 显示可点击
           )}
+          onClick={() => {
+            // 点击边缘触发区域展开面板
+            setIsCollapsed(false)
+          }}
+        />
+
+        {/* 折叠条 */}
+        <div
+          className={cn(
+            'w-16 h-full',
+            'bg-card/80 backdrop-blur-md',
+            'border-l border-y border-border/50',
+            'rounded-l-lg shadow-lg hover:shadow-xl',
+            'transition-all duration-200',
+            'animate-in slide-in-from-right-2 duration-325',
+            // 鼠标悬停时变宽
+            isHovering && 'w-20'
+          )}
+        >
+          <div className="flex flex-col items-center justify-center h-full py-4 space-y-3">
+            {/* 展开/收起按钮 */}
+            <button
+              onClick={handleToggleCollapse}
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
+              className={cn(
+                'w-8 h-8 rounded-full',
+                'bg-card/90 backdrop-blur-sm',
+                'border border-border',
+                'flex items-center justify-center',
+                'transition-all duration-200',
+                'hover:scale-110 hover:bg-primary hover:border-primary',
+                'hover:text-primary-foreground',
+                'hover:shadow-md',
+                'cursor-pointer'
+              )}
+              aria-label="展开属性面板"
+              title="展开属性面板（快捷键: F1）"
+            >
+              <ChevronLeft className="w-4 h-4 text-muted-foreground hover:text-primary-foreground transition-colors" />
+            </button>
+
+            {/* 如果没有选中节点，显示提示 */}
+            {!hasSelection && (
+              <>
+                {/* 提示图标 */}
+                <div className="flex items-center justify-center">
+                  <ChevronRight className="w-5 h-5 text-muted-foreground/60" />
+                </div>
+
+                {/* 提示文字 */}
+                <div className="px-2 text-center">
+                  <p className="text-xs text-muted-foreground/60 leading-tight">
+                    属性
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* 如果有选中节点，显示节点信息 */}
+            {hasSelection && currentNode && (() => {
+              const NodeIcon = nodeIconMap[currentNode.data.type] || nodeIconMap.task
+              return (
+                <>
+                  {/* 节点图标 */}
+                  <div className="flex items-center justify-center">
+                    <NodeIcon className="text-2xl" />
+                  </div>
+
+                  {/* 节点标题 */}
+                  <div className="px-2">
+                    <p className="text-xs font-medium text-foreground line-clamp-2 text-center">
+                      {currentNode.data.label || '未命名节点'}
+                    </p>
+                  </div>
+
+                  {/* 节点状态 */}
+                  {currentNode.data.status && (
+                    <div className="px-2">
+                      <Badge
+                        variant="secondary"
+                        className={cn('text-[10px]', currentNode.data.status === 'completed' && 'bg-green-500/20 text-green-500')}
+                      >
+                        {t(`status.${currentNode.data.status}`)}
+                      </Badge>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+          </div>
         </div>
       </div>
     )
