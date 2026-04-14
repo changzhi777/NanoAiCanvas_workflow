@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.0.9",
+  "version": "2.1.0",
   "private": true,
   "description": "无限画布应用 - 基于 React Flow 的节点编辑器",
   "author": {

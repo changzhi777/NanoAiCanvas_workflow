@@ -61,7 +61,7 @@ export default function PropertiesPanel() {
     // TODO: 删除节点
   }
 
-  // 没有选中节点时，完全不显示面板
+  // 没有选中节点时，完全不渲染
   if (!hasSelection) {
     return null
   }
@@ -73,12 +73,13 @@ export default function PropertiesPanel() {
     return (
       <div
         className={cn(
-          'fixed right-0 top-0 z-40',
-          'w-16 transition-all duration-325 ease-in-out',
+          'fixed right-0 top-0 bottom-0 z-40',
+          'w-16 h-full',
           'bg-card/80 backdrop-blur-md',
           'border-l border-y border-border/50',
           'rounded-l-lg shadow-lg hover:shadow-xl',
-          'panel-slide-right'
+          // 添加进场动画
+          'animate-in slide-in-from-right-4 duration-325 ease-in-out'
         )}
       >
         <div className="flex flex-col items-center justify-center h-full py-4 space-y-3">
@@ -135,10 +136,11 @@ export default function PropertiesPanel() {
     <div
       className={cn(
         'fixed right-0 top-0 bottom-0 z-40 flex flex-col',
-        'w-64 transition-all duration-325 ease-in-out',
+        'w-64 h-full',
         'bg-card/80 backdrop-blur-md', // 与左侧一致的80%不透明
         'border-l border-border/50',
-        'panel-slide-right'
+        // 添加进场动画 - 从右侧滑入
+        'animate-in slide-in-from-right-4 duration-325 ease-in-out'
       )}
     >
       {/* 头部 */}
