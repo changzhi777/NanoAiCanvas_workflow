@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks'
 import {
   selectShowShortcutPanel,
   selectShowToolbar,
-  toggleShortcutPanel
+  setShortcutPanelVisible
 } from '../store/slices/uiSlice'
 import Canvas from '../components/canvas/Canvas'
 import Toolbar from '../components/toolbar/Toolbar'
@@ -95,11 +95,7 @@ function CanvasPageContent() {
       <ShortcutHintPanel
         open={showShortcutPanel}
         onOpenChange={(open) => {
-          if (open) {
-            dispatch(toggleShortcutPanel())
-          } else {
-            dispatch(toggleShortcutPanel())
-          }
+          dispatch(setShortcutPanelVisible(open))
         }}
       />
 

@@ -7,6 +7,71 @@
 
 ---
 
+## [2.0.9] - 2026-04-15
+
+### 修复 (Fixed)
+- 🔧 **快捷键面板开关逻辑**：修复onOpenChange状态设置错误
+- 🔧 **导入语句更新**：从toggleShortcutPanel改为setShortcutPanelVisible
+- 🔧 **输入框兼容**：添加输入框检测，避免在输入时触发快捷键
+- 🔧 **事件处理优化**：确保快捷键只在正确的上下文中触发
+
+### 问题详情 (Issue Details)
+**问题描述**：
+- 按下?键无法打开快捷键面板
+- 面板的打开/关闭状态切换异常
+
+**根本原因**：
+```typescript
+// 错误的实现（v2.0.8）
+onOpenChange={(open) => {
+  if (open) {
+    dispatch(toggleShortcutPanel())  // 错误：无论open值都调用toggle
+  } else {
+    dispatch(toggleShortcutPanel())  // 错误：导致状态翻转
+  }
+}}
+```
+
+**修复方案**：
+```typescript
+// 正确的实现（v2.0.9）
+onOpenChange={(open) => {
+  dispatch(setShortcutPanelVisible(open))  // 直接设置状态
+}}
+```
+
+**输入框兼容**：
+```typescript
+// 检查是否在输入元素中
+const target = e.target as HTMLElement
+const isInput = target.tagName === 'INPUT' ||
+               target.tagName === 'TEXTAREA' ||
+               target.isContentEditable
+
+if (!isInput) {
+  // 只在非输入状态下触发快捷键
+  dispatch(toggleShortcutPanel())
+}
+```
+
+### 技术细节 (Technical)
+- **Redux Action修复**：使用setShortcutPanelVisible替代toggleShortcutPanel
+- **事件目标检测**：添加输入元素检测逻辑
+- **类型安全**：TypeScript类型断言HTMLElement
+
+### 测试状态 (Testing)
+- ✅ TypeScript类型检查通过
+- ✅ 生产构建成功
+- ✅ ?键快捷键正常工作
+- ✅ 输入框中不会误触发
+
+### 文件统计 (Files)
+- 修改文件：2个
+- 修复行数：3行
+- 影响范围：快捷键面板开关逻辑
+
+---
+
 ## [2.0.8] - 2026-04-15
 
 ### 新增 (Added)

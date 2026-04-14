@@ -96,8 +96,16 @@ export function useShortcuts() {
 
       // ?: 显示快捷键面板
       if (e.key === '?' && !cmdOrCtrl && !e.shiftKey) {
-        e.preventDefault()
-        dispatch(toggleShortcutPanel())
+        // 确保不在输入框中
+        const target = e.target as HTMLElement
+        const isInput = target.tagName === 'INPUT' ||
+                       target.tagName === 'TEXTAREA' ||
+                       target.isContentEditable
+
+        if (!isInput) {
+          e.preventDefault()
+          dispatch(toggleShortcutPanel())
+        }
       }
     }
 
