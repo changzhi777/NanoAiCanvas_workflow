@@ -1,0 +1,191 @@
+{
+  "timestamp": "2026-04-15T01:05:39.000Z",
+  "projectName": "NanoAiCanvas",
+  "version": "0.1.0",
+  "summary": "基于 React Flow 的无限画布应用，支持卡片式节点和自由连线",
+  "techStack": {
+    "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
+    "stateManagement": ["Redux Toolkit 2.2.5"],
+    "ui": ["shadcn/ui", "Tailwind CSS", "Lucide React", "React Flow 11.11.4"],
+    "data": ["idb 8.0.0"],
+    "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"],
+    "testing": ["Vitest", "Testing Library", "Playwright"],
+    "tools": ["ESLint", "Prettier", "Husky", "lint-staged"]
+  },
+  "modules": [
+    {
+      "name": "Canvas",
+      "path": "src/components/canvas",
+      "type": "feature",
+      "description": "无限画布核心组件，基于 React Flow 实现",
+      "entryPoints": ["src/components/canvas/Canvas.tsx"],
+      "keyFiles": [
+        "src/components/canvas/Canvas.tsx",
+        "src/components/canvas/canvas.css",
+        "src/components/canvas/nodes/CardNode.tsx"
+      ],
+      "exports": ["Canvas", "CardNode"],
+      "dependencies": ["reactflow", "@reduxjs/toolkit"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "Panels",
+      "path": "src/components/panels",
+      "type": "feature",
+      "description": "属性面板和节点模板面板",
+      "keyFiles": [
+        "src/components/panels/PropertiesPanel.tsx",
+        "src/components/panels/NodeTemplatesPanel.tsx"
+      ],
+      "exports": ["PropertiesPanel", "NodeTemplatesPanel"],
+      "dependencies": ["react-redux", "reactflow"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "Toolbar",
+      "path": "src/components/toolbar",
+      "type": "feature",
+      "description": "顶部工具栏，提供快捷操作",
+      "keyFiles": ["src/components/toolbar/Toolbar.tsx"],
+      "exports": ["Toolbar"],
+      "dependencies": ["react-redux", "reactflow", "lucide-react"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "Store",
+      "path": "src/store",
+      "type": "state",
+      "description": "Redux 状态管理，包含画布、UI 和设置状态",
+      "entryPoints": ["src/store/store.ts"],
+      "keyFiles": [
+        "src/store/store.ts",
+        "src/store/hooks.ts",
+        "src/store/db.ts",
+        "src/store/slices/canvasSlice.ts",
+        "src/store/slices/uiSlice.ts",
+        "src/store/slices/settingsSlice.ts"
+      ],
+      "exports": ["store", "useAppDispatch", "useAppSelector"],
+      "dependencies": ["@reduxjs/toolkit", "react-redux", "idb", "reactflow"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "Hooks",
+      "path": "src/hooks",
+      "type": "utility",
+      "description": "自定义 React Hooks",
+      "keyFiles": [
+        "src/hooks/useAutosave.ts",
+        "src/hooks/useShortcuts.ts",
+        "src/hooks/useI18n.ts"
+      ],
+      "exports": ["useAutosave", "useShortcuts", "useI18n"],
+      "dependencies": ["react-redux", "react-i18next"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "UI Components",
+      "path": "src/components/ui",
+      "type": "library",
+      "description": "shadcn/ui 基础组件库",
+      "keyFiles": [
+        "src/components/ui/button.tsx",
+        "src/components/ui/card.tsx",
+        "src/components/ui/input.tsx",
+        "src/components/ui/badge.tsx",
+        "src/components/ui/label.tsx"
+      ],
+      "dependencies": ["@radix-ui/*", "class-variance-authority", "clsx", "tailwind-merge"],
+      "hasTests": false,
+      "coverage": "partial"
+    },
+    {
+      "name": "Internationalization",
+      "path": "src/locales",
+      "type": "config",
+      "description": "国际化配置和翻译文件",
+      "keyFiles": [
+        "src/lib/i18n.ts",
+        "src/locales/zh-CN/common.json",
+        "src/locales/en-US/common.json"
+      ],
+      "dependencies": ["i18next", "react-i18next"],
+      "hasTests": false,
+      "coverage": "complete"
+    },
+    {
+      "name": "Types",
+      "path": "src/types",
+      "type": "types",
+      "description": "TypeScript 类型定义",
+      "keyFiles": ["src/types/index.ts"],
+      "exports": ["NodeType", "NodeStatus", "NodeData", "EdgeData", "CanvasState", "AppState"],
+      "coverage": "complete"
+    }
+  ],
+  "architecture": {
+    "pattern": "Flux/Redux",
+    "dataFlow": "单向数据流，组件 -> Redux -> IndexedDB",
+    "componentHierarchy": [
+      "App",
+      "CanvasPage",
+      ["Toolbar", "NodeTemplatesPanel", "Canvas", "PropertiesPanel"]
+    ]
+  },
+  "testing": {
+    "unit": {
+      "framework": "Vitest",
+      "setup": "src/test/setup.ts",
+      "coverage": "未实现",
+      "target": "80%+"
+    },
+    "e2e": {
+      "framework": "Playwright",
+      "coverage": "未实现"
+    }
+  },
+  "coverage": {
+    "totalFiles": 33,
+    "scannedFiles": 33,
+    "coveragePercentage": 100,
+    "ignoredPatterns": [
+      "node_modules/**",
+      ".git/**",
+      "dist/**",
+      "build/**",
+      "coverage/**",
+      "*.log"
+    ],
+    "gaps": [
+      {
+        "module": "Canvas",
+        "missing": "单元测试"
+      },
+      {
+        "module": "Store",
+        "missing": "单元测试"
+      },
+      {
+        "module": "Components",
+        "missing": "单元测试和集成测试"
+      }
+    ]
+  },
+  "truncated": false,
+  "nextSteps": [
+    "补充单元测试以达到 80% 覆盖率目标",
+    "实现撤销/重做功能（useShortcuts 中标记为 TODO）",
+    "完善导入/导出功能",
+    "添加自定义节点对话框",
+    "实现上下文菜单功能"
+  ],
+  "documentation": {
+    "rootReadme": "CLAUDE.md",
+    "lastUpdated": "2026-04-15T01:05:39.000Z"
+  }
+}

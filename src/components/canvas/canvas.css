@@ -11,8 +11,7 @@
 }
 
 .react-flow__node.selected {
-  outline: 2px solid hsl(var(--primary));
-  outline-offset: 2px;
+  outline: none;
 }
 
 .react-flow__edge-path {
@@ -39,36 +38,67 @@
   border-color: hsl(var(--primary));
 }
 
+/* React Flow 控件按钮优化 */
 .react-flow__controls {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
   overflow: hidden;
+  box-shadow:
+    0 4px 6px -1px hsl(0 0% 0% / 0.1),
+    0 2px 4px -2px hsl(0 0% 0% / 0.1);
 }
 
 .react-flow__controls-button {
   background: hsl(var(--card));
   border-bottom: 1px solid hsl(var(--border));
   fill: hsl(var(--foreground));
-  transition: all 0.2s;
+  transition: all 0.2s ease-out;
 }
 
 .react-flow__controls-button:hover {
   background: hsl(var(--muted));
+  transform: scale(1.05);
 }
 
+.react-flow__controls-button:active {
+  transform: scale(0.95);
+}
+
+.react-flow__controls-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 小地图样式优化 */
 .react-flow__minimap {
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: 0.5rem;
+  box-shadow:
+    0 4px 6px -1px hsl(0 0% 0% / 0.1),
+    0 2px 4px -2px hsl(0 0% 0% / 0.1);
+  transition: all 0.2s ease-out;
+}
+
+.react-flow__minimap:hover {
+  box-shadow:
+    0 10px 15px -3px hsl(0 0% 0% / 0.2),
+    0 4px 6px -4px hsl(0 0% 0% / 0.2);
+}
+
+.react-flow__minimap-mask {
+  fill: hsl(var(--primary) / 0.1);
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
 }
 
 .react-flow__background {
   background: hsl(var(--background));
 }
 
-/* 选择框 */
+/* 选择框优化 */
 .react-flow__selection {
   background: hsl(var(--primary) / 0.1);
-  border: 1px solid hsl(var(--primary));
+  border: 2px solid hsl(var(--primary));
 }

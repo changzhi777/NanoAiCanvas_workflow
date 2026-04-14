@@ -68,4 +68,10 @@ export const {
   setShowGrid,
 } = settingsSlice.actions
 
+// Selectors
+export const selectAutosave = (state: { settings: SettingsState }) => state.settings.autosave
+export const selectAutosaveInterval = (state: { settings: SettingsState }) => state.settings.autosaveInterval
+export const selectTheme = (state: { settings: SettingsState }) => state.settings.theme
+export const selectLocale = (state: { settings: SettingsState }) => state.settings.locale
+
 export default settingsSlice.reducer

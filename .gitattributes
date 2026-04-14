@@ -1,0 +1,43 @@
+# Git 属性配置
+
+# 自动处理行尾符
+* text=auto
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+
+# Windows 批处理文件
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Shell 脚本
+*.sh text eol=lf
+
+# 图片文件（二进制）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+
+# 字体文件（二进制）
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# 压缩文件（二进制）
+*.zip binary
+*.tar.gz binary
+*.rar binary
+*.7z binary

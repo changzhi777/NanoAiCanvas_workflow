@@ -1,6 +1,15 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import type { Node, Edge, Connection, NodeChange, EdgeChange } from 'reactflow'
-import { addNode, addEdge, updateNode, deleteNode, deleteEdge } from '../db'
+import {
+  applyNodeChanges,
+  applyEdgeChanges,
+  addEdge,
+  type Node,
+  type Edge,
+  type Connection,
+  type NodeChange,
+  type EdgeChange,
+} from 'reactflow'
+import { addNode as dbAddNode, addEdge as dbAddEdge, updateNode, deleteNode, deleteEdge } from '../db'
 import type { NodeData, EdgeData } from '@/types'
 
 interface CanvasState {
@@ -23,7 +32,7 @@ const initialState: CanvasState = {
 export const addNodeAsync = createAsyncThunk(
   'canvas/addNode',
   async (node: Node<NodeData>) => {
-    await addNode(node)
+    await dbAddNode(node)
     return node
   },
 )
@@ -32,7 +41,7 @@ export const addNodeAsync = createAsyncThunk(
 export const addEdgeAsync = createAsyncThunk(
   'canvas/addEdge',
   async (edge: Edge<EdgeData>) => {
-    await addEdge(edge)
+    await dbAddEdge(edge)
     return edge
   },
 )

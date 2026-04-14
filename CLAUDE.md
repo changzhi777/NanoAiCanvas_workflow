@@ -8,16 +8,29 @@
 
 ---
 
-## 📋 目录
+## 变更记录 (Changelog)
+
+### 2026-04-15 - 初始化 AI 上下文文档系统
+- 完成全仓清点和模块结构分析
+- 生成模块结构图（Mermaid）
+- 创建 `.claude/index.json` 索引文件
+- 扫描覆盖率：100%（33 个核心文件）
+- 识别 8 个主要模块：Canvas、Panels、Toolbar、Store、Hooks、UI Components、i18n、Types
+
+---
+
+## 目录
 
 - [项目愿景](#项目愿景)
 - [技术栈](#技术栈)
 - [架构总览](#架构总览)
-- [模块结构](#模块结构)
+- [模块结构图](#模块结构图)
+- [模块索引](#模块索引)
 - [核心功能](#核心功能)
 - [开发指南](#开发指南)
 - [测试策略](#测试策略)
 - [部署方案](#部署方案)
+- [AI 使用指引](#ai-使用指引)
 
 ---
 
@@ -27,13 +40,13 @@
 
 ### 核心特性
 
-- ✅ **无限画布**: 基于 React Flow，支持平滑缩放、平移
-- ✅ **卡片节点**: 7 种预定义节点类型 + 自定义节点
-- ✅ **自由连线**: 多种颜色、线型、动画效果
-- ✅ **状态管理**: Redux Toolkit + IndexedDB 持久化
-- ✅ **主题系统**: Base Nova 暗色主题 + OKLCH 颜色空间
-- ✅ **国际化**: 完整的中英文切换支持
-- ✅ **快捷键**: 全套键盘快捷键支持
+- 无限画布: 基于 React Flow，支持平滑缩放、平移
+- 卡片节点: 7 种预定义节点类型 + 自定义节点
+- 自由连线: 多种颜色、线型、动画效果
+- 状态管理: Redux Toolkit + IndexedDB 持久化
+- 主题系统: Base Nova 暗色主题 + OKLCH 颜色空间
+- 国际化: 完整的中英文切换支持
+- 快捷键: 全套键盘快捷键支持
 
 ---
 
@@ -141,66 +154,46 @@ sequenceDiagram
 
 ---
 
-## 模块结构
+## 模块结构图
 
+```mermaid
+graph TD
+    A["(根) NanoAiCanvas"] --> B["src/"];
+    B --> C["components/"];
+    B --> D["store/"];
+    B --> E["hooks/"];
+    B --> F["lib/"];
+    B --> G["locales/"];
+    B --> H["types/"];
+    B --> I["pages/"];
+    B --> J["styles/"];
+
+    C --> K["canvas/"];
+    C --> L["panels/"];
+    C --> M["toolbar/"];
+    C --> N["ui/"];
+
+    D --> O["slices/"];
+
+    style A fill:#168,70%,45%
+    style C fill:#168,80%,55%
+    style D fill:#168,80%,55%
 ```
-nanoai-canvas/
-├── src/
-│   ├── components/          # UI 组件
-│   │   ├── canvas/          # 画布相关组件
-│   │   │   ├── Canvas.tsx           # 主画布组件
-│   │   │   ├── canvas.css           # 画布样式
-│   │   │   └── nodes/
-│   │   │       └── CardNode.tsx     # 卡片节点
-│   │   ├── panels/          # 面板组件
-│   │   │   ├── PropertiesPanel.tsx  # 属性面板
-│   │   │   └── NodeTemplatesPanel.tsx # 模板面板
-│   │   ├── toolbar/         # 工具栏
-│   │   │   └── Toolbar.tsx
-│   │   └── ui/              # shadcn/ui 组件
-│   │       ├── button.tsx
-│   │       ├── card.tsx
-│   │       ├── input.tsx
-│   │       └── ...
-│   ├── store/               # Redux 状态管理
-│   │   ├── slices/          # Redux 切片
-│   │   │   ├── canvasSlice.ts       # 画布状态
-│   │   │   ├── uiSlice.ts           # UI 状态
-│   │   │   └── settingsSlice.ts     # 设置状态
-│   │   ├── store.ts         # Store 配置
-│   │   ├── hooks.ts         # 类型化 hooks
-│   │   └── db.ts            # IndexedDB 操作
-│   ├── hooks/               # 自定义 Hooks
-│   │   ├── useAutosave.ts   # 自动保存
-│   │   ├── useShortcuts.ts  # 快捷键
-│   │   └── useI18n.ts       # 国际化
-│   ├── lib/                 # 工具库
-│   │   ├── utils.ts         # 通用工具函数
-│   │   └── i18n.ts          # i18next 配置
-│   ├── locales/             # 国际化文件
-│   │   ├── zh-CN/           # 中文
-│   │   └── en-US/           # 英文
-│   ├── types/               # TypeScript 类型
-│   │   └── index.ts
-│   ├── styles/              # 全局样式
-│   │   └── globals.css      # 主题和全局样式
-│   ├── pages/               # 页面组件
-│   │   └── CanvasPage.tsx
-│   ├── test/                # 测试配置
-│   │   └── setup.ts
-│   ├── App.tsx              # 根组件
-│   └── main.tsx             # 入口文件
-├── public/                  # 静态资源
-├── e2e/                     # E2E 测试
-├── .github/                 # GitHub Actions
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-├── tailwind.config.ts
-├── vitest.config.ts
-├── playwright.config.ts
-└── components.json          # shadcn/ui 配置
-```
+
+---
+
+## 模块索引
+
+| 模块 | 路径 | 职责 | 状态 |
+|------|------|------|------|
+| **Canvas** | `src/components/canvas` | 无限画布核心，基于 React Flow | 已完成 |
+| **Panels** | `src/components/panels` | 属性面板和模板面板 | 已完成 |
+| **Toolbar** | `src/components/toolbar` | 顶部工具栏，快捷操作 | 已完成 |
+| **Store** | `src/store` | Redux 状态管理 | 已完成 |
+| **Hooks** | `src/hooks` | 自定义 React Hooks | 已完成 |
+| **UI Components** | `src/components/ui` | shadcn/ui 基础组件 | 部分完成 |
+| **i18n** | `src/locales` | 国际化配置 | 已完成 |
+| **Types** | `src/types` | TypeScript 类型定义 | 已完成 |
 
 ---
 
@@ -365,6 +358,30 @@ docker run -p 80:80 nanoai-canvas
 ### 环境变量
 
 参考 `.env.example` 配置环境变量。
+
+---
+
+## AI 使用指引
+
+### 代码风格
+
+- 使用 TypeScript 严格模式
+- 遵循 ESLint 和 Prettier 配置
+- 组件使用函数式组件 + Hooks
+- 状态管理优先使用 Redux Toolkit
+
+### 常见任务
+
+1. **添加新功能**: 先查看相关模块的 `CLAUDE.md`（如果存在）
+2. **修改状态**: 查阅 `src/store/slices/` 中的相关 slice
+3. **添加 UI**: 使用 shadcn/ui 组件，位于 `src/components/ui/`
+4. **国际化**: 在 `src/locales/` 中添加翻译
+
+### 重要提示
+
+- 所有异步操作使用 Redux Toolkit 的 `createAsyncThunk`
+- 数据持久化使用 `src/store/db.ts` 中的 IndexedDB 函数
+- 遵循单向数据流原则
 
 ---
 

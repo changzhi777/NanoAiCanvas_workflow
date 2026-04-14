@@ -9,7 +9,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9.3-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19.2.4-cyan)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-5.2.11-purple)](https://vitejs.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-2.0.1-brightgreen)](VERSION.md)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
 
 [功能特性](#-功能特性) • [快速开始](#-快速开始) • [开发指南](#-开发指南) • [贡献指南](#-贡献指南)
 
@@ -190,9 +191,29 @@ docker run -p 80:80 nanoai-canvas
 
 ---
 
-## 📄 许可证
+## 📄 许可证与版权
 
-本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+本项目为**专有软件**，版权所有。
+
+**版权所有**: © 2026 IoTchange - 保留所有权利
+
+**作者信息**:
+- 作者: 外星动物（常智）
+- 组织: IoTchange
+- 邮箱: [14455975@qq.com](mailto:14455975@qq.com)
+
+**许可声明**:
+未经 IoTchange 明确书面许可，严禁任何形式的使用、复制、修改、分发、授权或销售本软件的副本。
+
+详见 [LICENSE](LICENSE) 文件
+
+---
+
+## 📮 联系方式
+
+- **邮箱**: [14455975@qq.com](mailto:14455975@qq.com)
+- **组织**: IoTchange
+- **作者**: 外星动物（常智）
 
 ---
 
@@ -205,18 +226,12 @@ docker run -p 80:80 nanoai-canvas
 
 ---
 
-## 📮 联系方式
-
-- 项目主页: [https://github.com/yourusername/nanoai-canvas](https://github.com/yourusername/nanoai-canvas)
-- 问题反馈: [Issues](https://github.com/yourusername/nanoai-canvas/issues)
-- 邮箱: your-email@example.com
-
----
-
 <div align="center">
 
-**⭐ 如果这个项目对你有帮助，请给一个 Star！**
+**⭐ 如果这个项目对你有帮助，请联系作者获取使用许可**
 
-Made with ❤️ by NanoAiCanvas Team
+Made with ❤️ by 外星动物（常智）/ IoTchange
+
+**版本**: 2.0.1 | **最后更新**: 2026-04-15
 
 </div>

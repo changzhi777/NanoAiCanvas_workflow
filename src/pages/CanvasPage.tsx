@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { ReactFlowProvider } from 'reactflow'
 import { useAppSelector, useAppDispatch } from '../store/hooks'
 import { selectNodes, selectEdges } from '../store/slices/canvasSlice'
 import Canvas from '../components/canvas/Canvas'
@@ -8,7 +9,7 @@ import NodeTemplatesPanel from '../components/panels/NodeTemplatesPanel'
 import { useAutosave } from '../hooks/useAutosave'
 import { useShortcuts } from '../hooks/useShortcuts'
 
-export default function CanvasPage() {
+function CanvasPageContent() {
   const dispatch = useAppDispatch()
   const nodes = useAppSelector(selectNodes)
   const edges = useAppSelector(selectEdges)
@@ -20,7 +21,7 @@ export default function CanvasPage() {
   useShortcuts()
 
   return (
-    <div className="flex h-screen flex-col">
+    <>
       {/* 顶部工具栏 */}
       <Toolbar />
 
@@ -35,6 +36,16 @@ export default function CanvasPage() {
         {/* 右侧属性面板 */}
         <PropertiesPanel />
       </div>
+    </>
+  )
+}
+
+export default function CanvasPage() {
+  return (
+    <div className="flex h-screen flex-col">
+      <ReactFlowProvider>
+        <CanvasPageContent />
+      </ReactFlowProvider>
     </div>
   )
 }

@@ -31,6 +31,16 @@ export interface NodeData {
   createdAt: number
   updatedAt: number
   metadata?: Record<string, unknown>
+  // 优先级
+  priority?: 'low' | 'medium' | 'high' | 'critical'
+  // 统计数据
+  stats?: {
+    progress?: number // 0-100
+    completedTasks?: number
+    totalTasks?: number
+    timeSpent?: number // 小时
+    trend?: number[] // 趋势数据 [0-100]
+  }
 }
 
 // 边数据结构

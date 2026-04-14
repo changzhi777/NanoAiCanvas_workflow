@@ -1,0 +1,18 @@
+/**
+ * NanoAiCanvas - 无限画布应用
+ *
+ * @description 基于 React Flow 的节点编辑器
+ * @author 外星动物（常智）/ IoTchange
+ * @contact 14455975@qq.com
+ * @copyright Copyright (C) 2026 IoTchange - All Rights Reserved
+ * @license Proprietary - All rights reserved
+ * @version 2.0.1
+ *
+ * @file 文件名
+ * @brief 文件说明
+ *
+ * 本软件为专有软件，版权所有。
+ * 未经 IoTchange 明确书面许可，严禁任何形式的使用、复制、修改、分发。
+ *
+ * 本软件按"现状"提供，不提供任何形式的明示或暗示保证。
+ */
