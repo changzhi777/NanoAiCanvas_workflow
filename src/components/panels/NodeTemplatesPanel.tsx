@@ -1,5 +1,5 @@
-import { useCallback, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { useCallback, useState, useEffect } from 'react'
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAppDispatch } from '@/store/hooks'
@@ -74,6 +74,8 @@ export default function NodeTemplatesPanel() {
   const { t } = useI18n()
   const dispatch = useAppDispatch()
   const { getViewport } = useReactFlow()
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
 
   // 进场动画
   useEffect(() => {
@@ -107,15 +109,66 @@ export default function NodeTemplatesPanel() {
     [dispatch, getViewport, t],
   )
 
+  // 切换折叠状态
+  const handleToggleCollapse = useCallback(() => {
+    setIsCollapsed((prev) => !prev)
+  }, [])
+
+  // 面板收起时只显示折叠按钮
+  if (isCollapsed) {
+    return (
+      <div
+        className={cn(
+          'fixed left-0 top-0 bottom-0 z-40 flex items-center',
+          'transition-all duration-325 ease-in-out'
+        )}
+      >
+        {/* 折叠按钮贴附在左边缘 */}
+        <button
+          onClick={handleToggleCollapse}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          className={cn(
+            'relative right-0 w-8 h-16',
+            'bg-card/80 backdrop-blur-md',
+            'border border-r border-y border-border',
+            'rounded-r-lg shadow-lg hover:shadow-xl',
+            'transition-all duration-200',
+            'hover:w-10 hover:bg-card/90',
+            'flex items-center justify-center',
+            'group cursor-pointer',
+            'hover:border-primary/50'
+          )}
+          aria-label="展开模板面板"
+          title="展开模板面板（快捷键: F2）"
+        >
+          <ChevronRight
+            className={cn(
+              'w-4 h-4 text-muted-foreground transition-transform duration-300',
+              isHovering && 'scale-110'
+            )}
+          />
+        </button>
+      </div>
+    )
+  }
+
+  // 面板展开时显示完整内容
   return (
-    <div className={cn(
-      'flex h-64 w-64 flex-col border-r border-border bg-card',
-      'transition-all duration-300 ease-out',
-      'panel-slide-left'
-    )}>
+    <div
+      className={cn(
+        'fixed left-0 top-0 bottom-0 z-40 flex flex-col',
+        'w-64 transition-all duration-325 ease-in-out',
+        'bg-card/80 backdrop-blur-md', // 中等透明度（70-85%不透明）
+        'border-r border-border/50',
+        'panel-slide-left'
+      )}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+    >
       {/* 头部 */}
-      <div className="flex items-center justify-between border-b border-border p-4">
-        <h2 className="font-semibold">{t('panel.templates')}</h2>
+      <div className="flex items-center justify-between border-b border-border/50 p-4">
+        <h2 className="font-semibold text-foreground">{t('panel.templates')}</h2>
         <Button variant="ghost" size="icon-xs">
           <Plus className="h-3 w-3" />
         </Button>
@@ -127,21 +180,25 @@ export default function NodeTemplatesPanel() {
           {nodeTemplates.map((template) => (
             <Card
               key={template.type}
-              className="cursor-pointer transition-all hover:border-primary hover:shadow-md"
+              className={cn(
+                'cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg',
+                'bg-card/60 backdrop-blur-sm', // 卡片也有轻微透明
+                'border-border/50'
+              )}
               onClick={() => handleCreateNode(template.type)}
             >
               <div className="flex items-start gap-3 p-3">
                 {/* 图标 */}
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-muted text-xl">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/50 bg-muted/50 text-xl">
                   {template.icon}
                 </div>
 
                 {/* 信息 */}
                 <div className="flex-1 space-y-1">
-                  <h3 className="text-sm font-semibold">
+                  <h3 className="text-sm font-semibold text-foreground">
                     {t(template.label)}
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground/80">
                     {template.description}
                   </p>
                 </div>
@@ -152,18 +209,47 @@ export default function NodeTemplatesPanel() {
 
         {/* 自定义节点按钮 */}
         <Card
-          className="mt-4 cursor-pointer border-dashed transition-all hover:border-primary hover:shadow-md"
+          className={cn(
+            'mt-4 cursor-pointer border-dashed transition-all hover:border-primary/50 hover:shadow-lg',
+            'bg-card/60 backdrop-blur-sm',
+            'border-border/50'
+          )}
           onClick={() => {
             /* TODO: 打开自定义节点对话框 */
           }}
         >
           <div className="flex items-center justify-center gap-2 p-4">
-            <Plus className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
+            <Plus className="h-4 w-4 text-muted-foreground/80" />
+            <span className="text-sm text-muted-foreground/80">
               自定义节点类型
             </span>
           </div>
         </Card>
+      </div>
+
+      {/* 底部折叠按钮 */}
+      <div className="flex items-center justify-center border-t border-border/50 p-3">
+        <button
+          onClick={handleToggleCollapse}
+          onMouseEnter={() => setIsHovering(true)}
+          onMouseLeave={() => setIsHovering(false)}
+          className={cn(
+            'w-8 h-8 rounded-full',
+            'bg-card/90 backdrop-blur-sm',
+            'border border-border',
+            'flex items-center justify-center',
+            'transition-all duration-200',
+            'hover:scale-110 hover:bg-primary hover:border-primary',
+            'hover:text-primary-foreground',
+            'hover:shadow-md',
+            'group cursor-pointer',
+            isHovering && 'scale-105'
+          )}
+          aria-label="收起模板面板"
+          title="收起模板面板（快捷键: F2）"
+        >
+          <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
+        </button>
       </div>
     </div>
   )
