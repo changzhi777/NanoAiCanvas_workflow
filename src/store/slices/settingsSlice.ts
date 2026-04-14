@@ -12,9 +12,23 @@ interface SettingsState {
   showGrid: boolean
 }
 
+const getInitialTheme = (): Theme => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return (localStorage.getItem('theme') as Theme) || 'dark'
+  }
+  return 'dark'
+}
+
+const getInitialLocale = (): string => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return localStorage.getItem('locale') || 'zh-CN'
+  }
+  return 'zh-CN'
+}
+
 const initialState: SettingsState = {
-  theme: (localStorage.getItem('theme') as Theme) || 'dark',
-  locale: localStorage.getItem('locale') || 'zh-CN',
+  theme: getInitialTheme(),
+  locale: getInitialLocale(),
   autosave: true,
   autosaveInterval: 30000,
   gridSize: 20,
