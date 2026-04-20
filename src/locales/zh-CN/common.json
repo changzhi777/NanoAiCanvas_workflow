@@ -46,5 +46,16 @@
     "templates": "模板",
     "history": "历史",
     "layers": "图层"
+  },
+  "a11y": {
+    "skipToMainContent": "跳转到主内容",
+    "togglePanel": "切换面板",
+    "expandPanel": "展开面板",
+    "collapsePanel": "收起面板",
+    "deleteNode": "删除节点",
+    "editNode": "编辑节点",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "fitView": "适应屏幕"
   }
 }

@@ -1,0 +1,25 @@
+# Verdacco 配置文件
+
+storage: ./storage
+
+packages:
+  '@*/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+
+  '**':
+    access: $all
+    publish: $all
+    unpublish: $all
+
+# 日志
+log:
+  - { type: stdout, format: pretty, level: http }
+  - { type: stdout, format: pretty, level: info }
+  - { type: stdout, format: pretty, level: warn }
+  - { type: stdout, format: pretty, level: error }
+
+# Web UI
+ui:
+  enabled: true

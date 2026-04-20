@@ -1,0 +1,51 @@
+# 源代码和配置文件
+src/
+*.config.js
+*.config.ts
+!.vite.lib.config.ts
+postcss.config.js
+tailwind.config.js
+tsconfig.json
+tsconfig.node.json
+
+# 测试文件
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+coverage/
+.nyc_output/
+
+# 开发工具配置
+.vscode/
+.idea/
+.eslintrc*
+.prettierrc*
+.editorconfig
+
+# Git 和文档
+.git/
+.gitignore
+.github/
+docs/
+*.md
+!README.md
+
+# 示例和演示
+example/
+demo/
+public/
+
+# 构建临时文件
+dist-ssr/
+*.local
+
+# 其他
+.DS_Store
+.env*
+*.log
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

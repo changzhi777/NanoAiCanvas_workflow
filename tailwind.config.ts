@@ -8,6 +8,17 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        'motion-safe': '(prefers-reduced-motion: no-preference)',
+        'motion-reduce': '(prefers-reduced-motion: reduce)',
+        // 自定义响应式断点
+        'xs': '375px',  // 小屏手机
+        'sm': '640px',  // 大屏手机
+        'md': '768px',  // 平板
+        'lg': '1024px', // 小屏笔记本
+        'xl': '1280px', // 桌面
+        '2xl': '1440px', // 大屏桌面
+      },
       colors: {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',

@@ -68,7 +68,7 @@ export default function PropertiesPanel() {
       <div
         className={cn(
           'fixed right-0 top-0 bottom-0 z-40 flex',
-          'transition-all duration-325 ease-in-out'
+          'transition-transform-base duration-325 ease-in-out'
         )}
       >
         {/* 边缘触发区域（鼠标移入自动展开） */}
@@ -96,10 +96,9 @@ export default function PropertiesPanel() {
         <div
           className={cn(
             'w-16 h-full',
-            'bg-card/80 backdrop-blur-md',
-            'border-l border-y border-border/50',
-            'rounded-l-lg shadow-lg hover:shadow-xl',
-            'transition-all duration-200',
+            'glass',
+            'border-l border-y rounded-l-lg shadow-lg hover:shadow-xl',
+            'transition-base transition-transform-base',
             'animate-in slide-in-from-right-2 duration-325',
             // 鼠标悬停时变宽
             isHovering && 'w-20'
@@ -112,15 +111,15 @@ export default function PropertiesPanel() {
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
               className={cn(
-                'w-8 h-8 rounded-full',
-                'bg-card/90 backdrop-blur-sm',
+                'w-11 h-11 xs:w-8 xs:h-8 rounded-full', // 移动端44px，桌面端32px
+                'glass-subtle',
                 'border border-border',
                 'flex items-center justify-center',
-                'transition-all duration-200',
+                'transition-base transition-transform-base',
                 'hover:scale-110 hover:bg-primary hover:border-primary',
                 'hover:text-primary-foreground',
                 'hover:shadow-md',
-                'cursor-pointer'
+                'focus-ring-base cursor-pointer'
               )}
               aria-label="展开属性面板"
               title="展开属性面板（快捷键: F1）"
@@ -133,12 +132,12 @@ export default function PropertiesPanel() {
               <>
                 {/* 提示图标 */}
                 <div className="flex items-center justify-center">
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/60" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
                 </div>
 
                 {/* 提示文字 */}
                 <div className="px-2 text-center">
-                  <p className="text-xs text-muted-foreground/60 leading-tight">
+                  <p className="text-xs text-muted-foreground leading-tight">
                     属性
                   </p>
                 </div>
@@ -187,28 +186,28 @@ export default function PropertiesPanel() {
     <div
       className={cn(
         'fixed right-0 top-0 bottom-0 z-40 flex flex-col',
-        'w-64 h-full',
-        'bg-card/80 backdrop-blur-md', // 与左侧一致的80%不透明
-        'border-l border-border/50',
+        'w-full xs:w-64 h-full', // 移动端全宽，小屏以上256px
+        'glass',
+        'border-l',
         // 添加进场动画 - 从右侧滑入
         'animate-in slide-in-from-right-4 duration-325 ease-in-out'
       )}
     >
       {/* 头部 */}
-      <div className="flex items-center justify-between border-b border-border/50 p-4">
+      <div className="flex items-center justify-between border-b border-border/70 p-4">
         <h2 className="font-semibold text-foreground">{t('panel.properties')}</h2>
         <div className="flex gap-1">
           {/* 展开/收起按钮 */}
           <button
             onClick={handleToggleCollapse}
             className={cn(
-              'w-6 h-6 rounded',
-              'bg-card/90 backdrop-blur-sm',
-              'border border-border/50',
+              'w-11 h-11 xs:w-6 xs:h-6 rounded', // 移动端44px
+              'glass-subtle',
+              'border border-border/70',
               'flex items-center justify-center',
-              'transition-all duration-200',
+              'transition-base transition-transform-base',
               'hover:scale-110 hover:bg-card',
-              'cursor-pointer'
+              'focus-ring-base cursor-pointer'
             )}
             aria-label="收起属性面板"
             title="收起属性面板（快捷键: F1）"
@@ -237,7 +236,7 @@ export default function PropertiesPanel() {
         <div className="space-y-4">
           {/* 节点 ID */}
           <div>
-            <Label className="text-xs text-muted-foreground/80">ID</Label>
+            <Label className="text-xs text-muted-foreground">ID</Label>
             <p className="text-sm font-mono text-foreground/90">{selectedNodeId}</p>
           </div>
 
@@ -271,7 +270,7 @@ export default function PropertiesPanel() {
                 placeholder="输入描述"
               />
             ) : (
-              <p className="text-sm text-muted-foreground/80">
+              <p className="text-sm text-muted-foreground">
                 {nodeData.description || '无描述'}
               </p>
             )}

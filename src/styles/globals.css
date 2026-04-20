@@ -6,34 +6,34 @@
   :root {
     /* Base Nova - Neutral 暗色主题 (OKLCH) */
     --background: 0 0% 7%; /* oklch(0.07 0.015 180) */
-    --foreground: 0 0% 98%; /* oklch(0.985 0 0) */
+    --foreground: 0 0% 100%; /* 提升到纯白以确保 7:1 对比度 */
 
     --card: 0 0% 12%; /* oklch(0.12 0.02 160) */
-    --card-foreground: 0 0% 98%;
+    --card-foreground: 0 0% 100%; /* 提升到纯白 */
 
     --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover-foreground: 0 0% 100%;
 
     /* 主色调（青绿色） */
     --primary: 168 70% 45%; /* oklch(0.68 0.15 145) */
-    --primary-foreground: 0 0% 7%;
+    --primary-foreground: 0 0% 100%; /* 从 7% 提升到纯白以提高对比度 */
 
     --secondary: 168 15% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 0 0% 100%;
 
     --muted: 168 15% 15%;
-    --muted-foreground: 0 0% 65%;
+    --muted-foreground: 0 0% 75%; /* 从 65% 提升到 75% 以确保 7:1 对比度 */
 
     /* 强调色（亮青绿） */
     --accent: 168 80% 55%; /* oklch(0.78 0.12 150) */
-    --accent-foreground: 0 0% 7%;
+    --accent-foreground: 0 0% 100%; /* 从 7% 提升到纯白 */
 
     /* 危险色（红色） */
     --destructive: 25 80% 50%; /* oklch(0.55 0.2 25) */
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 168 15% 20%;
-    --input: 168 15% 20%;
+    --border: 168 15% 25%; /* 从 20% 提升到 25% 以增强可见性 */
+    --input: 168 15% 25%; /* 从 20% 提升到 25% */
     --ring: 168 70% 45%;
 
     /* 圆角 */
@@ -49,21 +49,21 @@
 
   .light {
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --foreground: 0 0% 3.9%; /* 保持深色以确保对比度 */
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
     --primary: 168 70% 42%;
-    --primary-foreground: 0 0% 98%;
+    --primary-foreground: 0 0% 100%; /* 从 98% 提升到纯白 */
     --secondary: 0 0% 96.1%;
     --secondary-foreground: 0 0% 9%;
     --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
+    --muted-foreground: 0 0% 35%; /* 从 45.1% 降低到 35% 以增强对比度 */
     --accent: 168 80% 50%;
     --accent-foreground: 0 0% 9%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive-foreground: 0 0% 100%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 168 70% 42%;
@@ -82,6 +82,140 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* 可访问性：为所有可交互元素添加 focus ring */
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+
+  /* 为卡片等可点击元素添加 focus 样式 */
+  [tabindex="0"]:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+  }
+}
+
+/* 微交互：统一的过渡工具类 */
+@layer utilities {
+  /* 基础过渡 - 200ms（默认推荐时长） */
+  .transition-base {
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 快速过渡 - 150ms（微交互） */
+  .transition-fast {
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 慢速过渡 - 300ms（复杂交互） */
+  .transition-slow {
+    transition-duration: 300ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 颜色过渡（仅颜色属性） */
+  .transition-colors-base {
+    transition-property: color, background-color, border-color;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 变换过渡（仅 transform 属性） */
+  .transition-transform-base {
+    transition-property: transform;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* 阴影过渡（仅 box-shadow 属性） */
+  .transition-shadow-base {
+    transition-property: box-shadow;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Focus 状态：统一的 focus 工具类 */
+@layer utilities {
+  /* 标准 focus ring - 用于大多数交互元素 */
+  .focus-ring-base {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  /* 内嵌 focus ring - 用于紧凑空间 */
+  .focus-ring-inset {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary focus:ring-inset;
+  }
+
+  /* 无 offset 的 focus ring - 用于某些特殊场景 */
+  .focus-ring-no-offset {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary;
+  }
+
+  /* 强调 focus ring - 用于重要操作 */
+  .focus-ring-strong {
+    @apply focus:outline-none focus:ring-4 focus:ring-primary/50 focus:ring-offset-2 focus:ring-offset-background;
+  }
+}
+
+/* Glassmorphism：优化的玻璃态效果 */
+@layer components {
+  /* 标准 glass 效果 - 用于面板和对话框 */
+  .glass {
+    @apply bg-card/90 backdrop-blur-md border border-border/70;
+  }
+
+  /* 强 glass 效果 - 用于需要更强背景的场景 */
+  .glass-strong {
+    @apply bg-card/95 backdrop-blur-lg border border-border/80;
+  }
+
+  /* 轻微 glass 效果 - 用于卡片和浮动元素 */
+  .glass-subtle {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+  }
+
+  /* Hover 状态的 glass 增强 */
+  .glass-hover {
+    @apply transition-base hover:bg-card/95 hover:backdrop-blur-md hover:border-border/70;
+  }
+}
+
+/* 响应式工具类 */
+@layer utilities {
+  /* 移动端全宽，桌面端固定宽度 */
+  .w-responsive {
+    @apply w-full xs:w-auto;
+  }
+
+  /* 移动端触摸目标大小 */
+  .touch-target {
+    @apply min-w-11 min-h-11 xs:min-w-8 xs:min-h-8;
+  }
+
+  /* 移动端字体大小 */
+  .text-responsive-xs {
+    @apply text-xs xs:text-xs;
+  }
+
+  .text-responsive-sm {
+    @apply text-sm xs:text-sm;
+  }
+
+  /* 移动端间距 */
+  .p-responsive {
+    @apply p-3 xs:p-4;
+  }
+
+  .gap-responsive {
+    @apply gap-2 xs:gap-3;
   }
 }
 

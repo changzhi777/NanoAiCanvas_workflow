@@ -10,6 +10,7 @@ import type { NodeData } from '@/types'
 import { NodeType } from '@/types'
 import { generateId } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { StaggeredList, FadeIn } from '@/components/animations'
 
 // 节点模板配置
 const nodeTemplates: Array<{
@@ -120,7 +121,7 @@ export default function NodeTemplatesPanel() {
       <div
         className={cn(
           'fixed left-0 top-0 bottom-0 z-40 flex items-center',
-          'transition-all duration-325 ease-in-out'
+          'transition-transform-base duration-325 ease-in-out'
         )}
       >
         {/* 折叠按钮贴附在左边缘 */}
@@ -129,15 +130,13 @@ export default function NodeTemplatesPanel() {
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           className={cn(
-            'relative right-0 w-8 h-16',
-            'bg-card/80 backdrop-blur-md',
-            'border border-r border-y border-border',
-            'rounded-r-lg shadow-lg hover:shadow-xl',
-            'transition-all duration-200',
-            'hover:w-10 hover:bg-card/90',
+            'relative right-0 w-11 h-16 xs:w-8 xs:h-16', // 移动端44px宽
+            'glass',
+            'border border-r border-y rounded-r-lg shadow-lg hover:shadow-xl',
+            'transition-base transition-transform-base',
+            'hover:w-10 xs:hover:w-10 glass-hover',
             'flex items-center justify-center',
-            'group cursor-pointer',
-            'hover:border-primary/50'
+            'group cursor-pointer focus-ring-base'
           )}
           aria-label="展开模板面板"
           title="展开模板面板（快捷键: F2）"
@@ -158,16 +157,15 @@ export default function NodeTemplatesPanel() {
     <div
       className={cn(
         'fixed left-0 top-0 bottom-0 z-40 flex flex-col',
-        'w-64 transition-all duration-325 ease-in-out',
-        'bg-card/80 backdrop-blur-md', // 中等透明度（70-85%不透明）
-        'border-r border-border/50',
-        'panel-slide-left'
+        'w-full xs:w-64 transition-transform-base duration-325 ease-in-out', // 移动端全宽
+        'glass',
+        'border-r panel-slide-left'
       )}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
       {/* 头部 */}
-      <div className="flex items-center justify-between border-b border-border/50 p-4">
+      <div className="flex items-center justify-between border-b border-border/70 p-4">
         <h2 className="font-semibold text-foreground">{t('panel.templates')}</h2>
         <Button variant="ghost" size="icon-xs">
           <Plus className="h-3 w-3" />
@@ -176,20 +174,20 @@ export default function NodeTemplatesPanel() {
 
       {/* 模板列表 */}
       <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        <div className="grid grid-cols-1 gap-3">
+        <StaggeredList staggerDelay={0.03} className="grid grid-cols-1 gap-3">
           {nodeTemplates.map((template) => (
             <Card
               key={template.type}
               className={cn(
-                'cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg',
-                'bg-card/60 backdrop-blur-sm', // 卡片也有轻微透明
-                'border-border/50'
+                'cursor-pointer transition-base transition-shadow-base hover:border-primary hover:shadow-lg',
+                'glass-subtle',
+                'glass-hover'
               )}
               onClick={() => handleCreateNode(template.type)}
             >
-              <div className="flex items-start gap-3 p-3">
+              <div className="flex items-start gap-3 p-3 xs:p-4">
                 {/* 图标 */}
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/50 bg-muted/50 text-xl">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border/70 bg-muted/50 text-xl">
                   {template.icon}
                 </div>
 
@@ -198,33 +196,35 @@ export default function NodeTemplatesPanel() {
                   <h3 className="text-sm font-semibold text-foreground">
                     {t(template.label)}
                   </h3>
-                  <p className="text-xs text-muted-foreground/80">
+                  <p className="text-xs text-muted-foreground">
                     {template.description}
                   </p>
                 </div>
               </div>
             </Card>
           ))}
-        </div>
+        </StaggeredList>
 
         {/* 自定义节点按钮 */}
-        <Card
-          className={cn(
-            'mt-4 cursor-pointer border-dashed transition-all hover:border-primary/50 hover:shadow-lg',
-            'bg-card/60 backdrop-blur-sm',
-            'border-border/50'
-          )}
-          onClick={() => {
-            /* TODO: 打开自定义节点对话框 */
-          }}
-        >
+        <FadeIn delay={0.3}>
+          <Card
+            className={cn(
+              'mt-4 cursor-pointer border-dashed transition-base transition-shadow-base hover:border-primary hover:shadow-lg',
+              'glass-subtle',
+              'glass-hover'
+            )}
+            onClick={() => {
+              /* TODO: 打开自定义节点对话框 */
+            }}
+          >
           <div className="flex items-center justify-center gap-2 p-4">
-            <Plus className="h-4 w-4 text-muted-foreground/80" />
-            <span className="text-sm text-muted-foreground/80">
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
               自定义节点类型
             </span>
           </div>
-        </Card>
+          </Card>
+        </FadeIn>
       </div>
 
       {/* 底部折叠按钮 */}
@@ -234,15 +234,15 @@ export default function NodeTemplatesPanel() {
           onMouseEnter={() => setIsHovering(true)}
           onMouseLeave={() => setIsHovering(false)}
           className={cn(
-            'w-8 h-8 rounded-full',
-            'bg-card/90 backdrop-blur-sm',
+            'w-11 h-11 xs:w-8 xs:h-8 rounded-full', // 移动端44px
+            'glass-subtle',
             'border border-border',
             'flex items-center justify-center',
-            'transition-all duration-200',
+            'transition-base transition-transform-base',
             'hover:scale-110 hover:bg-primary hover:border-primary',
             'hover:text-primary-foreground',
             'hover:shadow-md',
-            'group cursor-pointer',
+            'group cursor-pointer focus-ring-base',
             isHovering && 'scale-105'
           )}
           aria-label="收起模板面板"

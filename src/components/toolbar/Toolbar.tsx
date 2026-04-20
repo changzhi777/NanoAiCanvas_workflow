@@ -12,6 +12,7 @@ import {
   Languages,
   Moon,
   Sun,
+  MousePointer2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
@@ -20,6 +21,7 @@ import { useReactFlow } from 'reactflow'
 import { useI18n } from '@/hooks/useI18n'
 import { exportData } from '@/store/db'
 import { toast } from 'sonner'
+import { useCursor } from '@/contexts/CursorContext'
 
 export default function Toolbar() {
   const { t } = useI18n()
@@ -28,6 +30,7 @@ export default function Toolbar() {
   const autosave = useAppSelector(selectAutosave)
   const theme = useAppSelector((state) => state.settings.theme)
   const locale = useAppSelector((state) => state.settings.locale)
+  const { enabled: cursorEnabled, toggleCursor } = useCursor()
 
   // 缩放操作
   const handleZoomIn = useCallback(() => {
@@ -119,20 +122,35 @@ export default function Toolbar() {
 
       {/* 中间：画布操作 */}
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="icon-sm" onClick={handleZoomOut}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleZoomOut}
+          aria-label={t('a11y.zoomOut')}
+        >
           <ZoomOut className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon-sm" onClick={handleZoomIn}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleZoomIn}
+          aria-label={t('a11y.zoomIn')}
+        >
           <ZoomIn className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon-sm" onClick={handleFitView}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleFitView}
+          aria-label={t('a11y.fitView')}
+        >
           <Maximize className="h-4 w-4" />
         </Button>
         <div className="mx-2 h-6 w-px bg-border" />
-        <Button variant="ghost" size="icon-sm">
+        <Button variant="ghost" size="icon-sm" aria-label={t('canvas.undo')}>
           <Undo2 className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon-sm">
+        <Button variant="ghost" size="icon-sm" aria-label={t('canvas.redo')}>
           <Redo2 className="h-4 w-4" />
         </Button>
       </div>
@@ -144,17 +162,36 @@ export default function Toolbar() {
             {t('canvas.autosave')}
           </span>
         )}
-        <Button variant="ghost" size="icon-sm" onClick={handleToggleLocale}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleToggleLocale}
+          aria-label="切换语言"
+        >
           <Languages className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon-sm" onClick={handleToggleTheme}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleToggleTheme}
+          aria-label={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
+        >
           {theme === 'dark' ? (
             <Moon className="h-4 w-4" />
           ) : (
             <Sun className="h-4 w-4" />
           )}
         </Button>
-        <Button variant="ghost" size="icon-sm">
+        <Button
+          variant={cursorEnabled ? 'default' : 'ghost'}
+          size="icon-sm"
+          onClick={toggleCursor}
+          aria-label={cursorEnabled ? '禁用自定义光标' : '启用自定义光标'}
+          title={cursorEnabled ? '自定义光标已启用' : '自定义光标已禁用'}
+        >
+          <MousePointer2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon-sm" aria-label={t('common.settings')}>
           <Settings className="h-4 w-4" />
         </Button>
       </div>

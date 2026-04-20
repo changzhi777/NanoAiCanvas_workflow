@@ -30,14 +30,35 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-redux'],
-          'reactflow-vendor': ['reactflow'],
-          'ui-vendor': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-          ],
+        manualChunks: (id) => {
+          // React 核心
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor'
+          }
+          // Redux 状态管理
+          if (id.includes('node_modules/@reduxjs/') || id.includes('node_modules/react-redux/')) {
+            return 'redux-vendor'
+          }
+          // React Flow 画布核心
+          if (id.includes('node_modules/reactflow/')) {
+            return 'reactflow-vendor'
+          }
+          // Radix UI 组件库（按需分割）
+          if (id.includes('node_modules/@radix-ui/')) {
+            return 'ui-vendor'
+          }
+          // Lucide 图标库
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'icons-vendor'
+          }
+          // i18next 国际化
+          if (id.includes('node_modules/i18next/') || id.includes('node_modules/react-i18next/')) {
+            return 'i18n-vendor'
+          }
+          // 其他 node_modules
+          if (id.includes('node_modules/')) {
+            return 'vendor'
+          }
         },
       },
     },
