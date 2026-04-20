@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "private": false,
   "description": "无限画布组件库 - 基于 React Flow 的可定制节点编辑器",
   "main": "./dist/nanoai-canvas.cjs",
