@@ -1,8 +1,8 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.2.1",
+  "version": "0.1.1",
   "private": false,
-  "description": "无限画布组件库 - 基于 React Flow 的可定制节点编辑器",
+  "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
   "module": "./dist/nanoai-canvas.js",
   "exports": {
@@ -18,19 +18,30 @@
   ],
   "keywords": [
     "react",
-    "canvas",
-    "flowchart",
-    "node-editor",
-    "diagram",
     "workflow",
+    "workflow-system",
+    "canvas",
+    "infinite-canvas",
+    "node-editor",
+    "flowchart",
+    "diagram",
+    "task-management",
+    "automation",
+    "ai-workflow",
     "react-flow",
-    "infinite-canvas"
+    "visual-programming",
+    "storyboard",
+    "process-automation"
   ],
   "author": {
     "name": "外星动物",
     "email": "14455975@qq.com",
     "organization": "IoTchange",
     "username": "常智"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/changzhi777/NanoAiCanvas_workflow.git"
   },
   "license": "PROPRIETARY",
   "copyright": "Copyright (C) 2026 IoTchange - All Rights Reserved",
@@ -48,6 +59,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "type-check": "tsc --noEmit",
+    "check:root": "bash scripts/check-root-dir.sh",
     "prepublishOnly": "pnpm run build:lib",
     "prepare": "pnpm dlx husky install"
   },

@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname "$0")/_/husky.sh"
+
+# 检查根目录文件违规
+echo "🔍 运行根目录检查..."
+pnpm check:root
+
+if [ $? -ne 0 ]; then
+    echo "❌ 根目录检查失败，请修复后再提交"
+    echo "📚 详细规则：docs/DIRECTORY_MANAGEMENT.md"
+    exit 1
+fi
+
+echo "✅ 根目录检查通过"
