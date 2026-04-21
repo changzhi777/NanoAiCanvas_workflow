@@ -123,7 +123,7 @@ const ACHIEVEMENTS: Achievement[] = [
 const MASTERY_LEVELS = {
   beginner: { label: '新手', color: 'bg-gray-500', minUsage: 0 },
   intermediate: { label: '熟手', color: 'bg-blue-500', minUsage: 10 },
-  advanced: { label: '高手', color: 'bg-purple-500', minUsage: 50 },
+  advanced: { label: '高手', color: 'bg-blue-500', minUsage: 50 },
   master: { label: '大师', color: 'bg-yellow-500', minUsage: 100 },
 } as const
 

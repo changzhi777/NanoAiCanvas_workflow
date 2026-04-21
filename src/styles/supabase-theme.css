@@ -1,0 +1,337 @@
+/**
+ * Supabase设计系统配色规范
+ * 基于 DESIGN.md 文档
+ */
+
+/* ==================== 核心颜色常量 ==================== */
+
+:root {
+  /* === 品牌颜色（Brand） === */
+  --supabase-green: #3ecf8e;          /* 主要品牌色 - logo、强调边框 */
+  --supabase-green-link: #00c573;     /* 链接绿色 - 交互元素 */
+  --supabase-green-border: rgba(62, 207, 142, 0.3);  /* 绿色边框 - 30%透明度 */
+
+  /* === 中性色阶（暗色模式） === */
+  --color-black: #0f0f0f;              /* 近黑 - 主要按钮背景 */
+  --color-dark: #171717;               /* 暗 - 页面背景、主画布 */
+  --color-dark-border: #242424;        /* 深色边框 - 水平线、分隔线 */
+  --color-border-dark: #2e2e2e;        /* 边框暗色 - 卡片边框、标签边框 */
+  --color-border-mid: #363636;         /* 中间边框 - 按钮边框、分隔线 */
+  --color-border-light: #393939;       /* 浅边框 - 次要边框 */
+  --color-charcoal: #434343;           /* 炭色 - 第三边框、深色强调 */
+  --color-gray-dark: #4d4d4d;          /* 深灰 - 次要文字 */
+  --color-gray-mid: #898989;           /* 中灰 - 弱化文字、链接颜色 */
+  --color-gray-light: #b4b4b4;         /* 浅灰 - 次要链接文字 */
+  --color-off-white: #efefef;          /* 近白 - 浅边框、微妙表面 */
+  --color-white: #fafafa;              /* 白 - 主要文字、按钮文字 */
+
+  /* === 表面和叠加层 === */
+  --glass-dark: rgba(41, 41, 41, 0.84); /* 深色玻璃叠加层 */
+  --slate-alpha: hsla(210, 87.8%, 16.1%, 0.031);  /* 超微妙蓝色冲洗 */
+  --fixed-alpha: hsla(200, 90.3%, 93.4%, 0.109);   /* 浅色霜叠加 */
+
+  /* === Radix颜色令牌（HSL基础） === */
+  --colors-slate5: hsl(215, 15%, 10%);
+  --colors-slateA12: hsla(215, 15%, 10%, 0.12);
+  --colors-purple4: hsl(275, 60%, 55%);
+  --colors-purple5: hsl(275, 60%, 65%);
+  --colors-purpleA7: hsla(275, 60%, 65%, 0.7);
+  --colors-violet10: hsl(251, 63.2%, 63.2%);
+  --colors-crimson4: hsl(350, 70%, 55%);
+  --colors-crimsonA9: hsla(350, 70%, 55%, 0.9);
+  --colors-indigoA2: hsla(252, 80%, 60%, 0.2);
+  --colors-yellowA7: hsla(45, 100%, 50%, 0.7);
+  --colors-tomatoA4: hsla(10, 80%, 60%, 0.4);
+  --colors-orange6: hsl(25, 95%, 53%);
+
+  /* === 阴影 === */
+  --shadow-focus: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+
+  /* === 圆角 === */
+  --radius-standard: 6px;             /* 标准圆角 - Ghost按钮、小元素 */
+  --radius-comfortable: 8px;          /* 舒适圆角 - 卡片、容器 */
+  --radius-medium: 11px;              /* 中等圆角 - 中型面板 */
+  --radius-large: 16px;               /* 大圆角 - 功能卡片、主容器 */
+  --radius-pill: 9999px;              /* 胶囊圆角 - 主要按钮、标签 */
+
+  /* === 间距系统 === */
+  --space-base: 8px;                  /* 基本单位 */
+  --space-scale: 1px, 4px, 6px, 8px, 12px, 16px, 20px, 24px, 32px, 40px, 48px, 90px, 96px, 128px;
+}
+
+/* ==================== 层次系统 ==================== */
+
+/* 层次映射到Tailwind类 */
+.bg-supabase-black { background-color: var(--color-black); }
+.bg-supabase-dark { background-color: var(--color-dark); }
+.bg-supabase-glass { background-color: var(--glass-dark); }
+
+.text-supabase-white { color: var(--color-white); }
+.text-supabase-gray-light { color: var(--color-gray-light); }
+.text-supabase-gray-mid { color: var(--color-gray-mid); }
+.text-supabase-green { color: var(--supabase-green); }
+.text-supabase-green-link { color: var(--supabase-green-link); }
+
+.border-supabase-dark { border-color: var(--color-border-dark); }
+.border-supabase-mid { border-color: var(--color-border-mid); }
+.border-supabase-green { border-color: var(--supabase-green-border); }
+
+/* ==================== 深度层次系统 ==================== */
+
+/* 层次0：平面 - 默认状态 */
+.elevation-flat {
+  box-shadow: none;
+  border: 1px solid var(--color-border-dark);
+}
+
+/* 层次1：微妙边框 - 交互元素、悬停 */
+.elevation-subtle {
+  box-shadow: none;
+  border: 1px solid var(--color-border-mid);
+}
+
+/* 层次2：焦点 - 焦点状态 */
+.elevation-focus {
+  box-shadow: var(--shadow-focus);
+  border: 1px solid var(--color-border-mid);
+}
+
+/* 层次3：绿色强调 - 品牌高亮元素 */
+.elevation-accent {
+  box-shadow: none;
+  border: 1px solid var(--supabase-green-border);
+}
+
+/* ==================== 组件样式 ==================== */
+
+/* 主要胶囊按钮（暗色） */
+.btn-primary-pill {
+  background-color: var(--color-black);
+  color: var(--color-white);
+  padding: 8px 32px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-white);
+  box-shadow: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-pill:hover {
+  background-color: var(--color-dark);
+  border-color: var(--supabase-green);
+}
+
+.btn-primary-pill:focus {
+  box-shadow: var(--shadow-focus);
+  outline: none;
+}
+
+/* 次要胶囊按钮（暗色、弱化） */
+.btn-secondary-pill {
+  background-color: var(--color-black);
+  color: var(--color-white);
+  padding: 8px 32px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-dark);
+  opacity: 0.8;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary-pill:hover {
+  opacity: 1;
+  border-color: var(--color-border-mid);
+}
+
+/* Ghost按钮 */
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-white);
+  padding: 8px;
+  border-radius: var(--radius-standard);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  background-color: var(--color-dark);
+  border-color: var(--color-border-mid);
+}
+
+/* 卡片和容器 */
+.card-supabase {
+  background-color: var(--color-dark);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-comfortable);
+  padding: 16px 24px;
+  box-shadow: none;
+}
+
+.card-supabase:hover {
+  border-color: var(--color-border-mid);
+}
+
+/* 标签 */
+.tab-supabase {
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+}
+
+.tab-supabase.active {
+  background-color: var(--color-dark);
+  border-color: var(--supabase-green);
+  color: var(--supabase-green);
+}
+
+.tab-supabase.inactive {
+  background-color: transparent;
+  color: var(--color-gray-mid);
+}
+
+/* 链接 */
+.link-green {
+  color: var(--supabase-green-link);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.link-green:hover {
+  opacity: 0.8;
+}
+
+.link-primary-light {
+  color: var(--color-white);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.link-primary-light:hover {
+  opacity: 0.8;
+}
+
+.link-secondary {
+  color: var(--color-gray-light);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.link-secondary:hover {
+  opacity: 0.8;
+}
+
+.link-muted {
+  color: var(--color-gray-mid);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.link-muted:hover {
+  opacity: 0.8;
+}
+
+/* 技术标签 */
+.technical-label {
+  font-family: 'Source Code Pro', 'Office Code Pro', 'Menlo', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-gray-mid);
+}
+
+/* ==================== 导航栏 ==================== */
+
+.nav-supabase {
+  background-color: var(--color-dark);
+  border-bottom: 1px solid var(--color-border-dark);
+}
+
+.nav-link {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-white);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.nav-link:hover {
+  opacity: 0.8;
+}
+
+/* ==================== 排版 ==================== */
+
+/* Display Hero - 72px, line-height 1.00 */
+.typography-hero {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 72px;
+  font-weight: 400;
+  line-height: 1.00;
+  color: var(--color-white);
+}
+
+/* Section Heading - 36px */
+.typography-section {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--color-white);
+}
+
+/* Card Title - 24px, letter-spacing -0.16px */
+.typography-card-title {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1.33;
+  letter-spacing: -0.16px;
+  color: var(--color-white);
+}
+
+/* Sub-heading - 18px */
+.typography-subheading {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.56;
+  color: var(--color-white);
+}
+
+/* Body - 16px */
+.typography-body {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.50;
+  color: var(--color-gray-mid);
+}
+
+/* Button - 14px, weight 500 */
+.typography-button {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.14;
+  color: var(--color-white);
+}
+
+/* Caption - 14px */
+.typography-caption {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.43;
+  color: var(--color-gray-mid);
+}
+
+/* Small - 12px */
+.typography-small {
+  font-family: 'Circular', 'custom-font', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.33;
+  color: var(--color-gray-mid);
+}

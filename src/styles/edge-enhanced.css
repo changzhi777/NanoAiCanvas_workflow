@@ -1,0 +1,213 @@
+/**
+ * 连线增强样式（V2.0 - 箭头+粒子+悬停交互）
+ * 功能：虚线流动动画、动态粗细、彩色连线、粒子流动、悬停效果
+ */
+
+/* ==================== 连线基础样式 ==================== */
+
+.edge-enhanced {
+  transition: stroke-width 0.3s ease, stroke 0.3s ease, filter 0.2s ease;
+  will-change: stroke-width, stroke-dashoffset, filter;
+  cursor: pointer;
+}
+
+/* 悬停效果 */
+.edge-enhanced.edge-hovered {
+  filter: drop-shadow(0 0 8px currentColor);
+  stroke-width: 5px !important;
+}
+
+/* ==================== 箭头标记样式 ==================== */
+
+.edge-arrow-marker path {
+  transition: opacity 0.2s ease;
+  filter: drop-shadow(0 0 2px currentColor);
+}
+
+/* ==================== 虚线流动动画 ==================== */
+
+/* 虚线基础样式（加快动画速度） */
+.edge-flow {
+  stroke-dasharray: 10, 10;
+  animation: dash-flow 0.5s linear infinite;
+}
+
+/* 虚线流动动画 */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* 慢速流动（适合大量连线） */
+.edge-flow-slow {
+  stroke-dasharray: 10, 10;
+  animation: dash-flow-slow 2s linear infinite;
+}
+
+@keyframes dash-flow-slow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* ==================== 粒子流动效果 ==================== */
+
+/* 粒子动画 - 沿路径移动 */
+.edge-particle {
+  offset-rotate: 0deg; /* 粒子保持方向 */
+  animation: particle-move 2s linear infinite;
+}
+
+@keyframes particle-move {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* 快速粒子（传输中） */
+.animate-particle-flow {
+  animation-duration: 1.5s !important;
+}
+
+/* 粒子发光效果 */
+.edge-particle {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ==================== Tooltip 样式 ==================== */
+
+.edge-tooltip {
+  animation: tooltip-fade-in 0.2s ease-out;
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==================== 彩色连线 ==================== */
+
+/* ==================== 彩色连线 ==================== */
+
+/* 输入节点连线（蓝色） */
+.edge-enhanced.edge-from-input {
+  stroke: #2196F3;
+}
+
+/* AI 生成节点连线（绿色） */
+.edge-enhanced.edge-from-ai {
+  stroke: #4CAF50;
+}
+
+/* 输出节点连线（橙色） */
+.edge-enhanced.edge-from-output {
+  stroke: #FF9800;
+}
+
+/* 工具节点连线（灰色） */
+.edge-enhanced.edge-from-tool {
+  stroke: #607D8B;
+}
+
+/* ==================== 动态粗细（增强版） ==================== */
+
+/* 空闲状态：3px */
+.edge-enhanced.edge-idle {
+  stroke-width: 3px;
+  opacity: 0.6;
+}
+
+/* 传输中状态：5px */
+.edge-enhanced.edge-running {
+  stroke-width: 5px;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+/* 完成状态：4px */
+.edge-enhanced.edge-completed {
+  stroke-width: 4px;
+  opacity: 0.9;
+}
+
+/* ==================== 连线发光效果（增强版） ==================== */
+
+/* 传输中发光 */
+.edge-enhanced.edge-running {
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+/* 成功状态发光 */
+.edge-enhanced.edge-success {
+  filter: drop-shadow(0 0 4px rgba(76, 175, 80, 0.6));
+}
+
+/* 错误状态发光 */
+.edge-enhanced.edge-error {
+  filter: drop-shadow(0 0 4px rgba(244, 67, 54, 0.6));
+  stroke: #F44336 !important;
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* 使用 GPU 加速 */
+.edge-path {
+  transform: translateZ(0);
+  will-change: stroke-dashoffset, stroke-width;
+}
+
+/* 大量节点时降低动画质量（通过 JavaScript 添加类） */
+body.high-node-count .edge-flow {
+  animation-duration: 2s !important; /* 更慢的动画 */
+}
+
+body.high-node-count .node-enhanced {
+  transition-duration: 0.15s !important; /* 更快的过渡 */
+}
+
+/* 当连线数量超过 40 时，降低动画质量 */
+@media (prefers-reduced-motion: reduce) {
+  .edge-flow,
+  .edge-flow-slow {
+    animation: none;
+    stroke-dasharray: 0;
+  }
+
+  .edge-enhanced {
+    will-change: auto;
+    transition: none;
+  }
+}
+
+/* ==================== 深色模式优化 ==================== */
+
+.dark .edge-enhanced.edge-idle {
+  opacity: 0.5;
+}
+
+.dark .edge-enhanced.edge-running {
+  opacity: 1;
+  filter: drop-shadow(0 0 16px currentColor);
+}

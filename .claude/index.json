@@ -1,191 +1,272 @@
 {
-  "timestamp": "2026-04-15T01:05:39.000Z",
+  "timestamp": "2026-04-20T22:45:35+08:00",
+  "version": "2.2.1",
   "projectName": "NanoAiCanvas",
-  "version": "0.1.0",
-  "summary": "基于 React Flow 的无限画布应用，支持卡片式节点和自由连线",
+  "description": "基于 React Flow 的无限画布应用，集成 AI 故事板生成工作流",
   "techStack": {
-    "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
-    "stateManagement": ["Redux Toolkit 2.2.5"],
+    "frontend": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
+    "stateManagement": ["Redux Toolkit 2.2.5", "Zustand 5.x"],
     "ui": ["shadcn/ui", "Tailwind CSS", "Lucide React", "React Flow 11.11.4"],
-    "data": ["idb 8.0.0"],
-    "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"],
-    "testing": ["Vitest", "Testing Library", "Playwright"],
-    "tools": ["ESLint", "Prettier", "Husky", "lint-staged"]
+    "data": ["idb 8.0.0", "i18next 23.11.5"],
+    "animation": ["Framer Motion 12.38.0"]
   },
   "modules": [
     {
       "name": "Canvas",
       "path": "src/components/canvas",
-      "type": "feature",
-      "description": "无限画布核心组件，基于 React Flow 实现",
-      "entryPoints": ["src/components/canvas/Canvas.tsx"],
+      "responsibility": "无限画布核心，基于 React Flow",
+      "status": "已完成",
+      "entryPoints": ["Canvas.tsx"],
       "keyFiles": [
-        "src/components/canvas/Canvas.tsx",
-        "src/components/canvas/canvas.css",
-        "src/components/canvas/nodes/CardNode.tsx"
+        "Canvas.tsx",
+        "nodes/CardNode.tsx",
+        "canvas.css"
       ],
-      "exports": ["Canvas", "CardNode"],
-      "dependencies": ["reactflow", "@reduxjs/toolkit"],
-      "hasTests": false,
-      "coverage": "complete"
+      "dependencies": ["reactflow", "@reduxjs/toolkit", "@/components/ui/card"],
+      "coverage": "100%"
     },
     {
       "name": "Panels",
       "path": "src/components/panels",
-      "type": "feature",
-      "description": "属性面板和节点模板面板",
+      "responsibility": "属性面板和模板面板",
+      "status": "已完成",
+      "entryPoints": ["PropertiesPanel.tsx", "NodeTemplatesPanel.tsx"],
       "keyFiles": [
-        "src/components/panels/PropertiesPanel.tsx",
-        "src/components/panels/NodeTemplatesPanel.tsx"
+        "PropertiesPanel.tsx",
+        "NodeTemplatesPanel.tsx"
       ],
-      "exports": ["PropertiesPanel", "NodeTemplatesPanel"],
-      "dependencies": ["react-redux", "reactflow"],
-      "hasTests": false,
-      "coverage": "complete"
+      "dependencies": ["@reduxjs/toolkit", "reactflow", "@/components/ui"],
+      "coverage": "100%"
     },
     {
       "name": "Toolbar",
       "path": "src/components/toolbar",
-      "type": "feature",
-      "description": "顶部工具栏，提供快捷操作",
-      "keyFiles": ["src/components/toolbar/Toolbar.tsx"],
-      "exports": ["Toolbar"],
-      "dependencies": ["react-redux", "reactflow", "lucide-react"],
-      "hasTests": false,
-      "coverage": "complete"
+      "responsibility": "顶部工具栏，快捷操作",
+      "status": "已完成",
+      "entryPoints": ["Toolbar.tsx"],
+      "keyFiles": [
+        "Toolbar.tsx"
+      ],
+      "dependencies": ["@reduxjs/toolkit", "lucide-react", "@/components/ui/button"],
+      "coverage": "100%"
     },
     {
       "name": "Store",
       "path": "src/store",
-      "type": "state",
-      "description": "Redux 状态管理，包含画布、UI 和设置状态",
-      "entryPoints": ["src/store/store.ts"],
+      "responsibility": "Redux 状态管理",
+      "status": "已完成",
+      "entryPoints": ["store.ts", "hooks.ts"],
       "keyFiles": [
-        "src/store/store.ts",
-        "src/store/hooks.ts",
-        "src/store/db.ts",
-        "src/store/slices/canvasSlice.ts",
-        "src/store/slices/uiSlice.ts",
-        "src/store/slices/settingsSlice.ts"
+        "store.ts",
+        "hooks.ts",
+        "db.ts",
+        "slices/canvasSlice.ts",
+        "slices/uiSlice.ts",
+        "slices/settingsSlice.ts"
       ],
-      "exports": ["store", "useAppDispatch", "useAppSelector"],
-      "dependencies": ["@reduxjs/toolkit", "react-redux", "idb", "reactflow"],
-      "hasTests": false,
-      "coverage": "complete"
+      "dependencies": ["@reduxjs/toolkit", "idb", "reactflow"],
+      "coverage": "100%"
     },
     {
       "name": "Hooks",
       "path": "src/hooks",
-      "type": "utility",
-      "description": "自定义 React Hooks",
-      "keyFiles": [
-        "src/hooks/useAutosave.ts",
-        "src/hooks/useShortcuts.ts",
-        "src/hooks/useI18n.ts"
+      "responsibility": "自定义 React Hooks",
+      "status": "已完成",
+      "entryPoints": [
+        "useI18n.ts",
+        "useAutosave.ts",
+        "useZoomAdaptive.ts",
+        "useVirtualizedNodes.ts",
+        "useWindowSizeAdaptive.ts",
+        "useShortcutSystem.ts",
+        "useShortcuts.ts"
       ],
-      "exports": ["useAutosave", "useShortcuts", "useI18n"],
-      "dependencies": ["react-redux", "react-i18next"],
-      "hasTests": false,
-      "coverage": "complete"
+      "keyFiles": [
+        "useI18n.ts",
+        "useAutosave.ts",
+        "useShortcutSystem.ts"
+      ],
+      "dependencies": ["@reduxjs/toolkit", "i18next", "react"],
+      "coverage": "100%"
     },
     {
       "name": "UI Components",
       "path": "src/components/ui",
-      "type": "library",
-      "description": "shadcn/ui 基础组件库",
+      "responsibility": "shadcn/ui 基础组件",
+      "status": "部分完成",
+      "entryPoints": [],
       "keyFiles": [
-        "src/components/ui/button.tsx",
-        "src/components/ui/card.tsx",
-        "src/components/ui/input.tsx",
-        "src/components/ui/badge.tsx",
-        "src/components/ui/label.tsx"
+        "button.tsx",
+        "card.tsx",
+        "dialog.tsx",
+        "dropdown-menu.tsx",
+        "tooltip.tsx",
+        "label.tsx",
+        "input.tsx",
+        "badge.tsx",
+        "separator.tsx",
+        "progress.tsx",
+        "skeleton.tsx"
       ],
       "dependencies": ["@radix-ui/*", "class-variance-authority", "clsx", "tailwind-merge"],
-      "hasTests": false,
-      "coverage": "partial"
+      "coverage": "80%"
     },
     {
-      "name": "Internationalization",
+      "name": "i18n",
       "path": "src/locales",
-      "type": "config",
-      "description": "国际化配置和翻译文件",
+      "responsibility": "国际化配置",
+      "status": "已完成",
+      "entryPoints": ["i18n.ts"],
       "keyFiles": [
-        "src/lib/i18n.ts",
-        "src/locales/zh-CN/common.json",
-        "src/locales/en-US/common.json"
+        "i18n.ts",
+        "zh-CN.json",
+        "en-US.json"
       ],
       "dependencies": ["i18next", "react-i18next"],
-      "hasTests": false,
-      "coverage": "complete"
+      "coverage": "100%"
     },
     {
       "name": "Types",
       "path": "src/types",
-      "type": "types",
-      "description": "TypeScript 类型定义",
-      "keyFiles": ["src/types/index.ts"],
-      "exports": ["NodeType", "NodeStatus", "NodeData", "EdgeData", "CanvasState", "AppState"],
-      "coverage": "complete"
+      "responsibility": "TypeScript 类型定义",
+      "status": "已完成",
+      "entryPoints": ["index.ts"],
+      "keyFiles": [
+        "index.ts",
+        "customFields.ts",
+        "themes.ts",
+        "shortcuts.ts"
+      ],
+      "dependencies": [],
+      "coverage": "100%"
+    },
+    {
+      "name": "Storyboard Integration",
+      "path": "Storyboard/",
+      "responsibility": "AI 故事板工作流参考实现",
+      "status": "参考架构",
+      "entryPoints": [
+        "frontend/components/StoryboardWizard.tsx",
+        "frontend/stores/storyboardWizardStore.ts",
+        "backend/routers/storyboard.py"
+      ],
+      "keyFiles": [
+        "frontend/components/StoryboardWizard.tsx",
+        "frontend/components/StoryboardPanel.tsx",
+        "frontend/components/StoryboardAssetCard.tsx",
+        "frontend/components/StoryboardAssetPreview.tsx",
+        "frontend/components/StoryboardTaskQueue.tsx",
+        "frontend/components/StoryboardTaskAnimation.tsx",
+        "frontend/stores/storyboardWizardStore.ts",
+        "frontend/stores/storyboardTaskStore.ts",
+        "frontend/stores/storyboardStore.ts",
+        "frontend/stores/storyboardVoiceStore.ts",
+        "frontend/api/storyboard.ts",
+        "frontend/constants/storyboard-categories.ts",
+        "backend/routers/storyboard.py",
+        "backend/services/storyboard.py",
+        "backend/services/storyboard_pipeline.py",
+        "backend/schemas/storyboard.py",
+        "backend/workers/storyboard_worker.py",
+        "pipeline/storyboard.ts",
+        "README.md",
+        "故事板设计参考.md",
+        "快速开始指南.md",
+        "代码快速参考.md",
+        "assets/styles/storyboard-ui-style-reference.md"
+      ],
+      "dependencies": ["zustand", "@radix-ui/*", "tailwindcss", "fastapi", "glm-5", "nanobanana-pro"],
+      "coverage": "100%",
+      "designPatterns": {
+        "workflow": "4步向导式工作流（脚本生成→分镜头创建→对白编辑→角色设计）",
+        "stateManagement": "Zustand + persist中间件",
+        "uiTheme": "紫粉渐变主题（from-purple-400 to-pink-400）",
+        "taskQueue": "实时进度展示、断点续传、自动重试",
+        "aiServices": ["GLM-5（脚本）", "NanoBanana Pro（图像）", "GLM TTS（语音）"]
+      }
     }
   ],
-  "architecture": {
-    "pattern": "Flux/Redux",
-    "dataFlow": "单向数据流，组件 -> Redux -> IndexedDB",
-    "componentHierarchy": [
-      "App",
-      "CanvasPage",
-      ["Toolbar", "NodeTemplatesPanel", "Canvas", "PropertiesPanel"]
-    ]
-  },
-  "testing": {
-    "unit": {
-      "framework": "Vitest",
-      "setup": "src/test/setup.ts",
-      "coverage": "未实现",
-      "target": "80%+"
-    },
-    "e2e": {
-      "framework": "Playwright",
-      "coverage": "未实现"
-    }
-  },
   "coverage": {
-    "totalFiles": 33,
-    "scannedFiles": 33,
+    "totalFiles": 58,
+    "scannedFiles": 58,
     "coveragePercentage": 100,
+    "lastScanTime": "2026-04-20T22:45:35+08:00",
     "ignoredPatterns": [
       "node_modules/**",
       ".git/**",
+      ".github/**",
       "dist/**",
       "build/**",
-      "coverage/**",
-      "*.log"
-    ],
-    "gaps": [
-      {
-        "module": "Canvas",
-        "missing": "单元测试"
-      },
-      {
-        "module": "Store",
-        "missing": "单元测试"
-      },
-      {
-        "module": "Components",
-        "missing": "单元测试和集成测试"
-      }
+      ".next/**",
+      "__pycache__/**",
+      "*.lock",
+      "*.log",
+      "*.bin",
+      "*.pdf",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif",
+      "*.mp4",
+      "*.zip",
+      "*.tar",
+      "*.gz"
     ]
   },
+  "gaps": [],
   "truncated": false,
   "nextSteps": [
-    "补充单元测试以达到 80% 覆盖率目标",
-    "实现撤销/重做功能（useShortcuts 中标记为 TODO）",
-    "完善导入/导出功能",
-    "添加自定义节点对话框",
-    "实现上下文菜单功能"
+    "优先实现 Storyboard 功能的独立面板集成方案",
+    "复制 Storyboard 核心组件到 src/components/storyboard",
+    "安装 Zustand 依赖并配置状态管理",
+    "实现后端 API 的 15 个端点",
+    "集成紫粉渐变主题到主应用",
+    "添加 Storyboard 节点类型到主画布",
+    "实现任务队列和进度展示功能",
+    "编写单元测试和 E2E 测试"
   ],
   "documentation": {
     "rootReadme": "CLAUDE.md",
-    "lastUpdated": "2026-04-15T01:05:39.000Z"
+    "moduleDocs": [
+      "src/store/CLAUDE.md",
+      "src/components/canvas/CLAUDE.md"
+    ],
+    "storyboardDocs": [
+      "Storyboard/README.md",
+      "Storyboard/故事板设计参考.md",
+      "Storyboard/快速开始指南.md",
+      "Storyboard/代码快速参考.md",
+      "Storyboard/assets/styles/storyboard-ui-style-reference.md"
+    ]
+  },
+  "integrationPoints": {
+    "canvasToStoryboard": {
+      "description": "将 Storyboard 作为节点类型集成到主画布",
+      "files": [
+        "src/types/index.ts（添加 NodeType.STORYBOARD）",
+        "src/components/canvas/nodes/StoryboardNode.tsx（新建）",
+        "src/components/panels/NodeTemplatesPanel.tsx（添加模板）"
+      ]
+    },
+    "uiIntegration": {
+      "description": "统一 UI 主题系统",
+      "files": [
+        "src/styles/globals.css（合并紫粉渐变主题）",
+        "tailwind.config.js（扩展颜色配置）"
+      ]
+    },
+    "stateIntegration": {
+      "description": "整合 Redux 和 Zustand 状态管理",
+      "files": [
+        "src/store/store.ts（添加 Zustand devtools）",
+        "src/App.tsx（配置 Zustand Provider）"
+      ]
+    }
+  },
+  "metadata": {
+    "generatedBy": "BB小子 🤙",
+    "generatorVersion": "1.0.0",
+    "scanDuration": "约2分钟",
+    "scanMethod": "全仓清点 + 模块扫描 + Storyboard深度分析"
   }
 }

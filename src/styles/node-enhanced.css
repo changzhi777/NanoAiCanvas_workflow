@@ -1,0 +1,159 @@
+/**
+ * 节点增强样式
+ * 功能：浅色渐变背景、毛玻璃效果、左侧彩色竖条、强阴影、性能优化
+ */
+
+/* ==================== 节点整体样式 ==================== */
+
+/* 节点容器基础样式 */
+.node-enhanced {
+  position: relative;
+  will-change: transform, opacity;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 浅色渐变背景 - 输入节点（蓝色） */
+.node-enhanced.node-input {
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.12) 0%, rgba(33, 150, 243, 0.04) 100%);
+}
+
+/* 浅色渐变背景 - AI 生成节点（绿色） */
+.node-enhanced.node-ai {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.12) 0%, rgba(76, 175, 80, 0.04) 100%);
+}
+
+/* 浅色渐变背景 - 输出节点（橙色） */
+.node-enhanced.node-output {
+  background: linear-gradient(135deg, rgba(255, 152, 0, 0.12) 0%, rgba(255, 152, 0, 0.04) 100%);
+}
+
+/* 浅色渐变背景 - 工具节点（灰色） */
+.node-enhanced.node-tool {
+  background: linear-gradient(135deg, rgba(96, 125, 139, 0.12) 0%, rgba(96, 125, 139, 0.04) 100%);
+}
+
+/* ==================== 左侧彩色竖条 ==================== */
+
+/* 左侧彩色竖条 - 输入节点（蓝色） */
+.node-enhanced.node-border-stripe.node-input::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background: linear-gradient(180deg, #2196F3 0%, #1976D2 100%);
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+}
+
+/* 左侧彩色竖条 - AI 生成节点（绿色） */
+.node-enhanced.node-border-stripe.node-ai::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+}
+
+/* 左侧彩色竖条 - 输出节点（橙色） */
+.node-enhanced.node-border-stripe.node-output::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background: linear-gradient(180deg, #FF9800 0%, #F57C00 100%);
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.4);
+}
+
+/* 左侧彩色竖条 - 工具节点（灰色） */
+.node-enhanced.node-border-stripe.node-tool::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background: linear-gradient(180deg, #607D8B 0%, #455A64 100%);
+  border-radius: 4px 0 0 4px;
+  box-shadow: 0 2px 8px rgba(96, 125, 139, 0.4);
+}
+
+/* ==================== 毛玻璃和强阴影效果 ==================== */
+
+/* 节点展开状态：毛玻璃 + 强阴影 */
+.node-enhanced.node-expanded {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 8px 24px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  background-color: rgba(255, 255, 255, 0.95);
+}
+
+/* 深色模式展开状态 */
+.dark .node-enhanced.node-expanded {
+  background-color: rgba(15, 23, 42, 0.95);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+/* 节点折叠状态：简化阴影 */
+.node-enhanced.node-collapsed {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 深色模式折叠状态 */
+.dark .node-enhanced.node-collapsed {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ==================== 悬停效果 ==================== */
+
+.node-enhanced:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.35),
+    0 12px 32px rgba(0, 0, 0, 0.25);
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* 使用 content-visibility 优化大量节点渲染 */
+.node-enhanced {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
+/* 减少重排 */
+.node-enhanced .node-content {
+  transform: translateZ(0);
+}
+
+/* ==================== 响应式动画降级 ==================== */
+
+/* 当节点数量超过 30 个时，降低动画质量 */
+@media (prefers-reduced-motion: reduce) {
+  .node-enhanced {
+    transition: none;
+    will-change: auto;
+  }
+
+  .node-enhanced:hover {
+    transform: none;
+  }
+}

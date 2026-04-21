@@ -1,0 +1,227 @@
+/**
+ * 3D立体按钮样式
+ * 用于节点内的小按钮（折叠、更多操作等）
+ */
+
+/* ==================== 3D按钮基础样式 ==================== */
+
+.btn-3d {
+  /* 渐变背景 */
+  background: linear-gradient(180deg, #f8f9fa 0%, #e9ecef 100%);
+
+  /* 边框 - 顶部亮，底部暗 */
+  border: 2px solid #d1d5db;
+  border-top-color: rgba(255, 255, 255, 0.4);
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+
+  /* 内阴影 - 顶部高光 */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.05) inset;
+
+  /* 过渡动画 */
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 定位 */
+  position: relative;
+}
+
+/* 悬停状态 - 浮起效果 */
+.btn-3d:hover {
+  /* 更亮的背景 */
+  background: linear-gradient(180deg, #ffffff 0%, #f1f3f4 100%);
+
+  /* 更亮的边框 */
+  border-color: #9ca3af;
+  border-top-color: rgba(255, 255, 255, 0.6);
+
+  /* 更深的阴影 - 浮起感 */
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.05) inset;
+
+  /* 向上浮动 */
+  transform: translateY(-1px);
+}
+
+/* 按下状态 - 凹陷效果 */
+.btn-3d:active {
+  /* 更暗的背景 */
+  background: linear-gradient(180deg, #dee2e6 0%, #ced4da 100%);
+
+  /* 更深的边框 */
+  border-color: #6c757d;
+
+  /* 收缩阴影 - 凹陷感 */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.1) inset;
+
+  /* 向下压 */
+  transform: translateY(1px);
+}
+
+/* ==================== 图标样式 ==================== */
+
+.btn-3d .btn-icon {
+  /* 阴影增强图标立体感 */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.2));
+}
+
+/* 悬停时图标阴影更深 */
+.btn-3d:hover .btn-icon {
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* ==================== 禁用状态 ==================== */
+
+.btn-3d:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+
+  background: linear-gradient(180deg, #e9ecef 0%, #dee2e6 100%);
+  border-color: #adb5bd;
+  box-shadow: none;
+  transform: none;
+}
+
+/* ==================== 深色模式适配 ==================== */
+
+.dark .btn-3d {
+  /* 深色模式渐变背景 */
+  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+
+  /* 深色模式边框 */
+  border: 2px solid #4b5563;
+  border-top-color: rgba(255, 255, 255, 0.1);
+  border-bottom-color: rgba(0, 0, 0, 0.3);
+
+  /* 深色模式阴影 */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.2) inset;
+}
+
+.dark .btn-3d:hover {
+  background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+  border-color: #6b7280;
+
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 4px 8px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.15) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.3) inset;
+}
+
+.dark .btn-3d:active {
+  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
+  border-color: #9ca3af;
+
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.4) inset;
+}
+
+/* ==================== 尺寸变体 ==================== */
+
+/* 小尺寸（默认）- 24x24px */
+.btn-3d.btn-3d-sm {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.btn-3d.btn-3d-sm .btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* 中尺寸 - 32x32px */
+.btn-3d.btn-3d-md {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.btn-3d.btn-3d-md .btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* ==================== 颜色变体（可选） ==================== */
+
+/* 蓝色按钮 - 可用于主要操作 */
+.btn-3d.btn-3d-primary {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  border-color: #2563eb;
+  border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-3d.btn-3d-primary:hover {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
+}
+
+/* 绿色按钮 - 可用于确认操作 */
+.btn-3d.btn-3d-success {
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 100%);
+  border-color: #16a34a;
+  border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-3d.btn-3d-success:hover {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  border-color: #15803d;
+}
+
+/* 红色按钮 - 可用于危险操作 */
+.btn-3d.btn-3d-danger {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+  border-color: #dc2626;
+  border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-3d.btn-3d-danger:hover {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  border-color: #b91c1c;
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* GPU加速 */
+.btn-3d {
+  will-change: transform, box-shadow;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==================== 响应式优化 ==================== */
+
+/* 减少动画的设备 */
+@media (prefers-reduced-motion: reduce) {
+  .btn-3d {
+    transition: none;
+  }
+
+  .btn-3d:hover {
+    transform: none;
+  }
+
+  .btn-3d:active {
+    transform: none;
+  }
+}

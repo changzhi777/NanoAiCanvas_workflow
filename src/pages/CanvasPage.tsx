@@ -11,8 +11,10 @@ import Toolbar from '../components/toolbar/Toolbar'
 import { FloatingMenuBar } from '../components/canvas/FloatingMenuBar'
 import { EdgeHoverTrigger } from '../components/canvas/EdgeHoverTrigger'
 import { ShortcutHintPanel } from '../components/canvas/ShortcutHintPanel'
+import { PerformanceMonitor } from '../components/canvas/PerformanceMonitor'
 import { useAutosave } from '../hooks/useAutosave'
 import { useShortcuts } from '../hooks/useShortcuts'
+import { useCanvasHistory } from '../hooks/useCanvasHistory'
 import { Skeleton } from '../components/ui/skeleton'
 
 // 懒加载面板组件以优化性能
@@ -67,11 +69,14 @@ function CanvasPageContent() {
   const showShortcutPanel = useAppSelector(selectShowShortcutPanel)
   const showToolbar = useAppSelector(selectShowToolbar)
 
+  // 撤销/重做
+  const { canUndo, canRedo, undo, redo } = useCanvasHistory()
+
   // 自动保存
   useAutosave()
 
-  // 快捷键
-  useShortcuts()
+  // 快捷键（传递撤销/重做函数）
+  useShortcuts({ undo, redo, canUndo, canRedo })
 
   // 缩放控制
   const handleZoomIn = useCallback(() => {
@@ -92,16 +97,15 @@ function CanvasPageContent() {
     console.log('Add node')
   }, [])
 
-  // 撤销/重做（示例）
+  // 撤销
   const handleUndo = useCallback(() => {
-    // TODO: 实现撤销逻辑
-    console.log('Undo')
-  }, [])
+    undo()
+  }, [undo])
 
+  // 重做
   const handleRedo = useCallback(() => {
-    // TODO: 实现重做逻辑
-    console.log('Redo')
-  }, [])
+    redo()
+  }, [redo])
 
   // 保存（示例）
   const handleSave = useCallback(() => {
@@ -117,8 +121,8 @@ function CanvasPageContent() {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onFitView={handleFitView}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
+        onUndo={canUndo ? handleUndo : undefined}
+        onRedo={canRedo ? handleRedo : undefined}
         onSave={handleSave}
       />
 
@@ -175,7 +179,9 @@ export default function CanvasPage() {
   return (
     <div className="flex h-screen flex-col">
       <ReactFlowProvider>
-        <CanvasPageContent />
+        <PerformanceMonitor>
+          <CanvasPageContent />
+        </PerformanceMonitor>
       </ReactFlowProvider>
     </div>
   )

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NanoAI Workflow - UI/UX优化预览</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    .preview-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      font-size: 1.1em;
+    }
+
+    .section {
+      background: rgba(30, 41, 59, 0.8);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .section-title {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title .icon {
+      font-size: 1.3em;
+    }
+
+    /* ========== 节点颜色预览 ========== */
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .node-preview {
+      position: relative;
+      padding: 20px;
+      border-radius: 12px;
+      border: 2px solid;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .node-preview:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .node-preview .icon {
+      font-size: 2em;
+      margin-bottom: 10px;
+    }
+
+    .node-preview .label {
+      font-weight: 600;
+      font-size: 1.1em;
+      margin-bottom: 5px;
+    }
+
+    .node-preview .color-code {
+      font-size: 0.85em;
+      opacity: 0.7;
+      font-family: monospace;
+    }
+
+    /* Material配色 */
+    .node-input { border-color: #2196F3; }
+    .node-input .icon { color: #2196F3; }
+    .node-input:hover { box-shadow: 0 0 30px rgba(33, 150, 243, 0.3); }
+
+    .node-script { border-color: #4CAF50; }
+    .node-script .icon { color: #4CAF50; }
+    .node-script:hover { box-shadow: 0 0 30px rgba(76, 175, 80, 0.3); }
+
+    .node-storyboard { border-color: #9C27B0; }
+    .node-storyboard .icon { color: #9C27B0; }
+    .node-storyboard:hover { box-shadow: 0 0 30px rgba(156, 39, 176, 0.3); }
+
+    .node-dialogue { border-color: #E91E63; }
+    .node-dialogue .icon { color: #E91E63; }
+    .node-dialogue:hover { box-shadow: 0 0 30px rgba(233, 30, 99, 0.3); }
+
+    .node-character { border-color: #FF9800; }
+    .node-character .icon { color: #FF9800; }
+    .node-character:hover { box-shadow: 0 0 30px rgba(255, 152, 0, 0.3); }
+
+    .node-scene { border-color: #00BCD4; }
+    .node-scene .icon { color: #00BCD4; }
+    .node-scene:hover { box-shadow: 0 0 30px rgba(0, 188, 212, 0.3); }
+
+    .node-preview { border-color: #F44336; }
+    .node-preview .icon { color: #F44336; }
+    .node-preview:hover { box-shadow: 0 0 30px rgba(244, 67, 54, 0.3); }
+
+    .node-text { border-color: #3F51B5; }
+    .node-text .icon { color: #3F51B5; }
+    .node-text:hover { box-shadow: 0 0 30px rgba(63, 81, 181, 0.3); }
+
+    .node-connector { border-color: #607D8B; }
+    .node-connector .icon { color: #607D8B; }
+    .node-connector:hover { box-shadow: 0 0 30px rgba(96, 125, 139, 0.3); }
+
+    /* ========== 连线动画预览 ========== */
+    .connection-demo {
+      position: relative;
+      height: 150px;
+      margin: 30px 0;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .connection-path {
+      position: absolute;
+      height: 4px;
+      background: linear-gradient(90deg,
+        #2196F3 0%,
+        #4CAF50 50%,
+        #9C27B0 100%
+      );
+      border-radius: 2px;
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    .connection-path::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: inherit;
+      filter: blur(8px);
+      opacity: 0.6;
+    }
+
+    .particle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: radial-gradient(circle, #fff 0%, transparent 70%);
+      border-radius: 50%;
+      box-shadow:
+        0 0 10px #fff,
+        0 0 20px #fff,
+        0 0 30px #4CAF50;
+      animation: particle-flow 3s linear infinite;
+    }
+
+    .connection-1 {
+      top: 30px;
+      left: 10%;
+      width: 80%;
+      animation-delay: 0s;
+    }
+
+    .connection-2 {
+      top: 70px;
+      left: 10%;
+      width: 60%;
+      animation-delay: 0.5s;
+    }
+
+    .connection-3 {
+      top: 110px;
+      left: 10%;
+      width: 70%;
+      animation-delay: 1s;
+    }
+
+    .particle-1 { animation: particle-flow-1 3s linear infinite; }
+    .particle-2 { animation: particle-flow-2 3s linear infinite 1s; }
+    .particle-3 { animation: particle-flow-3 3s linear infinite 2s; }
+
+    @keyframes pulse-glow {
+      0%, 100% {
+        opacity: 0.6;
+        box-shadow: 0 0 20px rgba(76, 175, 80, 0.3);
+      }
+      50% {
+        opacity: 1;
+        box-shadow: 0 0 40px rgba(76, 175, 80, 0.6);
+      }
+    }
+
+    @keyframes particle-flow-1 {
+      0% { left: 10%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: 90%; opacity: 0; }
+    }
+
+    @keyframes particle-flow-2 {
+      0% { left: 10%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: 70%; opacity: 0; }
+    }
+
+    @keyframes particle-flow-3 {
+      0% { left: 10%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { left: 80%; opacity: 0; }
+    }
+
+    /* ========== 工具栏预览 ========== */
+    .toolbar-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 20px;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      flex-wrap: wrap;
+    }
+
+    .toolbar-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e2e8f0;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .toolbar-btn.primary {
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      border: none;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    .toolbar-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      transform: translateY(-2px) scale(1.02);
+    }
+
+    .toolbar-btn.gradient {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+    }
+
+    .toolbar-btn .dropdown {
+      font-size: 10px;
+      opacity: 0.6;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .toolbar-more {
+      margin-left: auto;
+    }
+
+    /* ========== 布局预览 ========== */
+    .layout-demo {
+      display: flex;
+      height: 400px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    .sidebar {
+      width: 280px;
+      background: rgba(30, 41, 59, 0.9);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+
+    .sidebar.collapsed {
+      width: 64px;
+    }
+
+    .sidebar-toggle {
+      position: absolute;
+      top: 10px;
+      right: -15px;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: 2px solid #0f172a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      z-index: 10;
+    }
+
+    .sidebar-content {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sidebar-item {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .collapsed .sidebar-item {
+      justify-content: center;
+      padding: 12px 0;
+    }
+
+    .collapsed .sidebar-item span {
+      display: none;
+    }
+
+    .canvas {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .canvas-toolbar {
+      padding: 15px 20px;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 50%, rgba(118, 75, 162, 0.1) 0%, transparent 50%);
+    }
+
+    .placeholder-node {
+      padding: 40px 60px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    /* 状态徽章 */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+
+    .status-running {
+      background: rgba(33, 150, 243, 0.2);
+      color: #2196F3;
+      border: 1px solid rgba(33, 150, 243, 0.3);
+    }
+
+    .status-success {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .status-error {
+      background: rgba(244, 67, 54, 0.2);
+      color: #F44336;
+      border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4CAF50 0%, #45a049 100%);
+      border-radius: 2px;
+      animation: progress-animation 3s ease-in-out infinite;
+    }
+
+    @keyframes progress-animation {
+      0% { width: 0%; }
+      50% { width: 75%; }
+      100% { width: 100%; }
+    }
+
+    /* 响应式 */
+    @media (max-width: 1400px) {
+      .sidebar {
+        width: 64px;
+      }
+      .sidebar-item span {
+        display: none;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .toolbar-preview {
+        justify-content: center;
+      }
+      .toolbar-btn:not(.primary) {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <h1>🎨 NanoAI Workflow</h1>
+    <p class="subtitle">UI/UX 优化预览 - 扁平Material配色 + 赛博朋克连线动画</p>
+
+    <!-- 节点颜色系统 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">🎨</span>
+        <span>节点颜色系统（扁平Material Design）</span>
+      </div>
+      <div class="nodes-grid">
+        <div class="node-preview node-input">
+          <div class="icon">📝</div>
+          <div class="label">文案输入</div>
+          <div class="color-code">#2196F3</div>
+        </div>
+        <div class="node-preview node-script">
+          <div class="icon">📄</div>
+          <div class="label">脚本生成</div>
+          <div class="color-code">#4CAF50</div>
+        </div>
+        <div class="node-preview node-storyboard">
+          <div class="icon">🎬</div>
+          <div class="label">分镜头生成</div>
+          <div class="color-code">#9C27B0</div>
+        </div>
+        <div class="node-preview node-dialogue">
+          <div class="icon">🎤</div>
+          <div class="label">对白生成</div>
+          <div class="color-code">#E91E63</div>
+        </div>
+        <div class="node-preview node-character">
+          <div class="icon">👤</div>
+          <div class="label">角色设计</div>
+          <div class="color-code">#FF9800</div>
+        </div>
+        <div class="node-preview node-scene">
+          <div class="icon">🏞️</div>
+          <div class="label">场景设计</div>
+          <div class="color-code">#00BCD4</div>
+        </div>
+        <div class="node-preview node-preview">
+          <div class="icon">▶️</div>
+          <div class="label">预览输出</div>
+          <div class="color-code">#F44336</div>
+        </div>
+        <div class="node-preview node-text">
+          <div class="icon">⌨️</div>
+          <div class="label">文本输入</div>
+          <div class="color-code">#3F51B5</div>
+        </div>
+        <div class="node-preview node-connector">
+          <div class="icon">🔗</div>
+          <div class="label">连接器</div>
+          <div class="color-code">#607D8B</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 连线动画效果 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚡</span>
+        <span>连线强动效（赛博朋克风格）</span>
+      </div>
+      <p style="color: #94a3b8; margin-bottom: 20px;">
+        霓虹发光 + 粒子流动 + 渐变色连线，数据流动一目了然
+      </p>
+      <div class="connection-demo">
+        <div class="connection-path connection-1">
+          <div class="particle particle-1"></div>
+        </div>
+        <div class="connection-path connection-2">
+          <div class="particle particle-2"></div>
+        </div>
+        <div class="connection-path connection-3">
+          <div class="particle particle-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 工具栏布局 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">🎯</span>
+        <span>工具栏精简（5个主要按钮）</span>
+      </div>
+      <p style="color: #94a3b8; margin-bottom: 20px;">
+        常驻5个核心按钮，其余收纳到「更多▼」菜单
+      </p>
+      <div class="toolbar-preview">
+        <button class="toolbar-btn">🌙 切换主题</button>
+        <button class="toolbar-btn primary">▶️ 执行工作流</button>
+        <button class="toolbar-btn">💾 保存 <span class="dropdown">▼</span></button>
+        <button class="toolbar-btn">📥 导入导出 <span class="dropdown">▼</span></button>
+        <button class="toolbar-btn gradient">➕ 添加模板</button>
+        <div class="toolbar-divider"></div>
+        <button class="toolbar-btn toolbar-more">⋮ 更多 <span class="dropdown">▼</span></button>
+      </div>
+    </div>
+
+    <!-- 整体布局优化 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">📐</span>
+        <span>整体布局优化</span>
+      </div>
+      <p style="color: #94a3b8; margin-bottom: 20px;">
+        侧边栏可折叠 + 响应式布局 + 状态指示优化
+      </p>
+      <div class="layout-demo">
+        <div class="sidebar">
+          <div class="sidebar-toggle">≡</div>
+          <div class="sidebar-content">
+            <div class="sidebar-item">
+              <span>⚡</span>
+              <span>生成节点</span>
+            </div>
+            <div class="sidebar-item">
+              <span>📄</span>
+              <span>脚本生成</span>
+            </div>
+            <div class="sidebar-item">
+              <span>🎬</span>
+              <span>分镜头</span>
+            </div>
+            <div class="sidebar-item">
+              <span>👤</span>
+              <span>角色设计</span>
+            </div>
+            <div class="sidebar-item">
+              <span>🏞️</span>
+              <span>场景设计</span>
+            </div>
+          </div>
+        </div>
+        <div class="canvas">
+          <div class="canvas-toolbar">
+            <div style="display: flex; align-items: center; gap: 20px;">
+              <span style="font-weight: 600;">执行进度</span>
+              <span class="status-badge status-running">🔄 运行中</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 65%;"></div>
+            </div>
+          </div>
+          <div class="canvas-area">
+            <div class="placeholder-node">
+              <div style="font-size: 3em; margin-bottom: 10px;">🎨</div>
+              <div style="font-size: 1.2em; margin-bottom: 5px;">工作流画布</div>
+              <div style="opacity: 0.6;">拖拽节点到此处开始创作</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="color: #94a3b8; font-size: 0.9em; margin-top: 15px;">
+        💡 点击侧边栏的「≡」按钮可折叠/展开（快捷键 F2）<br>
+        📱 响应式：屏幕宽度 &lt;1400px 时自动折叠侧边栏
+      </p>
+    </div>
+
+    <!-- 对比说明 -->
+    <div class="section" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);">
+      <div class="section-title">
+        <span class="icon">✨</span>
+        <span>优化效果对比</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 20px;">
+        <div>
+          <h3 style="margin-bottom: 15px; color: #94a3b8;">❌ 优化前</h3>
+          <ul style="line-height: 2; color: #cbd5e1;">
+            <li>• 节点颜色单调，难以区分类型</li>
+            <li>• 连线静态，无数据流动视觉反馈</li>
+            <li>• 工具栏13个按钮，视觉拥挤</li>
+            <li>• 侧边栏固定占用空间</li>
+            <li>• 缺少执行状态和进度指示</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin-bottom: 15px; color: #4ade80;">✅ 优化后</h3>
+          <ul style="line-height: 2; color: #cbd5e1;">
+            <li>• <strong>Material配色</strong>：9种节点一目了然</li>
+            <li>• <strong>赛博朋克连线</strong>：霓虹+粒子流动画</li>
+            <li>• <strong>精简工具栏</strong>：5个核心按钮+更多菜单</li>
+            <li>• <strong>可折叠侧边栏</strong>：一键展开/收起</li>
+            <li>• <strong>状态可视化</strong>：进度条+徽章实时反馈</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 决策提示 -->
+    <div style="text-align: center; margin-top: 40px; padding: 30px; background: rgba(76, 175, 80, 0.1); border-radius: 12px; border: 1px solid rgba(76, 175, 80, 0.3);">
+      <h2 style="margin-bottom: 15px;">🚀 准备好开始优化了吗？</h2>
+      <p style="color: #94a3b8; margin-bottom: 20px;">
+        以上预览展示了优化后的效果。如满意，请回复「同意执行」开始实现。
+      </p>
+      <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <button onclick="alert('请回复「同意执行」开始实现优化')"
+                style="padding: 15px 40px; font-size: 1.1em; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);">
+          ✅ 同意执行
+        </button>
+        <button onclick="alert('请告诉我需要调整的具体内容')"
+                style="padding: 15px 40px; font-size: 1.1em; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; color: #e2e8f0; font-weight: 600; cursor: pointer;">
+          🔄 需要调整
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 侧边栏折叠演示
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggle = document.querySelector('.sidebar-toggle');
+
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      sidebarToggle.textContent = sidebar.classList.contains('collapsed') ? '→' : '≡';
+    });
+  </script>
+</body>
+</html>

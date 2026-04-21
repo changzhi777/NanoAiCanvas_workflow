@@ -1,0 +1,69 @@
+/**
+ * 连接端点增强样式
+ * 覆盖 React Flow 默认样式，确保连接端点大小正确
+ */
+
+/* 基础连接端点 - 强制设置大小 */
+.react-flow__handle {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  border-width: 2px !important;
+  border-radius: 0.25rem !important; /* rounded-sm */
+  transition: all 200ms ease !important;
+}
+
+/* 悬停状态 - 放大到 20px */
+.react-flow__handle:hover {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+}
+
+/* 目标端点（左侧） */
+.react-flow__handle.handle-target {
+  cursor: crosshair !important;
+}
+
+/* 源端点（右侧） */
+.react-flow__handle.handle-source {
+  cursor: crosshair !important;
+}
+
+/* 连接端点光晕效果 */
+.react-flow__handle.shadow-lg {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05),
+    0 0 8px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* 连接端点悬停光晕 */
+.react-flow__handle:hover.shadow-xl {
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 12px rgba(59, 130, 246, 0.6) !important;
+}
+
+/* ==================== 深色模式 ==================== */
+
+.dark .react-flow__handle {
+  border-color: rgb(51, 65, 85) !important; /* slate-700 */
+}
+
+.dark .react-flow__handle.shadow-lg {
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.3),
+    0 4px 6px -2px rgba(0, 0, 0, 0.2),
+    0 0 8px rgba(59, 130, 246, 0.4) !important;
+}
+
+.dark .react-flow__handle:hover.shadow-xl {
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.4),
+    0 10px 10px -5px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(59, 130, 246, 0.7) !important;
+}

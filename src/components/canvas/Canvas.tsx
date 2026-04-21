@@ -5,6 +5,8 @@ import ReactFlow, {
   MiniMap,
   BackgroundVariant,
   useReactFlow,
+  type Node,
+  type Edge,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useAppSelector, useAppDispatch } from '@/store/hooks'
@@ -15,6 +17,7 @@ import {
   onEdgesChange,
   onConnect,
 } from '@/store/slices/canvasSlice'
+import { setSelectedNodes, setSelectedEdges } from '@/store/slices/uiSlice'
 import CardNode from './nodes/CardNode'
 import './canvas.css'
 
@@ -55,6 +58,17 @@ export default function Canvas() {
     [dispatch],
   )
 
+  // 处理选择变化
+  const handleSelectionChange = useCallback(
+    ({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
+      const selectedNodeIds = nodes.map((node) => node.id)
+      const selectedEdgeIds = edges.map((edge) => edge.id)
+      dispatch(setSelectedNodes(selectedNodeIds))
+      dispatch(setSelectedEdges(selectedEdgeIds))
+    },
+    [dispatch],
+  )
+
   return (
     <div className="canvas-wrapper" ref={reactFlowWrapper}>
       {/* 背景装饰光晕 */}
@@ -68,10 +82,16 @@ export default function Canvas() {
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
+        onSelectionChange={handleSelectionChange}
         nodeTypes={nodeTypes}
         fitView
         className="bg-background"
         proOptions={{ hideAttribution: true }}
+        deleteKeyCode={['Delete', 'Backspace']}
+        multiSelectionKeyCode="Shift"
+        panOnScroll
+        selectionOnDrag
+        selectNodesOnDrag
       >
         <Background
           variant={BackgroundVariant.Dots}

@@ -1,0 +1,9 @@
+- generic [ref=e3]:
+  - link "跳转到主内容" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e5]:
+    - button "无限画布" [ref=e6] [cursor=pointer]
+    - button "AI 工作流" [ref=e7] [cursor=pointer]
+  - generic [ref=e9]:
+    - img [ref=e10]
+    - paragraph [ref=e12]: 加载中...

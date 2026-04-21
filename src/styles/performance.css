@@ -1,0 +1,100 @@
+/* 性能优化模式样式 */
+
+/* 普通模式 - 默认 */
+.performance-normal {
+  /* 所有功能启用 */
+}
+
+/* 高性能模式 - 100+ 节点 */
+.performance-high {
+  /* 禁用部分动画 */
+  .node-appear {
+    animation: none !important;
+  }
+
+  /* 禁用复杂的阴影 */
+  .card-node {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* 禁用hover效果的过渡 */
+  .react-flow__handle {
+    transition: none !important;
+  }
+
+  /* 禁用状态变化动画 */
+  .status-badge.changed {
+    animation: none !important;
+  }
+}
+
+/* 极限性能模式 - 200+ 节点 */
+.performance-extreme {
+  /* 禁用所有动画 */
+  * {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+
+  /* 简化节点样式 */
+  .card-node {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* 隐藏不必要的元素 */
+  .react-flow__minimap,
+  .react-flow__controls,
+  .react-flow__background {
+    opacity: 0.5;
+  }
+
+  /* 禁用hover效果 */
+  .react-flow__handle:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 简化连接线 */
+  .react-flow__edge-path {
+    stroke-width: 2px !important;
+  }
+
+  /* 禁用节点动画 */
+  .node-appear,
+  .status-badge.changed,
+  .priority-pulse {
+    animation: none !important;
+  }
+}
+
+/* 性能优化提示 */
+.performance-indicator {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.performance-indicator.normal {
+  background: hsl(var(--primary));
+  color: white;
+}
+
+.performance-indicator.high {
+  background: hsl(45 80% 50%);
+  color: white;
+}
+
+.performance-indicator.extreme {
+  background: hsl(0 75% 55%);
+  color: white;
+}

@@ -1,0 +1,153 @@
+{
+  "workflow": {
+    "title": "Workflow",
+    "nodes": "nodes",
+    "edges": "edges",
+    "completed": "completed",
+    "execute": "Execute Workflow",
+    "executing": "Executing...",
+    "clear": "Clear",
+    "clearConfirm": "Are you sure you want to clear the current workflow? This action cannot be undone.",
+    "cleared": "Workflow cleared",
+    "save": "Save",
+    "saveAsTemplate": "Save as Template",
+    "saveVersion": "Save Version",
+    "versionSaved": "Version snapshot created",
+    "export": "Export",
+    "import": "Import",
+    "exported": "Workflow exported to local",
+    "imported": "Workflow imported:",
+    "templates": "Templates",
+    "templateDialog": "Workflow Templates",
+    "selectTemplate": "Select Template",
+    "versionHistory": "Version History",
+    "noVersions": "No version history",
+    "version": "Version",
+    "restoreVersion": "Restored to version",
+    "settings": "Settings",
+    "help": "Help",
+    "helpCenter": "Help Center",
+    "helpDescription": "Learn how to use NanoAI Workflow system"
+  },
+  "template": {
+    "storyboard01": "Storyboard 01",
+    "characterWorkflow": "Character Design Workflow",
+    "sceneWorkflow": "Scene Design Workflow",
+    "quickStoryboard": "Quick Storyboard",
+    "storyboard01Desc": "Complete 9-step storyboard generation process",
+    "characterWorkflowDesc": "Quickly generate character designs",
+    "sceneWorkflowDesc": "Quickly generate scene designs",
+    "quickStoryboardDesc": "3-step quick storyboard generation"
+  },
+  "nodes": {
+    "inputText": "Text Input",
+    "scriptGenerator": "Script Generator",
+    "storyboardGenerator": "Storyboard Generator",
+    "dialogueGenerator": "Dialogue Generator",
+    "characterDesigner": "Character Designer",
+    "sceneDesigner": "Scene Designer",
+    "outputPreview": "Output Preview",
+    "connector": "Connector",
+    "textInput": "Text Input",
+    "textInputDesc": "Input text or description",
+    "scriptGeneratorDesc": "Generate script content using GLM-5",
+    "storyboardGeneratorDesc": "Generate storyboard images",
+    "dialogueGeneratorDesc": "Generate character dialogue audio",
+    "characterDesignerDesc": "Generate character design",
+    "sceneDesignerDesc": "Generate scene design",
+    "outputPreviewDesc": "Preview generated content",
+    "connectorDesc": "Workflow branching, merging, conditional logic"
+  },
+  "help": {
+    "quickStart": "Quick Start",
+    "shortcuts": "Shortcuts",
+    "nodeTypes": "Node Types",
+    "features": "Features",
+    "threeSteps": "Create your first workflow in 3 steps",
+    "step1": "Select template or create blank canvas",
+    "step1Desc": "Press Meta+T to open template dialog, select a preset template, or create freely on blank canvas",
+    "step2": "Add and connect nodes",
+    "step2Desc": "Drag nodes from sidebar to canvas, connect output ports to input ports to establish data flow",
+    "step3": "Configure parameters and execute",
+    "step3Desc": "Set node parameters, click the 'Execute Workflow' button in the toolbar to start running",
+    "tips": "Tips",
+    "tip1": "Node parameter changes will automatically trigger downstream nodes to re-execute",
+    "tip2": "You can save common workflows as custom templates",
+    "tip3": "Version history helps you revert to any historical state",
+    "tip4": "Export workflow JSON files can be shared among team members",
+    "shortcutsList": {
+      "metaT": "Open template dialog",
+      "metaShiftX": "Clear workflow",
+      "escape": "Close dialog / Cancel operation",
+      "delete": "Delete selected nodes",
+      "metaS": "Save current workflow",
+      "metaE": "Execute workflow"
+    },
+    "features": {
+      "dragDrop": {
+        "title": "Node Drag & Drop",
+        "desc": "Drag nodes from sidebar to canvas, freely combine workflows"
+      },
+      "connect": {
+        "title": "Smart Connection",
+        "desc": "Connect node output ports to downstream node input ports to establish data flow"
+      },
+      "templates": {
+        "title": "Template System",
+        "desc": "Provide preset templates, one-click load common workflow configurations"
+      },
+      "execute": {
+        "title": "Real-time Execution",
+        "desc": "Execute workflow and view running status and results of each node in real time"
+      },
+      "version": {
+        "title": "Version Management",
+        "desc": "Save workflow version snapshots, revert to historical versions at any time"
+      },
+      "importExport": {
+        "title": "Import & Export",
+        "desc": "Export workflow as JSON file, or import workflow from file"
+      }
+    }
+  },
+  "theme": {
+    "toggle": "Toggle Theme",
+    "light": "Light Mode",
+    "dark": "Dark Mode",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "language": {
+    "title": "Language",
+    "switch": "Switch Language",
+    "zhCN": "简体中文",
+    "enUS": "English"
+  },
+  "collaboration": {
+    "title": "Collaboration",
+    "description": "Real-time collaborative workflow editing with team members",
+    "button": "Collaboration",
+    "joinSession": "Join Collaboration",
+    "leaveSession": "Leave Session",
+    "leaveConfirm": "Are you sure you want to leave the collaboration session?",
+    "sessionStatus": "Session Status",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "sessionId": "Session ID",
+    "userName": "Username",
+    "onlineUsers": "Online Users",
+    "noOnlineUsers": "No other users online",
+    "online": "Online",
+    "offline": "Offline",
+    "sessionIdLabel": "Session ID",
+    "sessionIdPlaceholder": "Enter session ID or create new session",
+    "userNameLabel": "Your Name",
+    "userNamePlaceholder": "Enter display name",
+    "joinInfo": "Join collaboration session and edit workflow with team members in real-time",
+    "features": "Collaboration Features",
+    "feature1": "All operations sync in real-time to other users",
+    "feature2": "See other users' cursor positions and selections",
+    "feature3": "Version control prevents conflicts",
+    "feature4": "Support multiple users editing simultaneously"
+  }
+}

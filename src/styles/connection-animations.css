@@ -1,0 +1,218 @@
+/**
+ * 连线动画样式 - 中等动效（温和风格）
+ * • 脉冲光点动画（柔和发光）
+ * • 连线高亮（执行时激活）
+ * • 数据流向箭头指示
+ * • 无粒子流动，保持克制
+ */
+
+/* ==================== 连线基础动画 ==================== */
+
+/* 连线脉冲发光效果 */
+@keyframes edge-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 3px rgba(76, 175, 80, 0.3));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(76, 175, 80, 0.5));
+  }
+}
+
+/* 连线数据流动画 */
+@keyframes data-flow {
+  0% {
+    stroke-dashoffset: 20;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 脉冲光点沿连线移动 */
+@keyframes pulse-point-move {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+
+/* 连线高亮闪烁 */
+@keyframes connection-highlight {
+  0%, 100% {
+    stroke-opacity: 0.6;
+    stroke-width: 2;
+  }
+  50% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+}
+
+/* ==================== 连线样式类 ==================== */
+
+/* 基础连线 */
+.react-flow__edge {
+  stroke-opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+/* 执行中的连线 */
+.edge-running {
+  animation: connection-highlight 2s ease-in-out infinite;
+  stroke-opacity: 0.8;
+}
+
+/* 数据流动线 */
+.edge-data-flow {
+  stroke-dasharray: 10 10;
+  animation: data-flow 1s linear infinite;
+}
+
+/* 连线路径动画 */
+.edge-animated {
+  animation: edge-pulse 3s ease-in-out infinite;
+}
+
+/* ==================== 连线标签（箭头指示） ==================== */
+
+.react-flow__edge-label {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  transition: all 0.3s ease;
+}
+
+.react-flow__edge-label .edge-label {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 暗色模式 */
+.dark .react-flow__edge-label .edge-label {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+/* ==================== 连线选中状态 ==================== */
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #3b82f6;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.5));
+}
+
+.react-flow__edge:focus .react-flow__edge-path {
+  outline: none;
+}
+
+/* ==================== 脉冲光点组件 ==================== */
+
+.pulse-point {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, rgba(76, 175, 80, 1) 0%, rgba(76, 175, 80, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  offset-rotate: 0deg;
+  animation: pulse-point-move 3s linear infinite;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+/* 不同颜色的脉冲点 */
+.pulse-point.blue {
+  background: radial-gradient(circle, rgba(59, 130, 246, 1) 0%, rgba(59, 130, 246, 0) 70%);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+}
+
+.pulse-point.green {
+  background: radial-gradient(circle, rgba(34, 197, 94, 1) 0%, rgba(34, 197, 94, 0) 70%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.pulse-point.orange {
+  background: radial-gradient(circle, rgba(249, 115, 22, 1) 0%, rgba(249, 115, 22, 0) 70%);
+  box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+}
+
+/* ==================== 连线方向箭头 ==================== */
+
+.edge-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.edge-arrow.running {
+  opacity: 1;
+  animation: arrow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes arrow-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* ==================== 成功/失败状态 ==================== */
+
+.edge-success .react-flow__edge-path {
+  stroke: #22c55e;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.4));
+}
+
+.edge-error .react-flow__edge-path {
+  stroke: #ef4444;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.4));
+  animation: error-pulse 1s ease-in-out 3;
+}
+
+@keyframes error-pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ==================== 响应式调整 ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-running,
+  .edge-animated,
+  .pulse-point,
+  .edge-arrow.running {
+    animation: none;
+  }
+}

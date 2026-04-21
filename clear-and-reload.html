@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>清除 localStorage 并刷新</title>
+</head>
+<body>
+  <h1>NanoAI Workflow - 清除并重置</h1>
+  <p>点击下方按钮清除 localStorage 并刷新页面</p>
+  <button onclick="clearAndReload()" style="padding: 20px 40px; font-size: 18px; cursor: pointer; background: #3ecf8e; color: white; border: none; border-radius: 8px;">
+    🧹 清除并刷新页面
+  </button>
+
+  <script>
+    function clearAndReload() {
+      console.log('🧹 清除 localStorage...');
+      localStorage.clear();
+      console.log('✅ 清除完成！');
+      console.log('🔄 1秒后刷新页面...');
+      setTimeout(() => {
+        window.location.href = 'http://localhost:3000/';
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

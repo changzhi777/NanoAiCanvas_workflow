@@ -1,0 +1,153 @@
+{
+  "workflow": {
+    "title": "工作流",
+    "nodes": "个节点",
+    "edges": "条连线",
+    "completed": "个已完成",
+    "execute": "执行工作流",
+    "executing": "执行中...",
+    "clear": "清空",
+    "clearConfirm": "确定要清空当前工作流吗？此操作不可撤销。",
+    "cleared": "工作流已清空",
+    "save": "保存",
+    "saveAsTemplate": "保存为模板",
+    "saveVersion": "保存版本",
+    "versionSaved": "版本快照已创建",
+    "export": "导出",
+    "import": "导入",
+    "exported": "工作流已导出到本地",
+    "imported": "已导入工作流：",
+    "templates": "模板",
+    "templateDialog": "工作流模板",
+    "selectTemplate": "选择模板",
+    "versionHistory": "版本历史",
+    "noVersions": "暂无版本历史",
+    "version": "版本",
+    "restoreVersion": "已恢复到版本",
+    "settings": "设置",
+    "help": "帮助",
+    "helpCenter": "帮助中心",
+    "helpDescription": "了解如何使用 NanoAI Workflow 工作流系统"
+  },
+  "template": {
+    "storyboard01": "故事板01",
+    "characterWorkflow": "角色设计工作流",
+    "sceneWorkflow": "场景设计工作流",
+    "quickStoryboard": "快速分镜",
+    "storyboard01Desc": "完整的9步故事板生成流程",
+    "characterWorkflowDesc": "快速生成角色设计图",
+    "sceneWorkflowDesc": "快速生成场景设计图",
+    "quickStoryboardDesc": "3步快速分镜生成"
+  },
+  "nodes": {
+    "inputText": "文本输入",
+    "scriptGenerator": "脚本生成",
+    "storyboardGenerator": "分镜头生成",
+    "dialogueGenerator": "对白生成",
+    "characterDesigner": "角色设计",
+    "sceneDesigner": "场景设计",
+    "outputPreview": "预览输出",
+    "connector": "连接器",
+    "textInput": "文本输入",
+    "textInputDesc": "输入文案或描述文本",
+    "scriptGeneratorDesc": "使用GLM-5生成脚本内容",
+    "storyboardGeneratorDesc": "生成故事板分镜图片",
+    "dialogueGeneratorDesc": "生成角色对白音频",
+    "characterDesignerDesc": "生成角色设计图",
+    "sceneDesignerDesc": "生成场景设计图",
+    "outputPreviewDesc": "预览生成的内容",
+    "connectorDesc": "工作流分支、合并、条件判断"
+  },
+  "help": {
+    "quickStart": "快速开始",
+    "shortcuts": "快捷键",
+    "nodeTypes": "节点类型",
+    "features": "功能特性",
+    "threeSteps": "3步创建你的第一个工作流",
+    "step1": "选择模板或创建空白画布",
+    "step1Desc": "按 Meta+T 打开模板对话框，选择预置模板，或在空白画布上自由创作",
+    "step2": "添加和连接节点",
+    "step2Desc": "从侧边栏拖拽节点到画布，连接输出端口到输入端口建立数据流",
+    "step3": "配置参数并执行",
+    "step3Desc": "设置每个节点的参数，点击工具栏的「执行工作流」按钮开始运行",
+    "tips": "小贴士",
+    "tip1": "节点参数改变后会自动触发下游节点重新执行",
+    "tip2": "可以保存常用工作流为自定义模板",
+    "tip3": "版本历史功能帮你回溯到任意历史状态",
+    "tip4": "导出工作流JSON文件可以在团队成员间共享",
+    "shortcutsList": {
+      "metaT": "打开模板对话框",
+      "metaShiftX": "清空工作流",
+      "escape": "关闭对话框/取消操作",
+      "delete": "删除选中的节点",
+      "metaS": "保存当前工作流",
+      "metaE": "执行工作流"
+    },
+    "features": {
+      "dragDrop": {
+        "title": "节点拖拽",
+        "desc": "从侧边栏拖拽节点到画布，自由组合工作流"
+      },
+      "connect": {
+        "title": "智能连线",
+        "desc": "连接节点输出端口到下游节点输入端口，建立数据流"
+      },
+      "templates": {
+        "title": "模板系统",
+        "desc": "提供预置模板，一键加载常用工作流配置"
+      },
+      "execute": {
+        "title": "实时执行",
+        "desc": "执行工作流并实时查看每个节点的运行状态和结果"
+      },
+      "version": {
+        "title": "版本管理",
+        "desc": "保存工作流版本快照，随时回溯到历史版本"
+      },
+      "importExport": {
+        "title": "导入导出",
+        "desc": "导出工作流为JSON文件，或从文件导入工作流"
+      }
+    }
+  },
+  "theme": {
+    "toggle": "切换主题",
+    "light": "浅色模式",
+    "dark": "深色模式",
+    "switchToLight": "切换到浅色主题",
+    "switchToDark": "切换到深色主题"
+  },
+  "language": {
+    "title": "语言",
+    "switch": "切换语言",
+    "zhCN": "简体中文",
+    "enUS": "English"
+  },
+  "collaboration": {
+    "title": "多人协作",
+    "description": "实时协作编辑工作流，与团队成员同步操作",
+    "button": "协作",
+    "joinSession": "加入协作",
+    "leaveSession": "退出协作",
+    "leaveConfirm": "确定要退出协作会话吗？",
+    "sessionStatus": "会话状态",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "sessionId": "会话ID",
+    "userName": "用户名",
+    "onlineUsers": "在线用户",
+    "noOnlineUsers": "暂无其他用户在线",
+    "online": "在线",
+    "offline": "离线",
+    "sessionIdLabel": "会话 ID",
+    "sessionIdPlaceholder": "输入会话ID或创建新会话",
+    "userNameLabel": "你的名字",
+    "userNamePlaceholder": "输入显示名称",
+    "joinInfo": "加入协作会话，与团队成员实时同步编辑工作流",
+    "features": "协作功能",
+    "feature1": "所有操作实时同步到其他用户",
+    "feature2": "可以看到其他用户的鼠标位置和选择",
+    "feature3": "版本控制防止冲突",
+    "feature4": "支持多人同时编辑"
+  }
+}

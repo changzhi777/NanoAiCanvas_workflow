@@ -1,0 +1,1344 @@
+/* ==================== 深色主题专用样式 - NanoAI Workflow ==================== */
+
+/* ==================== 深色主题基础色板 - Supabase设计系统 ==================== */
+.dark-mode {
+  /* === Supabase品牌颜色 === */
+  --supabase-green: #3ecf8e;      /* 主要品牌色 */
+  --supabase-green-link: #00c573; /* 链接绿色 */
+  --supabase-green-border: rgba(62, 207, 142, 0.3);  /* 绿色边框 */
+
+  /* === 中性色阶（暗色模式） === */
+  --color-black: #0f0f0f;         /* 近黑 - 主要按钮背景 */
+  --color-dark: #171717;          /* 暗 - 页面背景 */
+  --color-dark-border: #242424;   /* 深色边框 */
+  --color-border-dark: #2e2e2e;   /* 边框暗色 */
+  --color-border-mid: #363636;    /* 中间边框 */
+  --color-border-light: #393939;  /* 浅边框 */
+  --color-charcoal: #434343;      /* 炭色 */
+  --color-gray-dark: #4d4d4d;     /* 深灰 */
+  --color-gray-mid: #898989;      /* 中灰 */
+  --color-gray-light: #b4b4b4;    /* 浅灰 */
+  --color-off-white: #efefef;     /* 近白 */
+  --color-white: #fafafa;         /* 白 */
+
+  /* 状态颜色 */
+  --success-color: #3ecf8e;       /* Supabase绿 */
+  --error-color: #ef4444;         /* 红色 */
+  --warning-color: #f59e0b;       /* 琥珀色 */
+  --info-color: #8b5cf6;          /* 紫色 */
+}
+
+/* ==================== 深色主题全局样式 ==================== */
+
+.dark-mode {
+  /* 背景 - 使用Supabase配色系统 */
+  background-color: #171717;        /* #171717 - Supabase页面背景 */
+  color: #fafafa;                   /* #fafafa - 主要文字 */
+
+  /* 滚动条 */
+  scrollbar-width: 8px;
+  scrollbar-color: #3ecf8e #2e2e2e;  /* Supabase绿滚动条 + 标准边框 */
+}
+
+.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+  background: #2e2e2e;                /* #2e2e2e - 标准边框 */
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #3ecf8e;                /* Supabase绿 */
+  border-radius: 4px;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #00c573;                /* 链接绿 */
+}
+
+/* ==================== 深色主题画布背景 ==================== */
+
+.dark-mode .canvas-dark-bg {
+  background: #171717;                /* #171717 - Supabase页面背景 */
+}
+
+/* 简洁的背景样式（与无限画布一致） */
+.dark-mode .bg-background {
+  background-color: #171717;          /* #171717 */
+}
+
+/* ==================== 连线流动动画 ==================== */
+
+.dark-mode .edge-animated {
+  stroke-dasharray: 10;
+  animation: flow-dash 1s linear infinite;
+  stroke: #3ecf8e;
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* ==================== 节点卡片样式 ==================== */
+
+.dark-mode .node-card-dark {
+  background-color: rgb(255 255 255 / 0.05); /* bg-white/5 */
+  border: 1px solid rgb(255 255 255 / 0.1); /* border-white/10 */
+}
+
+.dark-mode .node-card-dark:hover {
+  border-color: rgba(62, 207, 142, 0.5);
+  box-shadow: 0 0 20px rgba(62, 207, 142, 0.3);
+}
+
+/* 节点悬停效果增强 */
+.react-flow__node {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.react-flow__node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .react-flow__node:hover {
+  box-shadow: 0 8px 32px rgba(62, 207, 142, 0.3);
+}
+
+/* 节点呼吸效果 */
+.dark-mode .node-status-running {
+  animation: node-breathing 2s ease-in-out infinite;
+}
+
+@keyframes node-breathing {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(62, 207, 142, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(62, 207, 142, 0.4);
+  }
+}
+
+/* ==================== 按钮样式 ==================== */
+
+.dark-mode .neon-button {
+  background: linear-gradient(135deg, #3ecf8e, #ec4899);
+  box-shadow:
+    0 0 10px rgba(62, 207, 142, 0.5),
+    0 0 20px rgba(62, 207, 142, 0.3);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .neon-button:hover {
+  box-shadow:
+    0 0 15px rgba(62, 207, 142, 0.6),
+    0 0 30px rgba(62, 207, 142, 0.4),
+    0 0 45px rgba(62, 207, 142, 0.2);
+  transform: scale(1.02);
+}
+
+/* ==================== 文字渐变 ==================== */
+
+.dark-mode .gradient-text {
+  background: linear-gradient(135deg, #3ecf8e, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ==================== 玻璃态面板 ==================== */
+
+.dark-mode .glass-panel {
+  background-color: rgb(0 0 0 / 0.8); /* bg-black/80 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgb(255 255 255 / 0.1); /* border-white/10 */
+}
+
+/* ==================== 进度条闪光动画 ==================== */
+
+.dark-mode .progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(62, 207, 142, 0) 0%,
+    rgba(62, 207, 142, 0.5) 50%,
+    rgba(62, 207, 142, 0) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* 工作流进度条闪光效果 */
+@keyframes animate-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: animate-shimmer 2s infinite;
+}
+
+/* 节点状态转换动画 */
+@keyframes node-status-success {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes node-status-error {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(2px);
+  }
+}
+
+.node-status-success {
+  animation: node-status-success 0.6s ease-out;
+}
+
+.node-status-error {
+  animation: node-status-error 0.5s ease-in-out;
+}
+
+/* 工作流完成庆祝动画 */
+@keyframes celebrate {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.celebrate {
+  animation: celebrate 0.5s ease-out;
+}
+
+/* 粒子效果 */
+@keyframes particle-burst {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+.particle {
+  animation: particle-burst 0.6s ease-out forwards;
+}
+
+/* ==================== 状态指示器 ==================== */
+
+.dark-mode .status-success {
+  color: #4ade80; /* text-green-400 */
+  background-color: rgb(34 197 94 / 0.2); /* bg-green-500/20 */
+}
+
+.dark-mode .status-error {
+  color: #f87171; /* text-red-400 */
+  background-color: rgb(239 68 68 / 0.2); /* bg-red-500/20 */
+}
+
+.dark-mode .status-running {
+  color: #fbbf24; /* text-yellow-400 */
+  background-color: rgb(168 85, 247 / 0.2); /* bg-blue-500/20 */
+}
+
+/* ==================== 玻璃态卡片 ==================== */
+
+.dark-mode .glass-card {
+  background-color: rgb(255 255 255 / 0.05); /* bg-white/5 */
+  border: 1px solid rgb(255 255 255 / 0.1); /* border-white/10 */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ==================== 边框高亮 ==================== */
+
+.dark-mode .border-highlight {
+  border: 1px solid rgb(255 255 255 / 0.1); /* border-white/10 */
+  transition: border-color 0.3s ease;
+}
+
+.dark-mode .border-highlight:hover {
+  border-color: rgba(62, 207, 142, 0.5);
+}
+
+/* ==================== 文字颜色层级 ==================== */
+
+.dark-mode .text-primary {
+  color: rgb(241 245 249); /* text-slate-100 */
+}
+
+.dark-mode .text-secondary {
+  color: rgb(203 213 225); /* text-slate-300 */
+}
+
+.dark-mode .text-tertiary {
+  color: rgb(148 163 184); /* text-slate-400 */
+}
+
+.dark-mode .text-muted {
+  color: rgb(100 116 139); /* text-slate-500 */
+}
+
+/* ==================== 节点入场动画 ==================== */
+
+.animate-node-enter {
+  animation: node-enter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes node-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ==================== 搜索面板动画 ==================== */
+
+@keyframes search-panel-slide {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-panel-animate {
+  animation: search-panel-slide 0.2s ease-out;
+}
+
+/* ==================== 快捷键帮助动画 ==================== */
+
+@keyframes shortcuts-fade-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.shortcuts-animate {
+  animation: shortcuts-fade-in 0.15s ease-out;
+}
+
+/* ==================== 面板切换动画 ==================== */
+
+.panel-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-enter {
+  animation: panel-slide-in 0.3s ease-out;
+}
+
+.panel-exit {
+  animation: panel-slide-out 0.2s ease-in;
+}
+
+@keyframes panel-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes panel-slide-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* ==================== 连线入场动画 ==================== */
+
+.animate-edge-enter {
+  animation: edge-enter 0.3s ease-out;
+}
+
+@keyframes edge-enter {
+  0% {
+    opacity: 0;
+    stroke-dashoffset: 100;
+  }
+  100% {
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ==================== 连线交互增强 ==================== */
+
+.react-flow__edge-path {
+  transition: stroke-width 0.2s ease, stroke 0.2s ease;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 8px rgba(62, 207, 142, 0.6));
+}
+
+.dark-mode .react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 12px rgba(62, 207, 142, 0.8));
+}
+
+/* ==================== 脉冲通知动画 ==================== */
+
+@keyframes pulse-notification {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+.pulse-notification {
+  animation: pulse-notification 2s ease-in-out infinite;
+}
+
+/* ==================== 加载骨架屏 ==================== */
+
+.skeleton-loader {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ==================== 工具提示动画 ==================== */
+
+.tooltip-animate {
+  animation: tooltip-fade-in 0.2s ease-out;
+}
+
+@keyframes tooltip-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==================== 按钮点击反馈 ==================== */
+
+.button-click-feedback {
+  position: relative;
+  overflow: hidden;
+}
+
+.button-click-feedback::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s;
+}
+
+.button-click-feedback:active::after {
+  width: 200px;
+  height: 200px;
+}
+
+/* ==================== 卡片悬停效果 ==================== */
+
+.card-hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* ==================== 文本渐变动画 ==================== */
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.gradient-text-animated {
+  background: linear-gradient(
+    135deg,
+    #3ecf8e,
+    #ec4899,
+    #3b82f6,
+    #3ecf8e
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* ==================== 节点选中状态 ==================== */
+
+.react-flow__node.selected {
+  outline: none;
+  box-shadow:
+    0 0 0 2px rgba(62, 207, 142, 0.5),
+    0 0 20px rgba(62, 207, 142, 0.3);
+}
+
+.dark-mode .react-flow__node.selected {
+  box-shadow:
+    0 0 0 2px rgba(62, 207, 142, 0.6),
+    0 0 30px rgba(62, 207, 142, 0.4);
+}
+
+/* ==================== 连线悬停效果 ==================== */
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 4px rgba(62, 207, 142, 0.5));
+}
+
+.dark-mode .react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 6px rgba(62, 207, 142, 0.7));
+}
+
+/* ==================== 端口连接效果 ==================== */
+
+.react-flow__handle {
+  transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+  filter: drop-shadow(0 0 4px currentColor);
+  transform: scale(1.25);
+}
+
+.react-flow__handle.connecting {
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+/* 端口可连接状态 */
+.react-flow__handle.valid {
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+/* 端口不可连接状态 */
+.react-flow__handle.invalid {
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+
+/* ==================== 拖拽预览 ==================== */
+
+.react-flow__nodesselection-rect {
+  background: rgba(62, 207, 142, 0.1);
+  border: 1px dashed rgba(62, 207, 142, 0.5);
+}
+
+.dark-mode .react-flow__nodesselection-rect {
+  background: rgba(62, 207, 142, 0.15);
+  border: 1px dashed rgba(62, 207, 142, 0.6);
+}
+
+/* ==================== 背景网格优化 ==================== */
+
+.react-flow__background {
+  background-color: transparent !important;
+}
+
+.dark-mode .react-flow__background {
+  background-color: transparent !important;
+}
+
+/* 确保背景点阵图案可见 */
+.react-flow__background svg {
+  opacity: 0.6 !important;
+}
+
+.dark-mode .react-flow__background svg {
+  opacity: 0.4 !important;
+}
+
+/* ==================== 小地图优化 ==================== */
+
+.react-flow__minimap {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+/* MiniMap 自定义位置 - 右下角偏左，避免与进度按钮重叠 */
+.react-flow__minimap {
+  position: absolute !important;
+  bottom: 80px !important;
+  right: 100px !important;
+  top: auto !important;
+  left: auto !important;
+  max-width: 250px !important;
+  max-height: 180px !important;
+  z-index: 10 !important;
+}
+
+.react-flow__minimap:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .react-flow__minimap:hover {
+  box-shadow: 0 8px 24px rgba(62, 207, 142, 0.3);
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(15, 23, 42, 0.6);
+  transition: fill 0.2s ease;
+}
+
+.dark-mode .react-flow__minimap-mask {
+  fill: rgba(0, 0, 0, 0.8);
+}
+
+/* 小地图节点动画 */
+.react-flow__minimap-node {
+  transition: all 0.2s ease;
+}
+
+.react-flow__minimap-node:hover {
+  transform: scale(1.2);
+  filter: brightness(1.2);
+}
+
+/* ==================== 控制按钮优化 ==================== */
+
+.react-flow__controls-button {
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.react-flow__controls-button:hover {
+  background-color: rgba(62, 207, 142, 0.1);
+  border-color: rgba(62, 207, 142, 0.5);
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(62, 207, 142, 0.3);
+}
+
+.react-flow__controls-button:active {
+  transform: scale(0.95);
+}
+
+.dark-mode .react-flow__controls-button {
+  background-color: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgb(203 213 225);
+}
+
+.dark-mode .react-flow__controls-button:hover {
+  background-color: rgba(62, 207, 142, 0.2);
+  border-color: rgba(62, 207, 142, 0.5);
+  box-shadow: 0 4px 12px rgba(62, 207, 142, 0.4);
+}
+
+/* ==================== 画布选择框 ==================== */
+
+.react-flow__selection {
+  background-color: rgba(62, 207, 142, 0.05);
+  border: 1px dashed rgba(62, 207, 142, 0.3);
+  animation: selection-pulse 1s ease-in-out infinite;
+}
+
+@keyframes selection-pulse {
+  0%, 100% {
+    border-color: rgba(62, 207, 142, 0.3);
+  }
+  50% {
+    border-color: rgba(62, 207, 142, 0.6);
+  }
+}
+
+.dark-mode .react-flow__selection {
+  background-color: rgba(62, 207, 142, 0.1);
+  border: 1px dashed rgba(62, 207, 142, 0.4);
+}
+
+/* 选择时的节点高亮 */
+.react-flow__node.selectable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.react-flow__node.selectable:hover {
+  filter: brightness(1.05);
+}
+
+.dark-mode .react-flow__node.selectable:hover {
+  filter: brightness(1.1);
+}
+
+/* ==================== 响应式优化 ==================== */
+
+/* 隐藏滚动条但保留功能 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .react-flow__controls {
+    display: none;
+  }
+
+  .react-flow__minimap {
+    display: none;
+  }
+
+  /* 移动端简化动画 */
+  .animate-node-enter {
+    animation-duration: 0.2s;
+  }
+
+  .card-hover-lift:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  /* 移动端触摸优化 */
+  .react-flow__handle {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* 移动端按钮增大 */
+  button, .button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 移动端文本大小调整 */
+  body {
+    font-size: 16px;
+  }
+
+  /* 移动端面板全屏 */
+  .mobile-panel-full {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+  }
+
+  /* 移动端快捷键提示隐藏 */
+  .shortcut-hints {
+    display: none;
+  }
+}
+
+/* 平板优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .react-flow__minimap {
+    width: 150px !important;
+    height: 100px !important;
+  }
+
+  /* 平板适中的按钮 */
+  button, .button {
+    min-height: 40px;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .react-flow__handle:hover {
+    transform: none;
+  }
+
+  .button-click-feedback:active::after {
+    display: none;
+  }
+
+  /* 增大触摸目标 */
+  .react-flow__handle {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* 触摸反馈 */
+  .touch-feedback:active {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+/* 横屏优化 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .compact-layout {
+    flex-direction: row;
+  }
+
+  .compact-layout > * {
+    max-height: 100vh;
+  }
+}
+
+/* 高对比度模式优化 */
+@media (prefers-contrast: high) {
+  .react-flow__node.selected {
+    outline: 2px solid currentColor;
+  }
+
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke-width: 4;
+  }
+
+  button:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* 保留必要的过渡 */
+  .transition-essential {
+    transition-duration: 0.15s !important;
+  }
+}
+
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  /* 强制深色模式时的额外优化 */
+  .react-flow__edge-path {
+    stroke-opacity: 0.8;
+  }
+
+  .react-flow__node {
+    filter: brightness(0.95);
+  }
+}
+
+/* 安全区域适配（刘海屏）*/
+@supports (padding: max(0px)) {
+  .safe-area-inset-top {
+    padding-top: max(env(safe-area-inset-top), 16px);
+  }
+
+  .safe-area-inset-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
+  }
+
+  .safe-area-inset-left {
+    padding-left: max(env(safe-area-inset-left), 16px);
+  }
+
+  .safe-area-inset-right {
+    padding-right: max(env(safe-area-inset-right), 16px);
+  }
+}
+
+/* 平板优化 */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .react-flow__minimap {
+    width: 150px !important;
+    height: 100px !important;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .react-flow__handle:hover {
+    transform: none;
+  }
+
+  .button-click-feedback:active::after {
+    display: none;
+  }
+
+  /* 增大触摸目标 */
+  .react-flow__handle {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* ==================== 性能优化 ==================== */
+
+/* 减少重绘 */
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* GPU 加速 */
+.gpu-accelerated {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* 优化滚动性能 */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 优化动画性能 */
+.optimize-animations {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 减少布局抖动 */
+.contain-layout {
+  contain: layout;
+}
+
+.contain-paint {
+  contain: paint;
+}
+
+.contain-layout-paint {
+  contain: layout paint;
+}
+
+/* 内容可见性优化 */
+.content-visibility-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto;
+}
+
+/* ==================== 打印样式 ==================== */
+
+@media print {
+  .react-flow__controls,
+  .react-flow__minimap,
+  .react-flow__background {
+    display: none;
+  }
+
+  .react-flow__node {
+    break-inside: avoid;
+  }
+
+  .react-flow__edge {
+    break-inside: avoid;
+  }
+}
+
+/* ==================== 高对比度模式 ==================== */
+
+@media (prefers-contrast: high) {
+  .react-flow__node.selected {
+    outline: 2px solid currentColor;
+  }
+
+  .react-flow__edge:hover .react-flow__edge-path {
+    stroke-width: 4;
+  }
+}
+
+/* ==================== 减少动画模式 ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==================== 新增动画效果 ==================== */
+
+/* 节点连接动画 */
+@keyframes connection-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.5;
+  }
+}
+
+.connection-pulse {
+  animation: connection-pulse 1s ease-in-out infinite;
+}
+
+/* 节点拖拽预览 */
+.react-flow__nodetransition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 端口连接状态 */
+.react-flow__handle.connecting {
+  animation: connection-pulse 0.5s ease-in-out infinite;
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+}
+
+/* 节点选中效果增强 */
+.react-flow__node.selected {
+  z-index: 10;
+}
+
+.dark-mode .react-flow__node.selected {
+  box-shadow:
+    0 0 0 2px rgba(62, 207, 142, 0.6),
+    0 0 30px rgba(62, 207, 142, 0.4),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 连线选中效果 */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 8px rgba(62, 207, 142, 0.7));
+}
+
+.dark-mode .react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 12px rgba(62, 207, 142, 0.9));
+}
+
+/* ==================== 深色模式优化 ==================== */
+
+@media (prefers-color-scheme: dark) {
+  /* 强制深色模式时的额外优化 */
+  .react-flow__edge-path {
+    stroke-opacity: 0.8;
+  }
+
+  .react-flow__node {
+    filter: brightness(0.95);
+  }
+}
+
+/* ==================== 焦点样式 ==================== */
+
+/* 键盘导航焦点样式 */
+.react-flow__node:focus,
+.react-flow__handle:focus,
+button:focus-visible {
+  outline: 2px solid #3ecf8e;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ==================== 加载状态 ==================== */
+
+/* 全局加载遮罩 */
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==================== 工具提示优化 ==================== */
+
+/* 确保工具提示在屏幕内 */
+.react-flow__tooltip {
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+/* ==================== 拖拽优化 ==================== */
+
+/* 拖拽时的样式 */
+.dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+}
+
+/* 拖拽预览 */
+.drag-preview {
+  opacity: 0.5;
+  transform: scale(0.95);
+  pointer-events: none;
+}
+
+/* 节点拖拽时的阴影效果 */
+.react-flow__node.dragging {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+  cursor: grabbing;
+}
+
+.dark-mode .react-flow__node.dragging {
+  box-shadow: 0 20px 60px rgba(62, 207, 142, 0.4);
+}
+
+/* 拖拽中的连线 */
+.react-flow__edge.dragging {
+  opacity: 0.6;
+}
+
+/* 连接新线时的预览 */
+.react-flow__connection-line {
+  stroke: #3ecf8e;
+  stroke-width: 2;
+  stroke-dasharray: 5;
+  animation: dash-draw 0.5s linear infinite;
+}
+
+@keyframes dash-draw {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.dark-mode .react-flow__connection-line {
+  stroke: #3ecf8e;
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+/* ==================== 网格优化 ==================== */
+
+/* 响应式网格点阵 */
+.react-flow__background.pattern-dots {
+  background-size: 20px 20px;
+}
+
+@media (max-width: 768px) {
+  .react-flow__background.pattern-dots {
+    background-size: 16px 16px;
+  }
+}
+
+/* ==================== 移动端手势优化 ==================== */
+
+/* 防止双击缩放 */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* 允许平移和缩放 */
+.touch-pan-zoom {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+/* 仅允许平移 */
+.touch-pan {
+  touch-action: pan-x pan-y;
+}
+
+/* ==================== 屏幕阅读器优化 ==================== */
+
+/* 仅屏幕阅读器可见 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 聚焦时可恢复可见 */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ==================== 焦点可见性增强 ==================== */
+
+/* 跳过链接样式 */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #3ecf8e;
+  color: white;
+  padding: 8px 16px;
+  z-index: 100;
+  transition: top 0.3s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ==================== 高对比度主题 ==================== */
+
+@media (prefers-contrast: high) {
+  :root {
+    --focus-ring-width: 3px;
+    --focus-ring-color: currentColor;
+  }
+
+  *:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: 2px;
+  }
+
+  .react-flow__node {
+    border: 2px solid currentColor;
+  }
+
+  .react-flow__edge {
+    stroke-width: 3 !important;
+  }
+}
+
+/* ==================== 打印优化 ==================== */
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* 确保背景色打印 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 避免分页 */
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+}

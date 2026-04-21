@@ -1,19 +1,38 @@
 import { useEffect } from 'react'
-import { useAppDispatch } from '@/store/hooks'
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import {
   togglePanel,
   toggleToolbar,
-  toggleShortcutPanel
+  toggleShortcutPanel,
+  selectSelectedNodes,
+  selectSelectedEdges,
 } from '@/store/slices/uiSlice'
+import { deleteNodeAsync, deleteEdgeAsync } from '@/store/slices/canvasSlice'
 import { AchievementStorage } from '@/components/canvas/AchievementSystem'
+import { toast } from 'sonner'
 
-export function useShortcuts() {
+interface UseShortcutsOptions {
+  undo?: () => boolean
+  redo?: () => boolean
+  canUndo?: boolean
+  canRedo?: boolean
+}
+
+export function useShortcuts(options?: UseShortcutsOptions) {
   const dispatch = useAppDispatch()
+  const selectedNodes = useAppSelector(selectSelectedNodes)
+  const selectedEdges = useAppSelector(selectSelectedEdges)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey
+
+      // 检查是否在输入框中
+      const target = e.target as HTMLElement
+      const isInput = target.tagName === 'INPUT' ||
+                      target.tagName === 'TEXTAREA' ||
+                      target.contentEditable === 'true'
 
       // Ctrl/Cmd + S: 保存
       if (cmdOrCtrl && e.key === 's') {
@@ -26,32 +45,70 @@ export function useShortcuts() {
       // Ctrl/Cmd + Z: 撤销
       if (cmdOrCtrl && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
-        // TODO: 触发撤销
-        AchievementStorage.recordShortcutUsage('undo')
-        console.log('撤销')
+        if (options?.undo && options?.canUndo) {
+          const success = options.undo()
+          if (success) {
+            toast.success('已撤销')
+            AchievementStorage.recordShortcutUsage('undo')
+          }
+        } else {
+          AchievementStorage.recordShortcutUsage('undo')
+          console.log('撤销')
+        }
       }
 
       // Ctrl/Cmd + Shift + Z: 重做
       if (cmdOrCtrl && e.key === 'z' && e.shiftKey) {
         e.preventDefault()
-        // TODO: 触发重做
-        AchievementStorage.recordShortcutUsage('redo')
-        console.log('重做')
+        if (options?.redo && options?.canRedo) {
+          const success = options.redo()
+          if (success) {
+            toast.success('已重做')
+            AchievementStorage.recordShortcutUsage('redo')
+          }
+        } else {
+          AchievementStorage.recordShortcutUsage('redo')
+          console.log('重做')
+        }
       }
 
       // Ctrl/Cmd + Y: 重做
       if (cmdOrCtrl && e.key === 'y') {
         e.preventDefault()
-        // TODO: 触发重做
-        AchievementStorage.recordShortcutUsage('redo')
-        console.log('重做')
+        if (options?.redo && options?.canRedo) {
+          const success = options.redo()
+          if (success) {
+            toast.success('已重做')
+            AchievementStorage.recordShortcutUsage('redo')
+          }
+        } else {
+          AchievementStorage.recordShortcutUsage('redo')
+          console.log('重做')
+        }
       }
 
-      // Delete: 删除选中
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        // TODO: 删除选中的节点或连线
-        AchievementStorage.recordShortcutUsage('delete')
-        console.log('删除')
+      // Delete: 删除选中（仅在非输入框中）
+      if (!isInput && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault()
+
+        // 删除选中的节点和连线
+        const deletedCount = selectedNodes.length + selectedEdges.length
+
+        if (deletedCount > 0) {
+          // 删除节点
+          selectedNodes.forEach((nodeId: string) => {
+            dispatch(deleteNodeAsync(nodeId))
+          })
+
+          // 删除连线
+          selectedEdges.forEach((edgeId: string) => {
+            dispatch(deleteEdgeAsync(edgeId))
+          })
+
+          // 显示提示
+          toast.success(`已删除 ${deletedCount} 个项目`)
+          AchievementStorage.recordShortcutUsage('delete')
+        }
       }
 
       // Ctrl/Cmd + D: 复制
@@ -117,5 +174,5 @@ export function useShortcuts() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [dispatch])
+  }, [dispatch, selectedNodes, selectedEdges, options])
 }

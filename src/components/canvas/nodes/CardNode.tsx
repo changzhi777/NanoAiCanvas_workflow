@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from 'react'
+import { memo, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Handle, Position, NodeProps, useReactFlow } from 'reactflow'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -71,6 +71,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
   const [statusChanged, setStatusChanged] = useState(false)
   const [hoverZone, setHoverZone] = useState<string | null>(null)
   const nodeRef = useRef<HTMLDivElement>(null)
+  const animationTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // 设置节点显示比例为50%
   useEffect(() => {
@@ -78,6 +79,13 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
       nodeRef.current.style.transform = 'scale(0.5)'
     }
   }, [isDragging])
+
+  // 清理动画定时器
+  useEffect(() => {
+    return () => {
+      animationTimersRef.current.forEach(timer => clearTimeout(timer))
+    }
+  }, [])
 
   // 检测状态变化
   useEffect(() => {
@@ -91,47 +99,32 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         nodeRef.current.style.transition = 'transform 0.15s ease-in'
 
         // 阶段2：弹性放大
-        setTimeout(() => {
+        const timer1 = setTimeout(() => {
           if (nodeRef.current) {
             nodeRef.current.style.transform = 'scale(1.05)'
             nodeRef.current.style.transition = 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
           }
         }, 150)
+        animationTimersRef.current.push(timer1)
 
         // 阶段3：恢复正常
-        setTimeout(() => {
+        const timer2 = setTimeout(() => {
           if (nodeRef.current) {
             nodeRef.current.style.transform = 'scale(1)'
             nodeRef.current.style.transition = 'transform 0.15s ease-out'
           }
         }, 350)
+        animationTimersRef.current.push(timer2)
       }
 
       setPrevStatus(data.status)
-      setTimeout(() => setStatusChanged(false), 600)
+      const timer3 = setTimeout(() => setStatusChanged(false), 600)
+      animationTimersRef.current.push(timer3)
     }
   }, [data.status, prevStatus])
 
-  // 智能手势反馈：检测鼠标悬停区域
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const rect = nodeRef.current?.getBoundingClientRect()
-    if (!rect) return
-
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const threshold = 30 // 边缘阈值
-
-    // 检测悬停区域
-    const zone = detectHoverZone(x, y, rect.width, rect.height, threshold)
-    setHoverZone(zone)
-  }
-
-  const handleMouseLeave = () => {
-    setHoverZone(null)
-  }
-
-  // 检测悬停区域的辅助函数
-  const detectHoverZone = (
+  // 检测悬停区域的辅助函数 - 使用useCallback优化
+  const detectHoverZone = useCallback((
     x: number,
     y: number,
     width: number,
@@ -155,10 +148,28 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
       return 'left'
     }
     return null
-  }
+  }, [])
 
-  // 计算动态阴影
-  const getShadowStyle = (): string => {
+  // 智能手势反馈：检测鼠标悬停区域 - 使用useCallback优化
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    const rect = nodeRef.current?.getBoundingClientRect()
+    if (!rect) return
+
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const threshold = 30 // 边缘阈值
+
+    // 检测悬停区域
+    const zone = detectHoverZone(x, y, rect.width, rect.height, threshold)
+    setHoverZone(zone)
+  }, [detectHoverZone])
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverZone(null)
+  }, [])
+
+  // 计算动态阴影 - 使用useMemo优化
+  const shadowStyle = useMemo((): string => {
     if (isDragging) {
       return `
         0 20px 40px -10px rgba(0, 0, 0, 0.5),
@@ -179,21 +190,23 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
       0 4px 12px -2px rgba(0, 0, 0, 0.3),
       inset 0 1px 0 rgba(255, 255, 255, 0.1)
     `
-  }
+  }, [isDragging, selected])
 
-  // 获取优先级颜色
-  const getPriorityColor = (priority: string): string => {
-    const colors = {
+  // 获取优先级颜色 - 使用useMemo优化
+  const priorityColor = useMemo((): string => {
+    if (!data.priority) return 'hsl(45 80% 50%)'
+
+    const colors: Record<string, string> = {
       low: 'hsl(0 0% 60%)',
       medium: 'hsl(45 80% 50%)',
       high: 'hsl(25 80% 50%)',
       critical: 'hsl(0 75% 55%)',
     }
-    return colors[priority as keyof typeof colors] || colors.medium
-  }
+    return colors[data.priority] || colors.medium
+  }, [data.priority])
 
-  // 生成辅助功能标签
-  const getAriaLabel = (): string => {
+  // 生成辅助功能标签 - 使用useMemo优化
+  const ariaLabel = useMemo((): string => {
     const typeLabel = {
       task: '任务',
       event: '事件',
@@ -205,6 +218,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
       custom: '自定义',
     }[data.type] || '节点'
 
+    const statusInfo = statusConfig[data.status]
     const statusLabel = statusInfo?.label || ''
 
     let label = `${typeLabel}: ${data.label}`
@@ -238,10 +252,15 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
     }
 
     return label
-  }
+  }, [data.type, data.label, data.description, data.priority, data.stats?.progress, selected, data.status])
 
-  // 键盘事件处理
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // 提前计算图标和状态信息，避免依赖顺序问题
+  const statusInfo = useMemo(() => statusConfig[data.status], [data.status])
+  const NodeIcon = useMemo(() => nodeIconMap[data.type] || Sparkles, [data.type])
+  const StatusIcon = useMemo(() => statusConfig[data.status]?.icon || Circle, [data.status])
+
+  // 键盘事件处理 - 使用useCallback优化
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     switch (e.key) {
       case 'Enter':
         e.preventDefault()
@@ -300,20 +319,16 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         }
         break
     }
-  }
+  }, [data.id, selected])
 
-  // 拖拽事件处理
-  const handleDragStart = () => {
+  // 拖拽事件处理 - 使用useCallback优化
+  const handleDragStart = useCallback(() => {
     setIsDragging(true)
-  }
+  }, [])
 
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setIsDragging(false)
-  }
-
-  const NodeIcon = nodeIconMap[data.type] || Sparkles
-  const StatusIcon = statusConfig[data.status]?.icon || Circle
-  const statusInfo = statusConfig[data.status]
+  }, [])
 
   return (
     <div
@@ -330,11 +345,11 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
           : 'hsl(var(--card) / 0.8)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        boxShadow: getShadowStyle(),
+        boxShadow: shadowStyle,
       }}
       tabIndex={0}
       role="article"
-      aria-label={getAriaLabel()}
+      aria-label={ariaLabel}
       aria-describedby={data.description ? `desc-${data.id}` : undefined}
       aria-selected={selected}
       onKeyDown={handleKeyDown}
@@ -348,7 +363,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         <div
           className="absolute left-0 top-0 bottom-0 w-1 z-10"
           style={{
-            background: getPriorityColor(data.priority),
+            background: priorityColor,
             boxShadow: data.priority === 'critical'
               ? '0 0 10px currentColor'
               : undefined,

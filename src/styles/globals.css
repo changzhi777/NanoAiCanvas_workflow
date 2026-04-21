@@ -2,76 +2,87 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './performance.css';
+
 @layer base {
   :root {
-    /* Base Nova - Neutral 暗色主题 (OKLCH) */
-    --background: 0 0% 7%; /* oklch(0.07 0.015 180) */
-    --foreground: 0 0% 100%; /* 提升到纯白以确保 7:1 对比度 */
+    /* ==================== Base Nova 暗色主题配色 ==================== */
+    /* 基于 OKLCH 颜色空间，提供更好的色彩一致性 */
 
-    --card: 0 0% 12%; /* oklch(0.12 0.02 160) */
-    --card-foreground: 0 0% 100%; /* 提升到纯白 */
+    /* === 主色调 === */
+    --primary: 168 70% 45%;        /* oklch(0.68 0.15 145) - 青绿色 */
+    --primary-foreground: 0 0% 7%; /* 深色背景上的文字 */
+    --accent: 168 80% 55%;         /* oklch(0.78 0.12 150) - 亮青绿 */
+    --accent-foreground: 0 0% 7%;
+    --accent-hover: 168 85% 60%;   /* hover 时的亮青绿 */
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 100%;
+    /* === 背景色层次 === */
+    --background: 0 0% 7%;         /* #111827 - 主背景 */
+    --nav-background: 0 0% 12%;    /* #1F2937 - 导航条 */
+    --card: 0 0% 12%;              /* #1F2937 - 卡片背景 */
+    --card-hover: 0 0% 16%;        /* 卡片悬停 */
+    --popover: 0 0% 16%;           /* 弹出层背景 */
 
-    /* 主色调（青绿色） */
-    --primary: 168 70% 45%; /* oklch(0.68 0.15 145) */
-    --primary-foreground: 0 0% 100%; /* 从 7% 提升到纯白以提高对比度 */
+    /* === 前景色 === */
+    --foreground: 0 0% 100%;       /* 纯白文字 */
+    --card-foreground: 0 0% 98%;   /* 卡片上的文字 */
+    --popover-foreground: 0 0% 98%; /* 弹出层上的文字 */
 
-    --secondary: 168 15% 15%;
-    --secondary-foreground: 0 0% 100%;
+    /* === 次要色 === */
+    --secondary: 0 0% 20%;         /* 次要背景 */
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 168 15% 15%;
-    --muted-foreground: 0 0% 75%; /* 从 65% 提升到 75% 以确保 7:1 对比度 */
+    /* === 弱化色 === */
+    --muted: 0 0% 20%;             /* 弱化背景 */
+    --muted-foreground: 0 0% 60%;  /* 弱化文字 */
 
-    /* 强调色（亮青绿） */
-    --accent: 168 80% 55%; /* oklch(0.78 0.12 150) */
-    --accent-foreground: 0 0% 100%; /* 从 7% 提升到纯白 */
+    /* === 强调色 === */
+    --destructive: 0 72% 51%;      /* 红色 */
+    --destructive-foreground: 0 0% 98%;
 
-    /* 危险色（红色） */
-    --destructive: 25 80% 50%; /* oklch(0.55 0.2 25) */
-    --destructive-foreground: 0 0% 100%;
+    /* === 边框 === */
+    --border: 0 0% 20%;            /* 标准边框 */
+    --input: 0 0% 20%;             /* 输入框边框 */
+    --ring: 168 70% 45%;           /* Focus ring */
 
-    --border: 168 15% 25%; /* 从 20% 提升到 25% 以增强可见性 */
-    --input: 168 15% 25%; /* 从 20% 提升到 25% */
-    --ring: 168 70% 45%;
+    /* === 圆角 === */
+    --radius: 0.5rem;              /* 8px */
+    --radius-pill: 9999px;         /* 胶囊圆角 */
 
-    /* 圆角 */
-    --radius: 0.75rem;
-
-    /* 图表颜色 */
+    /* === 图表颜色 === */
     --chart-1: 168 70% 45%;
-    --chart-2: 180 70% 50%;
-    --chart-3: 250 70% 45%;
-    --chart-4: 310 75% 55%;
-    --chart-5: 30 75% 50%;
+    --chart-2: 220 70% 50%;
+    --chart-3: 280 70% 50%;
+    --chart-4: 340 70% 50%;
+    --chart-5: 40 70% 50%;
   }
 
   .light {
+    /* 亮色主题 - Base Nova 风格 */
     --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%; /* 保持深色以确保对比度 */
+    --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 168 70% 42%;
-    --primary-foreground: 0 0% 100%; /* 从 98% 提升到纯白 */
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 35%; /* 从 45.1% 降低到 35% 以增强对比度 */
-    --accent: 168 80% 50%;
-    --accent-foreground: 0 0% 9%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 168 70% 45%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 168 80% 55%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 168 70% 42%;
-    --chart-1: 168 70% 42%;
-    --chart-2: 180 70% 47%;
-    --chart-3: 250 70% 42%;
-    --chart-4: 310 72% 52%;
-    --chart-5: 30 75% 47%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 168 70% 45%;
+    --chart-1: 168 70% 45%;
+    --chart-2: 220 70% 50%;
+    --chart-3: 280 70% 50%;
+    --chart-4: 340 70% 50%;
+    --chart-5: 40 70% 50%;
   }
 }
 
@@ -806,5 +817,25 @@
 
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
+  }
+
+  /* ==================== 连线交互样式 ==================== */
+
+  /* 确保连线可交互 */
+  .react-flow__edge path {
+    cursor: pointer;
+  }
+
+  /* 悬停时高亮相关连线的源节点和目标节点 */
+  .react-flow__edge.selected + .react-flow__node,
+  .react-flow__node:has(~ .react-flow__edge.selected) {
+    filter: brightness(1.2);
+  }
+
+  /* 粒子动画支持 - CSS Motion Path */
+  @supports (offset-path: path('')) {
+    .edge-particle {
+      offset-rotate: 0deg;
+    }
   }
 }

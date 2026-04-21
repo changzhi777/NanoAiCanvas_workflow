@@ -75,7 +75,7 @@ const NodeTimeline = memo(({ nodeId: _nodeId, events, maxEvents = 10 }: NodeTime
       case 'updated':
         return 'bg-blue-500'
       case 'status_changed':
-        return 'bg-purple-500'
+        return 'bg-blue-500'
       case 'connected':
         return 'bg-cyan-500'
       case 'disconnected':
