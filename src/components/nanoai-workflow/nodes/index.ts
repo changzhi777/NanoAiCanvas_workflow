@@ -13,6 +13,12 @@ export { default as TextInputNode } from './TextInputNode';
 export { default as DirectorAgentNode } from './DirectorAgentNode';
 export { default as ScreenwriterAgentNode } from './ScreenwriterAgentNode';
 export { default as MilestoneNode } from './MilestoneNode';
+export { default as MiniMaxTextNode } from './MiniMaxTextNode';
+export { default as MiniMaxSpeechNode } from './MiniMaxSpeechNode';
+export { default as MiniMaxVideoNode } from './MiniMaxVideoNode';
+export { default as MiniMaxMusicNode } from './MiniMaxMusicNode';
+export { default as MiniMaxImageNode } from './MiniMaxImageNode';
+export { default as MiniMaxCodingNode } from './MiniMaxCodingNode';
 
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
@@ -39,4 +45,11 @@ export const nodeTypes = {
   data_transformer: lazy(() => import('./ConnectorNode').then(m => ({ default: m.ConnectorNode }))),
   output_preview: lazy(() => import('./PreviewNode').then(m => ({ default: m.PreviewNode }))),
   connector: lazy(() => import('./ConnectorNode').then(m => ({ default: m.ConnectorNode }))),
+  // MiniMax 节点
+  minimax_text: lazy(() => import('./MiniMaxTextNode').then(m => ({ default: m.MiniMaxTextNode }))),
+  minimax_speech: lazy(() => import('./MiniMaxSpeechNode').then(m => ({ default: m.MiniMaxSpeechNode }))),
+  minimax_video: lazy(() => import('./MiniMaxVideoNode').then(m => ({ default: m.MiniMaxVideoNode }))),
+  minimax_music: lazy(() => import('./MiniMaxMusicNode').then(m => ({ default: m.MiniMaxMusicNode }))),
+  minimax_image: lazy(() => import('./MiniMaxImageNode').then(m => ({ default: m.MiniMaxImageNode }))),
+  minimax_coding: lazy(() => import('./MiniMaxCodingNode').then(m => ({ default: m.MiniMaxCodingNode }))),
 };

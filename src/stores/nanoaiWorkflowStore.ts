@@ -37,6 +37,14 @@ export enum WorkflowNodeType {
   OUTPUT_PREVIEW = 'output_preview',
   OUTPUT_EXPORT = 'output_export',
   OUTPUT_SAVE = 'output_save',
+
+  // MiniMax 节点
+  MINIMAX_TEXT = 'minimax_text',
+  MINIMAX_SPEECH = 'minimax_speech',
+  MINIMAX_VIDEO = 'minimax_video',
+  MINIMAX_MUSIC = 'minimax_music',
+  MINIMAX_IMAGE = 'minimax_image',
+  MINIMAX_CODING = 'minimax_coding',
 }
 
 export enum NodeStatus {

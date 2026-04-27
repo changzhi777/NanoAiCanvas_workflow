@@ -1,8 +1,8 @@
+@import './performance.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import './performance.css';
 
 @layer base {
   :root {
