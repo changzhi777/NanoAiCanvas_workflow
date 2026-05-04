@@ -113,14 +113,15 @@ export async function generateGPTImage2(
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
         'Authorization': API_KEY,
       },
-      body: JSON.stringify({
+      body: new URLSearchParams({
         prompt: params.prompt,
-        size: params.aspectRatio || params.size || 'auto',
-        urls: params.urls || [],
-      }),
+        size: params.size || '1K',
+        ...(params.aspectRatio && params.aspectRatio !== 'auto' ? { aspectRatio: params.aspectRatio } : {}),
+        ...(params.urls && params.urls.length > 0 ? { urls: JSON.stringify(params.urls) } : {}),
+      }).toString(),
     });
 
     if (!response.ok) {
@@ -173,6 +174,38 @@ export async function getGPTImage2Result(
 }
 
 /**
+ * 查询nanoBanana2生成结果
+ * @param requestId 请求ID
+ * @returns 生成结果
+ */
+export async function getNanoaiResult(
+  requestId: string
+): Promise<SuchuangResultResponse['data']> {
+  const url = `${API_BASE_URL}/async/detail?key=${API_KEY}&id=${requestId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result: SuchuangResultResponse = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(`API返回错误: ${result.msg}`);
+    }
+
+    return result.data;
+  } catch (error) {
+    console.error('查询生成结果失败:', error);
+    throw error;
+  }
+}
+
+/**
  * 轮询获取生成结果（等待生成完成）
  * @param requestId 请求ID
  * @param maxAttempts 最大尝试次数（默认30次）
@@ -190,8 +223,13 @@ export async function pollNanoaiResult(
     try {
       const result = await getNanoaiResult(requestId);
 
-      // status: 0=处理中, 1=成功, 2=失败
+      // status: 0=处理中, 1=成功, 2=失败(但可能有结果)
       if (result.status === 1 && result.result) {
+        return result.result;
+      }
+
+      // status=2 也可能包含结果（如之前观察到的）
+      if (result.status === 2 && result.result && result.result.length > 0) {
         return result.result;
       }
 
@@ -232,13 +270,18 @@ export async function pollGPTImage2Result(
     try {
       const result = await getGPTImage2Result(requestId);
 
-      // status: 0=处理中, 1=成功, 2=失败
+      // status: 0=处理中, 1=成功, 2=失败(但可能有结果)
       if (result.status === 1 && result.result) {
         return result.result;
       }
 
+      // status=2 也可能包含结果（如之前观察到的）
+      if (result.status === 2 && result.result && result.result.length > 0) {
+        return result.result;
+      }
+
       if (result.status === 2) {
-        throw new Error(result.message || 'GPT-Image-2 图片生成失败');
+        throw new Error(result.message || '图片生成失败');
       }
 
       // 还在处理中，继续轮询
@@ -271,11 +314,11 @@ export async function generateGPTImage2WithPolling(
     onProgress?.('提交GPT-Image-2生成请求...', 10);
     const requestId = await generateGPTImage2(params);
 
-    // 步骤2：轮询获取结果
+    // 步骤2：轮询获取结果（增加超时时间到300秒，处理慢速任务）
     onProgress?.('正在生成图片...', 30);
     const images = await pollGPTImage2Result(
       requestId,
-      30,  // 最多30次尝试
+      150,  // 最多150次尝试 = 300秒（5分钟），处理慢速任务
       2000 // 每2秒轮询一次
     );
 
@@ -302,11 +345,11 @@ export async function generateNanoaiImageWithPolling(
     onProgress?.('提交生成请求...', 10);
     const requestId = await generateNanoaiImage(params);
 
-    // 步骤2：轮询获取结果
+    // 步骤2：轮询获取结果（增加超时时间到300秒，处理慢速任务）
     onProgress?.('正在生成图片...', 30);
     const images = await pollNanoaiResult(
       requestId,
-      30,  // 最多30次尝试
+      150,  // 最多150次尝试 = 300秒（5分钟），处理慢速任务
       2000 // 每2秒轮询一次
     );
 

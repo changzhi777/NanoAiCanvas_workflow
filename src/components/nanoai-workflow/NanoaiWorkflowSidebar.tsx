@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNanoaiWorkflowStore, WorkflowNodeType } from '@/stores/nanoaiWorkflowStore';
+import { useNanoaiWorkflowStore, WorkflowNodeType, NodePort } from '@/stores/nanoaiWorkflowStore';
 import {
   FileText,
   Film,
@@ -15,6 +15,12 @@ import {
   Brain,
   PenTool,
   Flag,
+  Image,
+  Video,
+  Layers,
+  Code,
+  MessageSquare,
+  Music,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -32,7 +38,10 @@ interface NodeTypeConfig {
   popular?: boolean;
 }
 
-const NODE_TYPES: NodeTypeConfig[] = [
+// ==================== 节点类型配置 ====================
+
+// 基础节点
+const BASE_AI_NODES: NodeTypeConfig[] = [
   {
     type: WorkflowNodeType.SCRIPT_GENERATOR,
     label: '脚本生成',
@@ -102,6 +111,241 @@ const NODE_TYPES: NodeTypeConfig[] = [
     description: '预览成果展示',
     category: 'output',
     tags: ['预览', '展示'],
+    isNew: true,
+  },
+];
+
+// 即梦（字节AI）节点
+const JIMENG_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.JIMENG_IMAGE,
+    label: '即梦图片生成',
+    icon: <Image className="w-5 h-5" />,
+    description: '即梦AI图片生成',
+    category: 'ai',
+    tags: ['图片', '即梦'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.JIMENG_VIDEO,
+    label: '即梦视频生成',
+    icon: <Video className="w-5 h-5" />,
+    description: '即梦AI视频生成',
+    category: 'ai',
+    tags: ['视频', '即梦'],
+    isNew: true,
+  },
+];
+
+// 智谱 GLM 节点
+const GLM_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.GLM_TEXT,
+    label: '智谱文本生成',
+    icon: <FileText className="w-5 h-5" />,
+    description: '智谱GLM文本生成',
+    category: 'ai',
+    tags: ['文本', '智谱'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.GLM_VIDEO,
+    label: '智谱视频生成',
+    icon: <Video className="w-5 h-5" />,
+    description: '智谱GLM视频生成',
+    category: 'ai',
+    tags: ['视频', '智谱'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.GLM_TTS,
+    label: '智谱TTS',
+    icon: <Mic className="w-5 h-5" />,
+    description: '智谱GLM语音合成',
+    category: 'ai',
+    tags: ['音频', 'TTS', '智谱'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.GLM_MULTIMODAL,
+    label: '智谱多模态',
+    icon: <Layers className="w-5 h-5" />,
+    description: '智谱GLM多模态理解',
+    category: 'ai',
+    tags: ['多模态', '智谱'],
+    isNew: true,
+  },
+];
+
+// 通义千问（阿里）节点
+const QWEN_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.QWEN_TEXT,
+    label: '通义文本生成',
+    icon: <FileText className="w-5 h-5" />,
+    description: '通义千问文本生成',
+    category: 'ai',
+    tags: ['文本', '通义'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.QWEN_CODING,
+    label: '通义代码生成',
+    icon: <Code className="w-5 h-5" />,
+    description: '通义千问代码生成',
+    category: 'ai',
+    tags: ['代码', '通义'],
+    isNew: true,
+  },
+];
+
+// Kimi（Moonshot）节点
+const KIMI_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.KIMI_TEXT,
+    label: 'Kimi文本生成',
+    icon: <MessageSquare className="w-5 h-5" />,
+    description: 'Kimi文本生成',
+    category: 'ai',
+    tags: ['文本', 'Kimi'],
+    isNew: true,
+  },
+];
+
+// MiniMax 节点
+const MINIMAX_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.MINIMAX_TEXT,
+    label: 'MiniMax文本',
+    icon: <FileText className="w-5 h-5" />,
+    description: 'MiniMax文本生成',
+    category: 'ai',
+    tags: ['文本', 'MiniMax'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.MINIMAX_SPEECH,
+    label: 'MiniMax语音',
+    icon: <Mic className="w-5 h-5" />,
+    description: 'MiniMax语音合成',
+    category: 'ai',
+    tags: ['音频', 'MiniMax'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.MINIMAX_VIDEO,
+    label: 'MiniMax视频',
+    icon: <Video className="w-5 h-5" />,
+    description: 'MiniMax视频生成',
+    category: 'ai',
+    tags: ['视频', 'MiniMax'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.MINIMAX_MUSIC,
+    label: 'MiniMax音乐',
+    icon: <Music className="w-5 h-5" />,
+    description: 'MiniMax音乐生成',
+    category: 'ai',
+    tags: ['音频', '音乐', 'MiniMax'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.MINIMAX_IMAGE,
+    label: 'MiniMax图片',
+    icon: <Image className="w-5 h-5" />,
+    description: 'MiniMax图片生成',
+    category: 'ai',
+    tags: ['图片', 'MiniMax'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.MINIMAX_CODING,
+    label: 'MiniMax编程',
+    icon: <Code className="w-5 h-5" />,
+    description: 'MiniMax编程搜索',
+    category: 'ai',
+    tags: ['代码', 'MiniMax'],
+    isNew: true,
+  },
+];
+
+// 其他图片生成节点
+const IMAGE_GEN_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.NANO_BANANA_2,
+    label: 'NanoBanana2',
+    icon: <Image className="w-5 h-5" />,
+    description: 'NanoBanana2图片生成',
+    category: 'ai',
+    tags: ['图片', '速创'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.NANO_BANANA_PRO,
+    label: 'NanoBananaPro',
+    icon: <Image className="w-5 h-5" />,
+    description: 'NanoBananaPro图片生成',
+    category: 'ai',
+    tags: ['图片', '速创'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.GPT_IMAGE_2,
+    label: 'GPT-Image-2',
+    icon: <Image className="w-5 h-5" />,
+    description: 'GPT-Image-2图片生成',
+    category: 'ai',
+    tags: ['图片', 'GPT'],
+    isNew: true,
+  },
+];
+
+// 输出/预览节点
+const OUTPUT_NODES: NodeTypeConfig[] = [
+  {
+    type: WorkflowNodeType.IMAGE_PREVIEW,
+    label: '图片预览',
+    icon: <Image className="w-5 h-5" />,
+    description: '展示图片生成结果（画廊+灯箱）',
+    category: 'output',
+    tags: ['预览', '图片', '输出'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.VIDEO_PREVIEW,
+    label: '视频预览',
+    icon: <Video className="w-5 h-5" />,
+    description: '展示视频生成结果（播放器）',
+    category: 'output',
+    tags: ['预览', '视频', '输出'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.AUDIO_PREVIEW,
+    label: '音频预览',
+    icon: <Music className="w-5 h-5" />,
+    description: '展示音频/TTS结果（播放器）',
+    category: 'output',
+    tags: ['预览', '音频', '输出'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.TEXT_PREVIEW,
+    label: '文本预览',
+    icon: <FileText className="w-5 h-5" />,
+    description: '展示文本生成结果（阅读+复制）',
+    category: 'output',
+    tags: ['预览', '文本', '输出'],
+    isNew: true,
+  },
+  {
+    type: WorkflowNodeType.OUTPUT_PREVIEW,
+    label: '结果预览',
+    icon: <Flag className="w-5 h-5" />,
+    description: '通用结果预览（支持图片/视频/音频/文本）',
+    category: 'output',
+    tags: ['预览', '混合', '输出'],
     isNew: true,
   },
 ];
@@ -314,34 +558,91 @@ export function NanoaiWorkflowSidebar({
   }, [isCollapsed]);
 
   const handleAddNode = (nodeType: WorkflowNodeType) => {
+    // 查找节点配置的通用函数
+    const findNodeConfig = (type: WorkflowNodeType) => {
+      const allNodes = [...BASE_AI_NODES, ...JIMENG_NODES, ...GLM_NODES, ...QWEN_NODES, ...KIMI_NODES, ...MINIMAX_NODES, ...IMAGE_GEN_NODES, ...OUTPUT_NODES];
+      return allNodes.find(n => n.type === type);
+    };
+
+    // 预览节点的输入端口定义
+    const getPreviewNodeInputs = (type: WorkflowNodeType): NodePort[] => {
+      switch (type) {
+        case WorkflowNodeType.IMAGE_PREVIEW:
+          return [{ id: 'image-in', name: '图片输入', type: 'image', required: false }];
+        case WorkflowNodeType.VIDEO_PREVIEW:
+          return [{ id: 'video-in', name: '视频输入', type: 'json', required: false }];
+        case WorkflowNodeType.AUDIO_PREVIEW:
+          return [{ id: 'audio-in', name: '音频输入', type: 'audio', required: false }];
+        case WorkflowNodeType.TEXT_PREVIEW:
+          return [{ id: 'text-in', name: '文本输入', type: 'text', required: false }];
+        case WorkflowNodeType.OUTPUT_PREVIEW:
+          return [
+            { id: 'image-in', name: '图片输入', type: 'image', required: false },
+            { id: 'video-in', name: '视频输入', type: 'json', required: false },
+            { id: 'audio-in', name: '音频输入', type: 'audio', required: false },
+            { id: 'text-in', name: '文本输入', type: 'text', required: false },
+          ];
+        default:
+          return [];
+      }
+    };
+
+    // 生成节点的输出端口定义
+    const getGenerationNodeOutputs = (type: WorkflowNodeType): NodePort[] => {
+      // 图片生成节点输出图片
+      if ([WorkflowNodeType.JIMENG_IMAGE, WorkflowNodeType.NANO_BANANA_2, WorkflowNodeType.NANO_BANANA_PRO, WorkflowNodeType.GPT_IMAGE_2, WorkflowNodeType.MINIMAX_IMAGE, WorkflowNodeType.CHARACTER_DESIGNER, WorkflowNodeType.SCENE_DESIGNER, WorkflowNodeType.STORYBOARD_GENERATOR].includes(type)) {
+        return [{ id: 'image-out', name: '图片输出', type: 'image', required: false }];
+      }
+      // 视频生成节点输出视频
+      if ([WorkflowNodeType.JIMENG_VIDEO, WorkflowNodeType.GLM_VIDEO, WorkflowNodeType.MINIMAX_VIDEO].includes(type)) {
+        return [{ id: 'video-out', name: '视频输出', type: 'json', required: false }];
+      }
+      // 音频/TTS节点输出音频
+      if ([WorkflowNodeType.DIALOGUE_GENERATOR, WorkflowNodeType.GLM_TTS, WorkflowNodeType.MINIMAX_SPEECH, WorkflowNodeType.MINIMAX_MUSIC].includes(type)) {
+        return [{ id: 'audio-out', name: '音频输出', type: 'audio', required: false }];
+      }
+      // 文本生成节点输出文本
+      if ([WorkflowNodeType.SCRIPT_GENERATOR, WorkflowNodeType.DIRECTOR_AGENT, WorkflowNodeType.SCREENWRITER_AGENT, WorkflowNodeType.GLM_TEXT, WorkflowNodeType.QWEN_TEXT, WorkflowNodeType.KIMI_TEXT, WorkflowNodeType.MINIMAX_TEXT, WorkflowNodeType.QWEN_CODING, WorkflowNodeType.MINIMAX_CODING].includes(type)) {
+        return [{ id: 'text-out', name: '文本输出', type: 'text', required: false }];
+      }
+      return [];
+    };
+
     const newNode = {
       id: `node-${Date.now()}`,
       type: nodeType,
       position: { x: Math.random() * 500 + 100, y: Math.random() * 300 + 100 },
       data: {
-        label: NODE_TYPES.find(n => n.type === nodeType)?.label || nodeType,
+        label: findNodeConfig(nodeType)?.label || nodeType,
         params: {},
-        inputs: [],
-        outputs: [],
+        inputs: getPreviewNodeInputs(nodeType),
+        outputs: getGenerationNodeOutputs(nodeType),
         status: 'idle' as any,
       },
       draggable: true,
-      // 添加入场动画类名
       className: 'animate-node-enter',
     };
     addNode(newNode);
-    const nodeLabel = NODE_TYPES.find(n => n.type === nodeType)?.label || nodeType;
+    const nodeLabel = findNodeConfig(nodeType)?.label || nodeType;
     toast.success(`已添加节点：${nodeLabel}`);
   };
 
+  // 合并所有节点
+  const allNodes = [...BASE_AI_NODES, ...JIMENG_NODES, ...GLM_NODES, ...QWEN_NODES, ...KIMI_NODES];
+
   // 过滤节点
-  const filteredNodes = NODE_TYPES.filter(node =>
+  const filteredNodes = allNodes.filter(node =>
     node.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
     node.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     node.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // 按分类分组
   const aiNodes = filteredNodes.filter(n => n.category === 'ai');
+  const jimengFiltered = filteredNodes.filter(n => n.category === 'ai' && JIMENG_NODES.some(j => j.type === n.type));
+  const glmFiltered = filteredNodes.filter(n => n.category === 'ai' && GLM_NODES.some(g => g.type === n.type));
+  const qwenFiltered = filteredNodes.filter(n => n.category === 'ai' && QWEN_NODES.some(q => q.type === n.type));
+  const kimiFiltered = filteredNodes.filter(n => n.category === 'ai' && KIMI_NODES.some(k => k.type === n.type));
 
   return (
     <div className={cn(
@@ -421,6 +722,83 @@ export function NanoaiWorkflowSidebar({
             onAddNode={handleAddNode}
             defaultExpanded={true}
           />
+
+          {/* 即梦节点 */}
+          {!searchQuery && jimengFiltered.length > 0 && (
+            <CategorySection
+              title="即梦（字节AI）"
+              icon={<span className="text-2xl">🔮</span>}
+              nodes={JIMENG_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* 智谱 GLM 节点 */}
+          {!searchQuery && glmFiltered.length > 0 && (
+            <CategorySection
+              title="智谱 GLM"
+              icon={<span className="text-2xl">🧠</span>}
+              nodes={GLM_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* 通义千问节点 */}
+          {!searchQuery && qwenFiltered.length > 0 && (
+            <CategorySection
+              title="通义千问（阿里）"
+              icon={<span className="text-2xl">💬</span>}
+              nodes={QWEN_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* Kimi 节点 */}
+          {!searchQuery && kimiFiltered.length > 0 && (
+            <CategorySection
+              title="Kimi（Moonshot）"
+              icon={<span className="text-2xl">🌙</span>}
+              nodes={KIMI_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* MiniMax 节点 */}
+          {!searchQuery && (
+            <CategorySection
+              title="MiniMax"
+              icon={<span className="text-2xl">🤖</span>}
+              nodes={MINIMAX_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* 其他图片生成节点 */}
+          {!searchQuery && (
+            <CategorySection
+              title="图片生成"
+              icon={<span className="text-2xl">🖼️</span>}
+              nodes={IMAGE_GEN_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
+
+          {/* 输出/预览节点 */}
+          {!searchQuery && (
+            <CategorySection
+              title="输出与预览"
+              icon={<span className="text-2xl">📤</span>}
+              nodes={OUTPUT_NODES}
+              onAddNode={handleAddNode}
+              defaultExpanded={true}
+            />
+          )}
 
           {/* 搜索结果为空 */}
           {searchQuery && filteredNodes.length === 0 && (

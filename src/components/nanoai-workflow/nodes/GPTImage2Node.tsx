@@ -1,21 +1,20 @@
 'use client'
 
-import { useCallback } from 'react'
-import { Image, Link } from 'lucide-react'
-import { NodeProps } from 'reactflow'
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore'
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode'
+import { Image } from 'lucide-react';
+import { NodeProps } from 'reactflow';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface GPTImage2Data extends WorkflowNodeData {
+export interface GPTImage2Data extends ApiTaskNodeData {
   params: {
-    prompt: string
-    size: string
-    aspectRatio: string
-    quality: 'standard' | 'hd'
-    style: string
-    referenceUrls: string[]  // 参考图URLs，用于溶图
-    mode: 'text-to-image' | 'inpaint'  // 模式：文生图 / 溶图
-  }
+    apiType: 'gpt';
+    action: 'image';
+    prompt: string;
+    size: string;
+    aspectRatio: string;
+    quality: 'standard' | 'hd';
+    referenceUrls: string[];
+    outputType: 'image';
+  };
 }
 
 const IMAGE_SIZES = [
@@ -33,16 +32,14 @@ const IMAGE_SIZES = [
   { label: '3:1', value: '3:1' },
   { label: '2:1', value: '2:1' },
   { label: '1:2', value: '1:2' },
-]
+];
 
 const IMAGE_QUALITIES = [
   { label: '标准', value: 'standard' },
   { label: '高清', value: 'hd' },
-]
+];
 
 export const GPTImage2Node = ({ id, data }: NodeProps<GPTImage2Data>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore()
-
   const paramSchema = [
     {
       key: 'prompt',
@@ -65,67 +62,34 @@ export const GPTImage2Node = ({ id, data }: NodeProps<GPTImage2Data>) => {
       options: IMAGE_QUALITIES,
       defaultValue: 'standard',
     },
-  ]
-
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params)
-  }, [id, updateNodeParams])
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id)
-  }, [id, executeNode])
-
-  // 处理参考图URL
-  const handleReferenceUrlChange = useCallback((value: string) => {
-    const urls = value.split('\n').filter((u: string) => u.trim())
-    updateNodeParams(id, { referenceUrls: urls })
-  }, [id, updateNodeParams])
-
-  const currentUrls = data.params.referenceUrls || []
-  const hasReferenceImages = currentUrls.length > 0
+    {
+      key: 'referenceUrls',
+      label: '参考图URL（溶图）',
+      type: 'textarea' as const,
+      placeholder: '每行一个URL，用于溶图模式',
+      description: '留空为文生图，填入URL为溶图模式',
+    },
+  ];
 
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Image className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { generateGPTImageWithPolling } = await import('@/lib/api/gpt-image-api');
+        const urls = params.referenceUrls?.length ? params.referenceUrls : [];
+        return generateGPTImageWithPolling({
+          prompt: params.prompt!,
+          size: params.size || 'auto',
+          aspect_ratio: params.aspectRatio || '1:1',
+          quality: params.quality || 'standard',
+          urls,
+        });
+      }}
+    />
+  );
+};
 
-      {/* 参考图URL输入（用于溶图） */}
-      <div className="mt-3 pt-3 border-t border-white/10">
-        <div className="flex items-center gap-2 mb-2">
-          <Link className="w-3 h-3 text-muted-foreground" />
-          <label className="text-xs text-muted-foreground">
-            参考图URL（用于溶图，每行一个）
-          </label>
-          {hasReferenceImages && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">
-              溶图模式
-            </span>
-          )}
-        </div>
-        <textarea
-          value={currentUrls.join('\n')}
-          onChange={(e) => handleReferenceUrlChange(e.target.value)}
-          placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
-          className="w-full h-16 px-2 py-1.5 bg-background border border-white/10 rounded text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-        <div className="text-[10px] text-muted-foreground mt-1">
-          已有 {currentUrls.length} 张参考图
-        </div>
-      </div>
-
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label={hasReferenceImages ? '溶图生成' : '文生图'}
-      />
-    </BaseNode>
-  )
-}
-
-export default GPTImage2Node
+export default GPTImage2Node;

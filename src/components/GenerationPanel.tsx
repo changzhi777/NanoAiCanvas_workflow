@@ -232,35 +232,7 @@ export function GenerationPanel() {
       return
     }
 
-    // 2. Check prompt restrictions for GPT-Image-2
-    if (generationMode !== 'fusion' && imageModel === 'gpt-image-2') {
-      try {
-        const checkResult = await promptRestrictionsApi.checkPrompt(finalPrompt)
-        if (!checkResult.is_safe) {
-          const violationMessages = checkResult.violations
-            .map(v => v.message)
-            .join('\n')
-          toast.error(`提示词包含限制内容:\n${violationMessages}`)
-          return
-        }
-      } catch (error) {
-        console.warn('Prompt restriction check failed:', error)
-        // Continue anyway if the check fails
-      }
-    }
-
-        setIsGenerating(true)
-        setGenerationProgress(0)
-        setGenerationStatus('准备中...')
-
-        // 切换到任务队列标签
-        window.dispatchEvent(new CustomEvent('history:switchToTasks'))
-
-        const messageId = crypto.randomUUID()
-        const abortController = new AbortController()
-        registerAbortController(messageId, abortController)
-
-    // 2. Build final prompt
+    // 2. Build final prompt (must be before restriction check)
     const finalPrompt =
       generationMode === 'fusion'
         ? prompt.trim() || '融合这些图片'
@@ -279,6 +251,33 @@ export function GenerationPanel() {
             contrast,
             noise,
           })
+
+    // 3. Check prompt restrictions for GPT-Image-2
+    if (generationMode !== 'fusion' && imageModel === 'gpt-image-2') {
+      try {
+        const checkResult = await promptRestrictionsApi.checkPrompt(finalPrompt)
+        if (!checkResult.is_safe) {
+          const violationMessages = checkResult.violations
+            .map(v => v.message)
+            .join('\n')
+          toast.error(`提示词包含限制内容:\n${violationMessages}`)
+          return
+        }
+      } catch (error) {
+        console.warn('Prompt restriction check failed:', error)
+      }
+    }
+
+    setIsGenerating(true)
+    setGenerationProgress(0)
+    setGenerationStatus('准备中...')
+
+    // 切换到任务队列标签
+    window.dispatchEvent(new CustomEvent('history:switchToTasks'))
+
+    const messageId = crypto.randomUUID()
+    const abortController = new AbortController()
+    registerAbortController(messageId, abortController)
 
     // 3. Fusion image URLs
     const fusionImageUrls =
@@ -369,28 +368,35 @@ export function GenerationPanel() {
       setGenerationProgress(100)
       setGenerationStatus('完成!')
 
-      // Save each image to Redis gallery
+      // Save each image to Redis gallery (wrapped in try-catch to not break generation)
       for (const imageUrl of images) {
-        await createImageAssetApi({
-          imageUrl,
-          prompt: prompt.trim(),
-          enhancedPrompt: finalPrompt,
-          params: {
-            model: imageModel,
-            size,
-            aspectRatio,
-            style,
-            shotType: shotType !== 'none' ? shotType : undefined,
-            cameraAngle: cameraAngle !== 'none' ? cameraAngle : undefined,
-            lensType: lensType !== 'none' ? lensType : undefined,
-            focus: focus !== 'none' ? focus : undefined,
-            lighting: lighting !== 'none' ? lighting : undefined,
-            technical: technical !== 'none' ? technical : undefined,
-            cameraModel: cameraModel !== 'none' ? cameraModel : undefined,
-            atmosphere: atmosphere !== 'none' ? atmosphere : undefined,
-          },
-          referenceImages: fusionImageUrls,
-        })
+        try {
+          const result = await createImageAssetApi({
+            imageUrl,
+            prompt: prompt.trim(),
+            enhancedPrompt: finalPrompt,
+            params: {
+              model: imageModel,
+              size,
+              aspectRatio,
+              style,
+              shotType: shotType !== 'none' ? shotType : undefined,
+              cameraAngle: cameraAngle !== 'none' ? cameraAngle : undefined,
+              lensType: lensType !== 'none' ? lensType : undefined,
+              focus: focus !== 'none' ? focus : undefined,
+              lighting: lighting !== 'none' ? lighting : undefined,
+              technical: technical !== 'none' ? technical : undefined,
+              cameraModel: cameraModel !== 'none' ? cameraModel : undefined,
+              atmosphere: atmosphere !== 'none' ? atmosphere : undefined,
+            },
+            referenceImages: fusionImageUrls,
+          })
+          if (!result.success) {
+            console.warn('Failed to save to asset library:', result.error)
+          }
+        } catch (err) {
+          console.warn('Asset save error (non-blocking):', err)
+        }
       }
 
       // Auto-rename session if default title

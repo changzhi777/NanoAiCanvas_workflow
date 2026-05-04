@@ -185,28 +185,59 @@ export const assets = {
 
   batchUpdate: (ids: string[], data: { category?: string; tags?: string[] }, token: string) =>
     request<{ updated_count: number }>('/assets/batch_update', { method: 'POST', body: JSON.stringify({ ids, ...data }), token }),
+
+  export: (ids: string[], token: string) => {
+    return fetch(`${API_BASE_URL}/assets/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ids }),
+    }).then(res => {
+      if (!res.ok) throw new Error('Export failed');
+      return res.blob();
+    });
+  },
+
+  import: (file: File, token: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ success: boolean; imported: number; errors?: string[] }>('/assets/import', {
+      method: 'POST',
+      body: formData as unknown as string,
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  },
 };
 
 // Categories API (自定义分类)
 export interface Category {
   id: string;
+  user_id: string;
+  team_id?: string;
   name: string;
+  icon?: string;
+  color?: string;
   is_system: boolean;
   created_at: string;
 }
 
 export const categories = {
-  list: (token: string) =>
-    request<Category[]>('/categories', { token }),
+  list: (token: string, teamId?: string) =>
+    request<Category[]>(`/categories${teamId ? `?team_id=${teamId}` : ''}`, { token }),
 
-  create: (name: string, token: string) =>
-    request<Category>('/categories', { method: 'POST', body: JSON.stringify({ name }), token }),
+  create: (data: { name: string; icon?: string; color?: string; team_id?: string }, token: string) =>
+    request<Category>('/categories', { method: 'POST', body: JSON.stringify(data), token }),
 
-  update: (id: string, name: string, token: string) =>
-    request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ name }), token }),
+  update: (id: string, data: { name?: string; icon?: string; color?: string }, token: string) =>
+    request<Category>(`/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data), token }),
 
   delete: (id: string, token: string) =>
     request<{ message: string }>(`/categories/${id}`, { method: 'DELETE', token }),
+
+  checkName: (name: string, teamId?: string, token?: string) =>
+    request<{ exists: boolean; name: string }>(`/categories/check/${name}?${teamId ? `team_id=${teamId}` : ''}`, { token }),
 };
 
 // Tags API
@@ -241,6 +272,53 @@ export const folders = {
 
   delete: (id: string, token: string) =>
     request<{ message: string }>(`/folders/${id}`, { method: 'DELETE', token }),
+};
+
+// Teams API
+export interface Team {
+  id: string;
+  name: string;
+  owner_id: string;
+  admin_id?: string;
+  created_at: string;
+}
+
+export interface TeamMember {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: 'owner' | 'admin' | 'member';
+  can_edit: boolean;
+  joined_at: string;
+}
+
+export const teams = {
+  list: (token: string) =>
+    request<Team[]>('/teams', { token }),
+
+  create: (data: { name: string }, token: string) =>
+    request<Team>('/teams', { method: 'POST', body: JSON.stringify(data), token }),
+
+  get: (id: string, token: string) =>
+    request<Team>(`/teams/${id}`, { token }),
+
+  delete: (id: string, token: string) =>
+    request<{ message: string }>(`/teams/${id}`, { method: 'DELETE', token }),
+
+  leave: (id: string, token: string) =>
+    request<{ message: string; new_owner_id?: string; action?: string }>(`/teams/${id}/leave`, { method: 'DELETE', token }),
+
+  listMembers: (id: string, token: string) =>
+    request<TeamMember[]>(`/teams/${id}/members`, { token }),
+
+  addMember: (id: string, data: { user_id: string; role?: string; can_edit?: boolean }, token: string) =>
+    request<TeamMember>(`/teams/${id}/members`, { method: 'POST', body: JSON.stringify(data), token }),
+
+  updateMember: (teamId: string, userId: string, data: { role?: string; can_edit?: boolean }, token: string) =>
+    request<TeamMember>(`/teams/${teamId}/members/${userId}`, { method: 'PATCH', body: JSON.stringify(data), token }),
+
+  removeMember: (teamId: string, userId: string, token: string) =>
+    request<{ message: string }>(`/teams/${teamId}/members/${userId}`, { method: 'DELETE', token }),
 };
 
 // Sync API

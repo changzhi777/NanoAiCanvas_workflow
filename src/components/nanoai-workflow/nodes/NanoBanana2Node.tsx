@@ -1,14 +1,15 @@
-import { useCallback } from 'react';
 import { Image } from 'lucide-react';
 import { NodeProps } from 'reactflow';
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface NanoBanana2Data extends WorkflowNodeData {
+export interface NanoBanana2Data extends ApiTaskNodeData {
   params: {
+    apiType: 'suchuang';
+    action: 'image';
     prompt: string;
     size: '1K' | '2K' | '4K';
     aspectRatio: 'auto' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '5:4' | '4:5' | '21:9';
+    outputType: 'image';
   };
 }
 
@@ -28,8 +29,6 @@ const IMAGE_RATIOS = [
 ];
 
 export const NanoBanana2Node = ({ id, data }: NodeProps<NanoBanana2Data>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore();
-
   const paramSchema = [
     {
       key: 'prompt',
@@ -54,30 +53,21 @@ export const NanoBanana2Node = ({ id, data }: NodeProps<NanoBanana2Data>) => {
     },
   ];
 
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params);
-  }, [id, updateNodeParams]);
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id);
-  }, [id, executeNode]);
-
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Image className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label="生成图片"
-      />
-    </BaseNode>
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { generateNanoaiImageWithPolling } = await import('@/lib/api/suchuang-api');
+        return generateNanoaiImageWithPolling({
+          prompt: params.prompt || '',
+          size: (params.size || '1K') as '1K' | '2K' | '4K',
+          aspectRatio: (params.aspectRatio || '1:1') as 'auto' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '5:4' | '4:5' | '21:9',
+        });
+      }}
+    />
   );
 };
 

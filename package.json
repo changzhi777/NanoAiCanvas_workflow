@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.1.4",
+  "version": "2.1.5",
   "private": false,
   "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
@@ -88,6 +88,8 @@
     "idb": "^8.0.0",
     "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
+    "mqtt": "^5.15.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-i18next": "^14.1.2",

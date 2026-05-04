@@ -51,7 +51,31 @@ export enum WorkflowNodeType {
 
   // 图片生成节点
   NANO_BANANA_2 = 'nano_banana_2',
+  NANO_BANANA_PRO = 'nano_banana_pro',
   GPT_IMAGE_2 = 'gpt_image_2',
+
+  // 即梦（字节AI）节点
+  JIMENG_IMAGE = 'jimeng_image',
+  JIMENG_VIDEO = 'jimeng_video',
+
+  // 智谱 GLM 节点
+  GLM_TEXT = 'glm_text',
+  GLM_VIDEO = 'glm_video',
+  GLM_TTS = 'glm_tts',
+  GLM_MULTIMODAL = 'glm_multimodal',
+
+  // 通义千问（阿里）节点
+  QWEN_TEXT = 'qwen_text',
+  QWEN_CODING = 'qwen_coding',
+
+  // Kimi（Moonshot）节点
+  KIMI_TEXT = 'kimi_text',
+
+  // 预览节点
+  IMAGE_PREVIEW = 'image_preview',
+  VIDEO_PREVIEW = 'video_preview',
+  AUDIO_PREVIEW = 'audio_preview',
+  TEXT_PREVIEW = 'text_preview',
 }
 
 export enum NodeStatus {

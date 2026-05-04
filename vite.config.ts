@@ -4,6 +4,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/nanoaicanvas/',
   plugins: [
     react(),
   ],
@@ -30,6 +31,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/wuyinkeji/, '/api'),
         secure: true,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            // 禁用缓存，确保轮询获取最新状态
+            proxyRes.headers['cache-control'] = 'no-cache, no-store, must-revalidate'
+            proxyRes.headers['pragma'] = 'no-cache'
+            proxyRes.headers['expires'] = '0'
+          })
+        },
       },
       '/api/v2/admin': {
         target: 'http://64.118.135.134:8002',
@@ -40,6 +49,12 @@ export default defineConfig({
       '/api': {
         target: 'http://64.118.135.134:8002',
         changeOrigin: true,
+        secure: false,
+      },
+      '/prompt-restrictions': {
+        target: 'http://64.118.135.134:8002/api',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/prompt-restrictions/, '/prompt-restrictions'),
         secure: false,
       },
       '/auth': {

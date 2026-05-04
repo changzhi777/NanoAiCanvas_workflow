@@ -2,6 +2,8 @@ import { lazy } from 'react';
 
 // 节点导出索引
 export { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+export { TaskNodeBase } from './TaskNodeBase';
+export type { ApiTaskNodeData, ApiTaskParams } from './TaskNodeBase';
 export { default as ScriptGeneratorNode } from './ScriptGeneratorNode';
 export { default as StoryboardGeneratorNode } from './StoryboardGeneratorNode';
 export { default as DialogueGeneratorNode } from './DialogueGeneratorNode';
@@ -20,10 +22,34 @@ export { default as MiniMaxMusicNode } from './MiniMaxMusicNode';
 export { default as MiniMaxImageNode } from './MiniMaxImageNode';
 export { default as MiniMaxCodingNode } from './MiniMaxCodingNode';
 export { default as NanoBanana2Node } from './NanoBanana2Node';
+export { default as NanoBananaProNode } from './NanoBananaProNode';
 export { default as GPTImage2Node } from './GPTImage2Node';
 export { default as VideoGeneratorNode } from './VideoGeneratorNode';
 export { default as BackgroundMusicNode } from './BackgroundMusicNode';
 export { default as TransitionNode } from './TransitionNode';
+
+// 即梦（字节AI）节点
+export { default as JimengImageNode } from './JimengImageNode';
+export { default as JimengVideoNode } from './JimengVideoNode';
+
+// 智谱 GLM 节点
+export { default as GlmTextNode } from './GlmTextNode';
+export { default as GlmVideoNode } from './GlmVideoNode';
+export { default as GlmTtsNode } from './GlmTtsNode';
+export { default as GlmMultimodalNode } from './GlmMultimodalNode';
+
+// 通义千问（阿里）节点
+export { default as QwenTextNode } from './QwenTextNode';
+export { default as QwenCodingNode } from './QwenCodingNode';
+
+// Kimi（Moonshot）节点
+export { default as KimiTextNode } from './KimiTextNode';
+
+// 预览节点
+export { default as ImagePreviewNode } from './ImagePreviewNode';
+export { default as VideoPreviewNode } from './VideoPreviewNode';
+export { default as AudioPreviewNode } from './AudioPreviewNode';
+export { default as TextPreviewNode } from './TextPreviewNode';
 
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
@@ -59,9 +85,33 @@ export const nodeTypes = {
   minimax_coding: lazy(() => import('./MiniMaxCodingNode').then(m => ({ default: m.MiniMaxCodingNode }))),
   // 图片生成节点
   nano_banana_2: lazy(() => import('./NanoBanana2Node').then(m => ({ default: m.NanoBanana2Node }))),
+  nano_banana_pro: lazy(() => import('./NanoBananaProNode').then(m => ({ default: m.NanoBananaProNode }))),
   gpt_image_2: lazy(() => import('./GPTImage2Node').then(m => ({ default: m.GPTImage2Node }))),
   // 故事板扩展节点
   video_generator: lazy(() => import('./VideoGeneratorNode').then(m => ({ default: m.VideoGeneratorNode }))),
   background_music: lazy(() => import('./BackgroundMusicNode').then(m => ({ default: m.BackgroundMusicNode }))),
   transition: lazy(() => import('./TransitionNode').then(m => ({ default: m.TransitionNode }))),
+
+  // 即梦（字节AI）节点
+  jimeng_image: lazy(() => import('./JimengImageNode').then(m => ({ default: m.JimengImageNode }))),
+  jimeng_video: lazy(() => import('./JimengVideoNode').then(m => ({ default: m.JimengVideoNode }))),
+
+  // 智谱 GLM 节点
+  glm_text: lazy(() => import('./GlmTextNode').then(m => ({ default: m.GlmTextNode }))),
+  glm_video: lazy(() => import('./GlmVideoNode').then(m => ({ default: m.GlmVideoNode }))),
+  glm_tts: lazy(() => import('./GlmTtsNode').then(m => ({ default: m.GlmTtsNode }))),
+  glm_multimodal: lazy(() => import('./GlmMultimodalNode').then(m => ({ default: m.GlmMultimodalNode }))),
+
+  // 通义千问（阿里）节点
+  qwen_text: lazy(() => import('./QwenTextNode').then(m => ({ default: m.QwenTextNode }))),
+  qwen_coding: lazy(() => import('./QwenCodingNode').then(m => ({ default: m.QwenCodingNode }))),
+
+  // Kimi（Moonshot）节点
+  kimi_text: lazy(() => import('./KimiTextNode').then(m => ({ default: m.KimiTextNode }))),
+
+  // 预览节点
+  image_preview: lazy(() => import('./ImagePreviewNode').then(m => ({ default: m.ImagePreviewNode }))),
+  video_preview: lazy(() => import('./VideoPreviewNode').then(m => ({ default: m.VideoPreviewNode }))),
+  audio_preview: lazy(() => import('./AudioPreviewNode').then(m => ({ default: m.AudioPreviewNode }))),
+  text_preview: lazy(() => import('./TextPreviewNode').then(m => ({ default: m.TextPreviewNode }))),
 };

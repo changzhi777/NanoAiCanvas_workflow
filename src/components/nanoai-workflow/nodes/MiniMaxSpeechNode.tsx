@@ -1,14 +1,15 @@
-import { useCallback } from 'react';
 import { Mic } from 'lucide-react';
 import { NodeProps } from 'reactflow';
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface MiniMaxSpeechData extends WorkflowNodeData {
+export interface MiniMaxSpeechData extends ApiTaskNodeData {
   params: {
+    apiType: 'minimax';
+    action: 'speech';
     inputText: string;
-    voice: string;
+    voice: 'female_yunyang' | 'female_xiaoxi' | 'male_asen' | 'male_xiaoming';
     speed: number;
+    outputType: 'audio';
   };
 }
 
@@ -20,8 +21,6 @@ const VOICE_OPTIONS = [
 ];
 
 export const MiniMaxSpeechNode = ({ id, data }: NodeProps<MiniMaxSpeechData>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore();
-
   const paramSchema = [
     {
       key: 'inputText',
@@ -44,35 +43,24 @@ export const MiniMaxSpeechNode = ({ id, data }: NodeProps<MiniMaxSpeechData>) =>
       defaultValue: 1.0,
       min: 0.5,
       max: 2.0,
-      step: 0.1,
-      description: '0.5-2.0之间',
     },
   ];
 
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params);
-  }, [id, updateNodeParams]);
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id);
-  }, [id, executeNode]);
-
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Mic className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label="生成语音"
-      />
-    </BaseNode>
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { generateSpeech } = await import('@/lib/api/minimax-api');
+        return generateSpeech({
+          text: params.inputText!,
+          voice: params.voice || 'female_yunyang',
+          speed: params.speed ?? 1.0,
+        });
+      }}
+    />
   );
 };
 

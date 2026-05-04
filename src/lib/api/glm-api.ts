@@ -1,0 +1,228 @@
+/**
+ * 智谱 GLM API 服务
+ * 提供文本生成、视频生成、TTS语音合成、多模态能力
+ */
+
+import { GLM_CONFIG } from '@/config/glm';
+
+// ==================== 类型定义 ====================
+
+export interface GlmTextParams {
+  model?: string;
+  messages: Array<{ role: string; content: string }>;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface GlmVideoParams {
+  prompt: string;
+  model?: string;
+  duration?: number | string;
+  resolution?: '720p' | '1080p';
+}
+
+export interface GlmTtsParams {
+  text: string;
+  voice?: string;
+  speed?: number;
+  responseFormat?: 'mp3' | 'wav' | 'pcm';
+}
+
+export interface GlmMultimodalParams {
+  model?: string;
+  messages: Array<{ role: string; content: string | { type: string; image?: string; text?: string } }>;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface GlmAsyncResponse {
+  code: number;
+  msg: string;
+  data: {
+    id: string;
+    task_id?: string;
+  };
+}
+
+export interface GlmResultResponse {
+  code: number;
+  msg: string;
+  data: {
+    id: string;
+    status: 'pending' | 'processing' | 'succeeded' | 'failed';
+    video_url?: string;
+    audio_url?: string;
+    image_url?: string;
+    content?: string;
+    error?: string;
+  };
+}
+
+// ==================== 通用请求方法 ====================
+
+async function glmRequest<T>(
+  endpoint: string,
+  body: Record<string, unknown>,
+  options?: { method?: string }
+): Promise<T> {
+  const { method = 'POST' } = options || {};
+
+  const response = await fetch(`${GLM_CONFIG.API_BASE_URL}${endpoint}`, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${GLM_CONFIG.API_KEY}`,
+      'Content-Type': 'application/json;charset=utf-8',
+    },
+    body: method === 'POST' ? JSON.stringify(body) : undefined,
+  });
+
+  if (!response.ok) {
+    throw new Error(`智谱GLM API请求失败: ${response.status} ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+// ==================== 文本生成 ====================
+
+export async function generateText(
+  params: GlmTextParams
+): Promise<string> {
+  const response = await glmRequest<{
+    code: number;
+    msg: string;
+    data: { choices: Array<{ message: { content: string } }> };
+  }>('/text/chatcompletion', {
+    model: params.model || GLM_CONFIG.MODELS.TEXT,
+    messages: params.messages,
+    temperature: params.temperature ?? 0.7,
+    max_tokens: params.maxTokens ?? 1024,
+  });
+
+  if (response.code !== 0 && response.code !== 200) {
+    throw new Error(`智谱文本生成失败: ${response.msg}`);
+  }
+
+  return response.data.choices[0]?.message?.content || '';
+}
+
+// ==================== 视频生成 ====================
+
+export async function generateVideo(
+  params: GlmVideoParams
+): Promise<string> {
+  const durationNum = typeof params.duration === 'string' ? parseInt(params.duration, 10) : params.duration;
+  const response = await glmRequest<GlmAsyncResponse>('/video/generation', {
+    model: params.model || GLM_CONFIG.MODELS.VIDEO,
+    prompt: params.prompt,
+    duration: durationNum || 6,
+    resolution: params.resolution || '1080p',
+  });
+
+  if (response.code !== 0 && response.code !== 200) {
+    throw new Error(`智谱视频生成失败: ${response.msg}`);
+  }
+
+  return response.data.id || response.data.task_id || '';
+}
+
+export async function getVideoResult(
+  requestId: string
+): Promise<GlmResultResponse['data']> {
+  const response = await glmRequest<GlmResultResponse>(
+    `/video/generation_result?id=${requestId}`,
+    {},
+    { method: 'GET' }
+  );
+
+  if (response.code !== 0 && response.code !== 200) {
+    throw new Error(`查询智谱视频结果失败: ${response.msg}`);
+  }
+
+  return response.data;
+}
+
+export async function pollVideoResult(
+  requestId: string,
+  maxAttempts: number = 30,
+  interval: number = 3000
+): Promise<string> {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    const result = await getVideoResult(requestId);
+
+    if (result.status === 'succeeded' && result.video_url) {
+      return result.video_url;
+    }
+
+    if (result.status === 'failed') {
+      throw new Error(result.error || '视频生成失败');
+    }
+
+    attempts++;
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  throw new Error('视频生成超时，请稍后重试');
+}
+
+// ==================== TTS 语音合成 ====================
+
+export async function synthesizeSpeech(
+  params: GlmTtsParams
+): Promise<string> {
+  const response = await glmRequest<{
+    code: number;
+    msg: string;
+    data: { audio_url: string };
+  }>('/audio/synthesis', {
+    model: 'glm-tts',
+    text: params.text,
+    voice: params.voice || 'female_yunyang',
+    speed: params.speed || 1.0,
+    response_format: params.responseFormat || 'mp3',
+  });
+
+  if (response.code !== 0 && response.code !== 200) {
+    throw new Error(`智谱TTS合成失败: ${response.msg}`);
+  }
+
+  return response.data.audio_url;
+}
+
+// ==================== 多模态 ====================
+
+export async function generateMultimodal(
+  params: GlmMultimodalParams
+): Promise<string> {
+  const response = await glmRequest<{
+    code: number;
+    msg: string;
+    data: { choices: Array<{ message: { content: string } }> };
+  }>('/multimodal/chatcompletion', {
+    model: params.model || GLM_CONFIG.MODELS.MULTIMODAL,
+    messages: params.messages,
+    temperature: params.temperature ?? 0.7,
+    max_tokens: params.maxTokens ?? 1024,
+  });
+
+  if (response.code !== 0 && response.code !== 200) {
+    throw new Error(`智谱多模态生成失败: ${response.msg}`);
+  }
+
+  return response.data.choices[0]?.message?.content || '';
+}
+
+// ==================== 导出 ====================
+
+export const glmApi = {
+  generateText,
+  generateVideo,
+  getVideoResult,
+  pollVideoResult,
+  synthesizeSpeech,
+  generateMultimodal,
+};
+
+export default glmApi;

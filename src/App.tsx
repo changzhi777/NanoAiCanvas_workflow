@@ -22,15 +22,13 @@ const AdminStatisticsPage = lazy(() => import('./app/admin/statistics/page'))
 const AdminSendNotificationPage = lazy(() => import('./app/admin/notifications/send/page'))
 const AdminNotificationRecordsPage = lazy(() => import('./app/admin/notifications/records/page'))
 const AdminGrantPointsPage = lazy(() => import('./app/admin/points/grant/page'))
-const AdminFeeSettingsPage = lazy(() => import('./app/admin/points/fee/page'))
-const AdminPointsAccountPage = lazy(() => import('./app/admin/points/account/page'))
 const AdminApiKeyPoolPage = lazy(() => import('./app/admin/api-key-pool/page'))
 const AdminMCPPage = lazy(() => import('./app/admin/mcp/page'))
 const AdminKevinPage = lazy(() => import('./app/admin/kevin/page'))
 const AdminAppsPage = lazy(() => import('./app/admin/apps/page'))
 import { AdminSidebar } from './components/admin/AdminSidebar'
 
-type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-points-fee' | 'admin-points-account' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps'
+type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps'
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -81,10 +79,6 @@ function AppContent() {
       setCurrentPage('admin-notifications-records')
     } else if (path.startsWith('/admin/points/grant')) {
       setCurrentPage('admin-points-grant')
-    } else if (path.startsWith('/admin/points/fee')) {
-      setCurrentPage('admin-points-fee')
-    } else if (path.startsWith('/admin/points/account')) {
-      setCurrentPage('admin-points-account')
     } else if (path.startsWith('/admin/points')) {
       setCurrentPage('admin-points-grant')
     } else if (path.startsWith('/admin/mcp')) {
@@ -187,8 +181,6 @@ function AppContent() {
         {currentPage === 'admin-notifications-send' && <AdminLayout><AdminSendNotificationPage /></AdminLayout>}
         {currentPage === 'admin-notifications-records' && <AdminLayout><AdminNotificationRecordsPage /></AdminLayout>}
         {currentPage === 'admin-points-grant' && <AdminLayout><AdminGrantPointsPage /></AdminLayout>}
-        {currentPage === 'admin-points-fee' && <AdminLayout><AdminFeeSettingsPage /></AdminLayout>}
-        {currentPage === 'admin-points-account' && <AdminLayout><AdminPointsAccountPage /></AdminLayout>}
         {currentPage === 'admin-api-key-pool' && <AdminLayout><AdminApiKeyPoolPage /></AdminLayout>}
         {currentPage === 'admin-mcp' && <AdminLayout><AdminMCPPage /></AdminLayout>}
         {currentPage === 'admin-kevin' && <AdminLayout><AdminKevinPage /></AdminLayout>}

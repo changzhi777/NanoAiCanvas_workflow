@@ -7,12 +7,13 @@ import { assetCache } from '../../../lib/db/AssetCache';
 import { getDB } from '../../../lib/db/schema';
 import {
   Search, Grid3X3, List, Star, Trash2, RefreshCw, FolderPlus, Tag, ChevronRight, ChevronDown,
-  FolderOpen, Folder, Plus, Check, Upload, MoreHorizontal, Trash, Move, X
+  FolderOpen, Folder, Plus, Check, Upload, MoreHorizontal, Trash, Move, X, Download
 } from 'lucide-react';
 import { Button } from '../button';
 import { Input } from '../input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal } from '../dialog';
 import AssetPreview from './AssetPreview';
+import CategoryWizard from './CategoryWizard';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -285,6 +286,41 @@ export default function AssetLibraryPanel({
     }
   };
 
+  // 批量导出
+  const handleBatchExport = async () => {
+    if (!token || selectedIds.size === 0) return;
+    try {
+      const blob = await assets.export(Array.from(selectedIds), token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assets_export_${selectedIds.size}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export:', error);
+    }
+  };
+
+  // 导入文件
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !token) return;
+    try {
+      const result = await assets.import(file, token);
+      if (result.success) {
+        alert(`成功导入 ${result.imported} 个资产`);
+        loadAssets();
+      } else if (result.errors) {
+        alert(`部分导入失败: ${result.errors.join(', ')}`);
+      }
+    } catch (error) {
+      console.error('Failed to import:', error);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   // 删除资产
   const handleDelete = async (assetId: string) => {
     if (!token) return;
@@ -417,7 +453,7 @@ export default function AssetLibraryPanel({
             <div className="p-2 border-b">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground">文件夹</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowNewFolder(true)}>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowNewCategory(true)}>
                   <FolderPlus className="h-3 w-3" />
                 </Button>
               </div>
@@ -528,6 +564,13 @@ export default function AssetLibraryPanel({
                 <Button size="sm" variant="outline" onClick={handleBatchDelete}>
                   <Trash2 className="h-4 w-4 mr-1" /> 批量删除
                 </Button>
+                <Button size="sm" variant="outline" onClick={handleBatchExport}>
+                  <Upload className="h-4 w-4 mr-1" /> 导出
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Download className="h-4 w-4 mr-1" /> 导入
+                </Button>
+                <input ref={fileInputRef} type="file" accept=".zip" className="hidden" onChange={handleFileImport} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" variant="outline">
@@ -605,19 +648,22 @@ export default function AssetLibraryPanel({
           <AssetPreview open={previewOpen} onClose={() => setPreviewOpen(false)} asset={selectedAsset} />
         )}
 
-        {/* 新建分类弹窗 */}
-        {showNewCategory && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-card p-4 rounded-lg w-80 space-y-4">
-              <h3 className="font-medium">新建分类</h3>
-              <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="分类名称" />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowNewCategory(false)}>取消</Button>
-                <Button size="sm" onClick={handleCreateCategory}>创建</Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* 新建分类向导 */}
+        <CategoryWizard
+          open={showNewCategory}
+          onClose={() => setShowNewCategory(false)}
+          onSubmit={async (data) => {
+            if (!token) return;
+            const result = await categories.create(data, token);
+            loadMetaData();
+            setShowNewCategory(false);
+          }}
+          checkNameAvailable={async (name) => {
+            if (!token) return false;
+            const result = await categories.checkName(name, undefined, token);
+            return !result.exists;
+          }}
+        />
 
         {/* 新建文件夹弹窗 */}
         {showNewFolder && (

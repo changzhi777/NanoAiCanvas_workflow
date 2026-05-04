@@ -84,11 +84,6 @@ const navigation = [
         title: '积分管理',
         href: '/admin/points',
         icon: Zap,
-        children: [
-          { title: '发放积分', href: '/admin/points/grant' },
-          { title: '扣费设置', href: '/admin/points/fee' },
-          { title: '积分账户', href: '/admin/points/account' },
-        ],
       },
     ],
   },
@@ -201,7 +196,6 @@ export function AdminSidebar() {
             <div className="space-y-1">
               {section.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-                const hasChildren = item.children && item.children.length > 0
                 return (
                   <div key={item.href}>
                     <NavLink
@@ -216,28 +210,6 @@ export function AdminSidebar() {
                     >
                       {item.title}
                     </NavLink>
-                    {/* 子菜单 */}
-                    {hasChildren && isActive && (
-                      <div className="ml-6 mt-1 space-y-1 border-l-2 border-muted pl-3">
-                        {item.children?.map((child) => {
-                          const isChildActive = pathname === child.href
-                          return (
-                            <NavLink
-                              key={child.href}
-                              href={child.href}
-                              className={cn(
-                                'flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors',
-                                isChildActive
-                                  ? 'text-primary font-medium'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              {child.title}
-                            </NavLink>
-                          )
-                        })}
-                      </div>
-                    )}
                   </div>
                 )
               })}

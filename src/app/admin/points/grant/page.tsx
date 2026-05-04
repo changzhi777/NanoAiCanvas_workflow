@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Zap, Loader2, Search, RefreshCw, Plus, Trash2, Edit, QrCode, CreditCard } from 'lucide-react'
+import { Zap, Loader2, Search, RefreshCw, Plus, Trash2, Edit, QrCode, CreditCard, Wallet, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
 import { adminApi, type UserPointsInfo, type BillingRule, type TransactionRecord, type RechargeRecord } from '@/lib/api/admin-api'
@@ -838,6 +838,243 @@ function RechargeRecordsTab() {
   )
 }
 
+// 积分账户Tab（整合account功能）
+interface AccountInfo {
+  id: string
+  name: string
+  type: 'user' | 'team'
+  points: number
+  frozen: number
+  available: number
+}
+
+function PointsAccountsTab() {
+  const [accounts, setAccounts] = useState<AccountInfo[]>([])
+  const [loading, setLoading] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const token = useAuthStore((s) => s.token)
+
+  const fetchAccounts = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      // 获取用户积分列表作为账户
+      const data = await adminApi.getUsersWithPoints(1, 100, search || undefined)
+      setAccounts(data.users.map((u: UserPointsInfo) => ({
+        id: u.user_id,
+        name: u.username,
+        type: 'user',
+        points: u.balance,
+        frozen: 0,
+        available: u.balance
+      })))
+    } catch (err: any) {
+      toast.error('获取积分账户失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [search, token])
+
+  useEffect(() => {
+    fetchAccounts()
+  }, [fetchAccounts])
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="w-5 h-5" />
+          积分账户
+        </CardTitle>
+        <Button variant="outline" size="sm" onClick={fetchAccounts} disabled={loading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          刷新
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索账户..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>账户名称</TableHead>
+              <TableHead>类型</TableHead>
+              <TableHead className="text-right">总积分</TableHead>
+              <TableHead className="text-right">冻结</TableHead>
+              <TableHead className="text-right">可用</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {accounts.map((account) => (
+              <TableRow key={account.id}>
+                <TableCell className="font-medium">{account.name}</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{account.type === 'team' ? '团队' : '用户'}</Badge>
+                </TableCell>
+                <TableCell className="text-right">{account.points.toLocaleString()}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{account.frozen}</TableCell>
+                <TableCell className="text-right text-green-500 font-medium">{account.available.toLocaleString()}</TableCell>
+              </TableRow>
+            ))}
+            {accounts.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  暂无账户数据
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+// 系统扣费Tab（整合fee功能）
+function SystemBillingTab() {
+  const [rules, setRules] = useState<BillingRule[]>([])
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [editRule, setEditRule] = useState<BillingRule | null>(null)
+  const [editPoints, setEditPoints] = useState('')
+
+  const token = useAuthStore((s) => s.token)
+
+  const fetchRules = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const data = await adminApi.getBillingRules()
+      setRules(data)
+    } catch (err: any) {
+      toast.error('获取扣费规则失败')
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  useEffect(() => {
+    fetchRules()
+  }, [fetchRules])
+
+  const handleSave = async () => {
+    if (!editRule || !editPoints) return
+    setSaving(true)
+    try {
+      await adminApi.updateBillingRule(editRule.id, {
+        name: editRule.name,
+        points_per_unit: parseFloat(editPoints)
+      })
+      toast.success('扣费规则已保存')
+      setEditRule(null)
+      fetchRules()
+    } catch (err: any) {
+      toast.error(err.message || '保存失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openEdit = (rule: BillingRule) => {
+    setEditRule(rule)
+    setEditPoints(String(rule.points_per_unit))
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="w-5 h-5" />
+            系统扣费规则
+          </CardTitle>
+          <Button variant="outline" size="sm" onClick={fetchRules} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>规则名称</TableHead>
+                <TableHead>模型类型</TableHead>
+                <TableHead className="text-right">单价</TableHead>
+                <TableHead>单位</TableHead>
+                <TableHead>操作</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rules.map((rule) => (
+                <TableRow key={rule.id}>
+                  <TableCell className="font-medium">{rule.name}</TableCell>
+                  <TableCell><Badge variant="secondary">{rule.model_type}</Badge></TableCell>
+                  <TableCell className="text-right font-medium">{rule.points_per_unit}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {rule.unit === 'per_call' ? '每次调用' : rule.unit === 'per_token' ? '每Token' : '每秒'}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm" onClick={() => openEdit(rule)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {rules.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    暂无扣费规则
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* 编辑对话框 */}
+      <Dialog open={!!editRule} onOpenChange={() => setEditRule(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>编辑扣费规则</DialogTitle>
+            <DialogDescription>修改规则 "{editRule?.name}" 的单价</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>每单位积分</Label>
+              <Input
+                type="number"
+                value={editPoints}
+                onChange={(e) => setEditPoints(e.target.value)}
+                step="0.1"
+                min="0.1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRule(null)}>取消</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 // 主页面
 export default function GrantPointsPage() {
   const [activeTab, setActiveTab] = useState('users')
@@ -850,16 +1087,26 @@ export default function GrantPointsPage() {
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="users">用户积分</TabsTrigger>
-          <TabsTrigger value="rules">扣费规则</TabsTrigger>
-          <TabsTrigger value="history">交易记录</TabsTrigger>
-          <TabsTrigger value="recharge">扫码充值</TabsTrigger>
-          <TabsTrigger value="records">充值记录</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-wrap gap-2">
+          <Button variant={activeTab === 'users' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('users')}>用户积分</Button>
+          <Button variant={activeTab === 'accounts' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('accounts')}>积分账户</Button>
+          <Button variant={activeTab === 'system' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('system')}>系统扣费</Button>
+          <Button variant={activeTab === 'rules' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('rules')}>扣费规则</Button>
+          <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')}>交易记录</Button>
+          <Button variant={activeTab === 'recharge' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('recharge')}>扫码充值</Button>
+          <Button variant={activeTab === 'records' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('records')}>充值记录</Button>
+        </div>
 
         <TabsContent value="users">
           <PointsUsersTab />
+        </TabsContent>
+
+        <TabsContent value="accounts">
+          <PointsAccountsTab />
+        </TabsContent>
+
+        <TabsContent value="system">
+          <SystemBillingTab />
         </TabsContent>
 
         <TabsContent value="rules">

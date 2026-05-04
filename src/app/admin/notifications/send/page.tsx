@@ -8,29 +8,53 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Send, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
+import { sendNotification, type NotificationCreate } from '@/lib/api/notifications-api'
 
 export default function SendNotificationPage() {
   const [sending, setSending] = useState(false)
   const [form, setForm] = useState({
-    type: 'team',
+    type: 'user' as 'user' | 'team' | 'broadcast' | 'system',
     targetId: '',
     title: '',
     content: '',
   })
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (!form.title.trim() || !form.content.trim()) {
       toast.error('请填写标题和内容')
       return
     }
+
+    if ((form.type === 'user' || form.type === 'team') && !form.targetId.trim()) {
+      toast.error('请填写目标ID')
+      return
+    }
+
     setSending(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    toast.success('消息发送成功')
-    setSending(false)
-    setForm({ ...form, title: '', content: '' })
-  }
+    try {
+      const data: NotificationCreate = {
+        title: form.title.trim(),
+        content: form.content.trim(),
+        notification_type: form.type,
+      }
+
+      if (form.type === 'user' || form.type === 'system') {
+        data.receiver_id = form.targetId.trim()
+      } else if (form.type === 'team') {
+        data.team_id = form.targetId.trim()
+      }
+
+      const result = await sendNotification(data)
+      toast.success(`消息发送成功，已送达 ${result.recipients_count} 人`)
+      setForm({ ...form, title: '', content: '' })
+    } catch (error: any) {
+      toast.error(error.message || '发送失败')
+    } finally {
+      setSending(false)
+    }
+  }, [form])
 
   return (
     <div className="space-y-6">
@@ -47,14 +71,18 @@ export default function SendNotificationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>发送类型</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm({ ...form, type: v as typeof form.type })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="team">团队</SelectItem>
-                  <SelectItem value="user">用户</SelectItem>
-                  <SelectItem value="all">全部用户</SelectItem>
+                  <SelectItem value="user">用户私信</SelectItem>
+                  <SelectItem value="team">团队消息</SelectItem>
+                  <SelectItem value="broadcast">全站广播</SelectItem>
+                  <SelectItem value="system">系统通知</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -64,8 +92,14 @@ export default function SendNotificationPage() {
               <Input
                 value={form.targetId}
                 onChange={(e) => setForm({ ...form, targetId: e.target.value })}
-                placeholder={form.type === 'team' ? '团队ID' : '用户ID'}
-                disabled={form.type === 'all'}
+                placeholder={
+                  form.type === 'team'
+                    ? '团队ID'
+                    : form.type === 'broadcast'
+                    ? '无需填写'
+                    : '用户ID'
+                }
+                disabled={form.type === 'broadcast'}
               />
             </div>
           </div>

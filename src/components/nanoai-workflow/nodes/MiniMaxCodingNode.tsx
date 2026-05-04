@@ -1,18 +1,17 @@
-import { useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { NodeProps } from 'reactflow';
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface MiniMaxCodingData extends WorkflowNodeData {
+export interface MiniMaxCodingData extends ApiTaskNodeData {
   params: {
+    apiType: 'minimax';
+    action: 'coding';
     query: string;
+    outputType: 'text';
   };
 }
 
 export const MiniMaxCodingNode = ({ id, data }: NodeProps<MiniMaxCodingData>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore();
-
   const paramSchema = [
     {
       key: 'query',
@@ -23,30 +22,17 @@ export const MiniMaxCodingNode = ({ id, data }: NodeProps<MiniMaxCodingData>) =>
     },
   ];
 
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params);
-  }, [id, updateNodeParams]);
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id);
-  }, [id, executeNode]);
-
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Search className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label="搜索"
-      />
-    </BaseNode>
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { codingPlanSearch } = await import('@/lib/api/minimax-api');
+        return codingPlanSearch(params.query || '');
+      }}
+    />
   );
 };
 

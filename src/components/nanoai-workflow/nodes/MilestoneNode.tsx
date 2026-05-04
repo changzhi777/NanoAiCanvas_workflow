@@ -1,220 +1,93 @@
 /**
- * 里程碑节点 - 预览和展示节点
- * 功能：展示角色设计、分镜头、场景等成果
+ * 里程碑节点 - 里程碑标记节点
+ * 功能：标记工作流中的重要节点，用于流程组织和版本管理
  */
 
-import { memo, useState } from 'react';
-import { Flag, Image as ImageIcon, Users, Film, Sparkles } from 'lucide-react';
+import { memo } from 'react';
+import { Flag, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { getNodeColorScheme, getDarkNodeColorScheme } from './nodeColors';
 import { useTheme } from '../ui/Theme';
 import { cn } from '@/lib/utils';
 
 interface MilestoneNodeData extends WorkflowNodeData {
-  milestoneType?: 'character' | 'storyboard' | 'scene' | 'mixed';
-  previewData?: any[];
+  milestoneType?: 'start' | 'checkpoint' | 'complete' | 'review';
+  description?: string;
 }
 
 const MilestoneNode = memo((props: { data: MilestoneNodeData }) => {
   const { data } = props;
   const { isDark } = useTheme();
-  const colorScheme = isDark
-    ? getDarkNodeColorScheme('milestone')
-    : getNodeColorScheme('milestone');
 
-  const [activeTab, setActiveTab] = useState<'preview' | 'info'>('preview');
-  const milestoneType = data.milestoneType || 'mixed';
+  const milestoneType = data.milestoneType || 'checkpoint';
 
-  // 根据类型显示不同的图标
-  const getIcon = () => {
+  // 根据类型获取图标和颜色
+  const getMilestoneConfig = () => {
     switch (milestoneType) {
-      case 'character':
-        return <Users className="w-5 h-5" />;
-      case 'storyboard':
-        return <Film className="w-5 h-5" />;
-      case 'scene':
-        return <ImageIcon className="w-5 h-5" />;
+      case 'start':
+        return {
+          icon: <Clock className="w-5 h-5" />,
+          color: 'blue',
+          label: '开始',
+          bgClass: isDark ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200',
+          textClass: isDark ? 'text-blue-400' : 'text-blue-600',
+        };
+      case 'complete':
+        return {
+          icon: <CheckCircle2 className="w-5 h-5" />,
+          color: 'green',
+          label: '完成',
+          bgClass: isDark ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200',
+          textClass: isDark ? 'text-green-400' : 'text-green-600',
+        };
+      case 'review':
+        return {
+          icon: <AlertCircle className="w-5 h-5" />,
+          color: 'yellow',
+          label: '审核',
+          bgClass: isDark ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-50 border-yellow-200',
+          textClass: isDark ? 'text-yellow-400' : 'text-yellow-600',
+        };
       default:
-        return <Flag className="w-5 h-5" />;
+        return {
+          icon: <Flag className="w-5 h-5" />,
+          color: 'orange',
+          label: '检查点',
+          bgClass: isDark ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200',
+          textClass: isDark ? 'text-orange-400' : 'text-orange-600',
+        };
     }
   };
 
-  // 模拟预览数据
-  const mockPreviews = [
-    {
-      id: 1,
-      type: 'character',
-      title: '角色三立面',
-      description: '正面、侧面、背面视图',
-      image: '🧑‍🎤',
-      status: 'done'
-    },
-    {
-      id: 2,
-      type: 'storyboard',
-      title: '分镜头001',
-      description: '场景：办公室 - 日景',
-      image: '🎬',
-      status: 'done'
-    }
-  ];
+  const config = getMilestoneConfig();
 
   return (
     <BaseNode
       data={data}
-      icon={getIcon()}
-      headerAction={
-        <div className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('preview')}
-            className={cn(
-              'px-2 py-1 rounded-md text-xs font-medium transition-all',
-              activeTab === 'preview'
-                ? colorScheme.iconBg + ' text-white'
-                : isDark
-                ? 'bg-gray-700 text-gray-300'
-                : 'bg-gray-200 text-gray-600'
-            )}
-          >
-            预览
-          </button>
-          <button
-            onClick={() => setActiveTab('info')}
-            className={cn(
-              'px-2 py-1 rounded-md text-xs font-medium transition-all',
-              activeTab === 'info'
-                ? colorScheme.iconBg + ' text-white'
-                : isDark
-                ? 'bg-gray-700 text-gray-300'
-                : 'bg-gray-200 text-gray-600'
-            )}
-          >
-            信息
-          </button>
-        </div>
-      }
+      icon={config.icon}
     >
-      {/* 里程碑说明 */}
-      <div className={cn(
-        'p-3 rounded-lg border mb-3',
-        isDark ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200'
-      )}>
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-4 h-4 text-orange-500" />
-          <span className={cn(
-            'text-sm font-semibold',
-            isDark ? 'text-orange-400' : 'text-orange-700'
-          )}>
-            里程碑 - 成果展示节点
-          </span>
+      {/* 里程碑卡片 */}
+      <div className={cn('p-3 rounded-lg border mb-3', config.bgClass)}>
+        <div className="flex items-center gap-2 mb-1">
+          <span className={cn('text-sm font-semibold', config.textClass)}>{config.label}</span>
         </div>
-        <div className={cn(
-          'text-xs',
-          isDark ? 'text-orange-300/80' : 'text-orange-600/80'
-        )}>
-          <p>• 角色设计：三立面 + 头像</p>
-          <p>• 分镜头：线稿风格场景 + 人物</p>
-          <p>• 场景设计：环境氛围展示</p>
-        </div>
+        {data.description && (
+          <p className={cn('text-xs', isDark ? 'text-gray-400' : 'text-gray-600')}>
+            {data.description}
+          </p>
+        )}
       </div>
 
-      {/* 预览/信息切换 */}
-      {activeTab === 'preview' ? (
-        <div className="space-y-3">
-          <div className={cn(
-            'p-3 rounded-lg border',
-            isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'
-          )}>
-            <h4 className={cn(
-              'text-sm font-semibold mb-2',
-              isDark ? 'text-white' : 'text-gray-700'
-            )}>
-              预览展示
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              {mockPreviews.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    'relative group cursor-pointer rounded-lg overflow-hidden',
-                    'border-2 transition-all duration-200',
-                    isDark
-                      ? 'border-white/10 hover:border-blue-500/50'
-                      : 'border-gray-200 hover:border-blue-300'
-                  )}
-                >
-                  {/* 预览图片区域 */}
-                  <div className={cn(
-                    'aspect-square flex items-center justify-center text-4xl',
-                    isDark ? 'bg-white/5' : 'bg-gray-100'
-                  )}>
-                    {item.image}
-                  </div>
-
-                  {/* 悬停时显示信息 */}
-                  <div className={cn(
-                    'absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent',
-                    'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
-                    'flex items-end p-2'
-                  )}>
-                    <div className="text-white text-xs">
-                      <div className="font-medium">{item.title}</div>
-                      <div className="opacity-80 text-[10px]">{item.description}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className={cn(
-            'p-3 rounded-lg border',
-            isDark ? 'bg-white/5 border-white/10' : 'bg-gray-50 border-gray-200'
-          )}>
-            <h4 className={cn(
-              'text-sm font-semibold mb-2',
-              isDark ? 'text-white' : 'text-gray-700'
-            )}>
-              里程碑信息
-            </h4>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>类型:</span>
-                <span className={cn(
-                  'font-medium',
-                  isDark ? 'text-white' : 'text-gray-900'
-                )}>
-                  {milestoneType === 'character' ? '角色设计' :
-                   milestoneType === 'storyboard' ? '分镜头' :
-                   milestoneType === 'scene' ? '场景' : '混合'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>状态:</span>
-                <span className={cn(
-                  'font-medium',
-                  data.status === 'success' ? 'text-green-500' :
-                  data.status === 'running' ? 'text-blue-500' :
-                  'text-gray-500'
-                )}>
-                  {data.status === 'success' ? '已完成' :
-                   data.status === 'running' ? '进行中' : '待处理'}
-                </span>
-              </div>
-              {data.result && (
-                <div className="pt-2 border-t border-gray-200/50">
-                  <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>
-                    生成结果: {data.result.images?.length || 0} 项
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 提示信息 */}
+      <div className={cn(
+        'text-xs p-2 rounded border',
+        isDark ? 'bg-gray-800/50 border-white/5 text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-400'
+      )}>
+        <p>里程碑节点用于标记工作流中的重要节点</p>
+        <p className="mt-1">- 开始/结束点</p>
+        <p>- 版本检查点</p>
+        <p>- 审核节点</p>
+      </div>
     </BaseNode>
   );
 });

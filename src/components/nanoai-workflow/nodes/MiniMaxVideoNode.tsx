@@ -1,14 +1,15 @@
-import { useCallback } from 'react';
 import { Video } from 'lucide-react';
 import { NodeProps } from 'reactflow';
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface MiniMaxVideoData extends WorkflowNodeData {
+export interface MiniMaxVideoData extends ApiTaskNodeData {
   params: {
+    apiType: 'minimax';
+    action: 'video';
     prompt: string;
     model: 'hailuo-2.3-fast-768P' | 'hailuo-2.3-768P';
     duration: number;
+    outputType: 'video';
   };
 }
 
@@ -18,8 +19,6 @@ const VIDEO_MODELS = [
 ];
 
 export const MiniMaxVideoNode = ({ id, data }: NodeProps<MiniMaxVideoData>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore();
-
   const paramSchema = [
     {
       key: 'prompt',
@@ -42,35 +41,24 @@ export const MiniMaxVideoNode = ({ id, data }: NodeProps<MiniMaxVideoData>) => {
       defaultValue: 6,
       min: 3,
       max: 10,
-      step: 1,
-      description: '3-10秒',
     },
   ];
 
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params);
-  }, [id, updateNodeParams]);
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id);
-  }, [id, executeNode]);
-
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Video className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label="生成视频"
-      />
-    </BaseNode>
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { generateVideo } = await import('@/lib/api/minimax-api');
+        return generateVideo({
+          prompt: params.prompt!,
+          model: params.model || 'hailuo-2.3-fast-768P',
+          duration: params.duration || 6,
+        });
+      }}
+    />
   );
 };
 

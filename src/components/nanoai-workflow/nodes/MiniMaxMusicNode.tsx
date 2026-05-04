@@ -1,14 +1,15 @@
-import { useCallback } from 'react';
 import { Music } from 'lucide-react';
 import { NodeProps } from 'reactflow';
-import { useNanoaiWorkflowStore, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { TaskNodeBase, ApiTaskNodeData } from './TaskNodeBase';
 
-export interface MiniMaxMusicData extends WorkflowNodeData {
+export interface MiniMaxMusicData extends ApiTaskNodeData {
   params: {
+    apiType: 'minimax';
+    action: 'music';
     prompt: string;
     model: 'music-2.6' | 'music-cover';
     lyrics: boolean;
+    outputType: 'audio';
   };
 }
 
@@ -18,8 +19,6 @@ const MUSIC_MODELS = [
 ];
 
 export const MiniMaxMusicNode = ({ id, data }: NodeProps<MiniMaxMusicData>) => {
-  const { updateNodeParams, executeNode } = useNanoaiWorkflowStore();
-
   const paramSchema = [
     {
       key: 'prompt',
@@ -35,39 +34,22 @@ export const MiniMaxMusicNode = ({ id, data }: NodeProps<MiniMaxMusicData>) => {
       options: MUSIC_MODELS,
       defaultValue: 'music-2.6',
     },
-    {
-      key: 'lyrics',
-      label: '包含歌词',
-      type: 'toggle' as const,
-      defaultValue: true,
-      description: '是否生成歌词',
-    },
   ];
 
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    updateNodeParams(id, params);
-  }, [id, updateNodeParams]);
-
-  const handleNodeExecute = useCallback(() => {
-    executeNode(id);
-  }, [id, executeNode]);
-
   return (
-    <BaseNode
+    <TaskNodeBase
+      id={id}
       data={data}
       icon={<Music className="w-5 h-5" />}
-    >
-      <ParamEditor
-        params={data.params}
-        onChange={handleParamsChange}
-        schema={paramSchema}
-      />
-      <ExecuteButton
-        onExecute={handleNodeExecute}
-        status={data.status}
-        label="生成音乐"
-      />
-    </BaseNode>
+      paramSchema={paramSchema}
+      apiCall={async (params) => {
+        const { generateMusic } = await import('@/lib/api/minimax-api');
+        return generateMusic({
+          prompt: params.prompt!,
+          model: params.model || 'music-2.6',
+        });
+      }}
+    />
   );
 };
 
