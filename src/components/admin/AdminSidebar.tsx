@@ -1,0 +1,257 @@
+'use client'
+
+import { usePathname } from '@/lib/next-navigation-shim'
+import { cn } from '@/lib/utils'
+import {
+  Settings,
+  Key,
+  Database,
+  Server,
+  ChevronRight,
+  ChevronLeft,
+  Globe,
+  Users,
+  MessageSquare,
+  BarChart3,
+  Zap,
+  Wifi,
+  Shield,
+  Bell,
+  Layers,
+  UserPlus,
+  TrendingUp,
+  Plug,
+  Activity,
+  LayoutGrid,
+} from 'lucide-react'
+
+// 简单的 Link 组件替代 next/link
+function NavLink({ href, children, className, icon: Icon }: { href: string; children: React.ReactNode; className?: string; icon?: any }) {
+  const pathname = usePathname()
+  const isActive = pathname === href || pathname.startsWith(href + '/')
+  return (
+    <div
+      onClick={() => window.location.href = href}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
+        isActive
+          ? 'bg-primary text-primary-foreground'
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+      )}
+    >
+      {Icon && <Icon className="w-4 h-4" />}
+      {children}
+      {isActive && <ChevronRight className="ml-auto w-4 h-4" />}
+    </div>
+  )
+}
+
+const navigation = [
+  {
+    title: '渠道商管理',
+    items: [
+      {
+        title: '渠道商列表',
+        href: '/admin/providers',
+        icon: Globe,
+      },
+      {
+        title: 'API Key 池',
+        href: '/admin/api-key-pool',
+        icon: Key,
+      },
+      {
+        title: 'MCP 配置',
+        href: '/admin/mcp',
+        icon: Plug,
+      },
+      {
+        title: '应用管理',
+        href: '/admin/apps',
+        icon: LayoutGrid,
+      },
+    ],
+  },
+  {
+    title: '模型与定价',
+    items: [
+      {
+        title: '模型配置',
+        href: '/admin/models',
+        icon: Server,
+      },
+      {
+        title: '积分管理',
+        href: '/admin/points',
+        icon: Zap,
+        children: [
+          { title: '发放积分', href: '/admin/points/grant' },
+          { title: '扣费设置', href: '/admin/points/fee' },
+          { title: '积分账户', href: '/admin/points/account' },
+        ],
+      },
+    ],
+  },
+  {
+    title: '消息通知',
+    items: [
+      {
+        title: '发送消息',
+        href: '/admin/notifications/send',
+        icon: Bell,
+      },
+      {
+        title: '消息记录',
+        href: '/admin/notifications/records',
+        icon: MessageSquare,
+      },
+    ],
+  },
+  {
+    title: '团队管理',
+    items: [
+      {
+        title: '团队列表',
+        href: '/admin/teams',
+        icon: Users,
+      },
+      {
+        title: '创建团队',
+        href: '/admin/teams/create',
+        icon: UserPlus,
+      },
+    ],
+  },
+  {
+    title: '用户管理',
+    items: [
+      {
+        title: '用户申请',
+        href: '/admin/user-apply',
+        icon: UserPlus,
+      },
+      {
+        title: '统计分析',
+        href: '/admin/statistics',
+        icon: TrendingUp,
+      },
+    ],
+  },
+  {
+    title: '通讯管理',
+    items: [
+      {
+        title: 'MQTT 配置',
+        href: '/admin/mqtt',
+        icon: Wifi,
+      },
+    ],
+  },
+  {
+    title: '负载均衡',
+    items: [
+      {
+        title: 'Kevin 算法',
+        href: '/admin/kevin',
+        icon: Activity,
+      },
+    ],
+  },
+  {
+    title: '系统',
+    items: [
+      {
+        title: '系统配置',
+        href: '/admin/system',
+        icon: Settings,
+      },
+    ],
+  },
+]
+
+export function AdminSidebar() {
+  const pathname = usePathname()
+
+  return (
+    <aside className="w-64 border-r bg-card flex flex-col">
+      {/* Logo/标题 */}
+      <div className="p-4 border-b">
+        <h1 className="text-lg font-bold">管理后台</h1>
+        <p className="text-xs text-muted-foreground">NanoAI Canvas</p>
+      </div>
+
+      {/* 返回按钮 */}
+      <div className="p-3 border-b">
+        <button
+          onClick={() => window.location.href = '/'}
+          className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          返回主应用
+        </button>
+      </div>
+
+      {/* 导航菜单 */}
+      <nav className="flex-1 p-4 overflow-y-auto">
+        {navigation.map((section) => (
+          <div key={section.title} className="mb-6">
+            <h3 className="mb-2 px-2 text-xs font-semibold text-muted-foreground uppercase">
+              {section.title}
+            </h3>
+            <div className="space-y-1">
+              {section.items.map((item) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                const hasChildren = item.children && item.children.length > 0
+                return (
+                  <div key={item.href}>
+                    <NavLink
+                      href={item.href}
+                      className={cn(
+                        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      )}
+                      icon={item.icon}
+                    >
+                      {item.title}
+                    </NavLink>
+                    {/* 子菜单 */}
+                    {hasChildren && isActive && (
+                      <div className="ml-6 mt-1 space-y-1 border-l-2 border-muted pl-3">
+                        {item.children?.map((child) => {
+                          const isChildActive = pathname === child.href
+                          return (
+                            <NavLink
+                              key={child.href}
+                              href={child.href}
+                              className={cn(
+                                'flex items-center gap-2 px-3 py-1.5 rounded text-xs transition-colors',
+                                isChildActive
+                                  ? 'text-primary font-medium'
+                                  : 'text-muted-foreground hover:text-foreground'
+                              )}
+                            >
+                              {child.title}
+                            </NavLink>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* 底部信息 */}
+      <div className="p-4 border-t text-xs text-muted-foreground">
+        <p>管理后台 v1.0.0</p>
+      </div>
+    </aside>
+  )
+}
+
+export default AdminSidebar

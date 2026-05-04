@@ -291,6 +291,8 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   const edgeTypes = useMemo(() => ({
     custom: CustomEdge,
     default: CustomEdge,
+    bezier: CustomEdge,
+    smoothstep: CustomEdge,
   }), []);
 
   // 性能优化：根据节点数量动态调整动画质量
@@ -670,6 +672,28 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
         <Search className="w-5 h-5" />
       </button>
 
+      {/* 页面切换按钮 - 垂直排列 */}
+      <div className="fixed bottom-16 right-4 z-50 flex flex-col gap-1 rounded-full p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'canvas' }))}
+          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          无限画布
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'workflow' }))}
+          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-primary text-primary-foreground whitespace-nowrap"
+        >
+          Workflow
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'nano2' }))}
+          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Nano2
+        </button>
+      </div>
+
       {/* 折叠/展开侧边栏 */}
       <button
         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -707,7 +731,9 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
         isDark ? 'bg-[#171717]' : 'bg-white'  /* #171717 - Supabase页面背景 */
       )}>
         {/* 顶部工具栏 */}
-        <NanoaiWorkflowToolbar />
+        <div className="relative">
+          <NanoaiWorkflowToolbar />
+        </div>
 
         {/* React Flow 画布 */}
         <div className="flex-1 relative canvas-wrapper nanoai-workflow">

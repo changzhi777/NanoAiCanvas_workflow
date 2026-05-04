@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+# 版本管理钩子 - 每次提交第3位+1
+# 格式: V2.1.26
+
+VERSION_FILE="package.json"
+
+get_version() {
+    grep '"version"' "$VERSION_FILE" | sed 's/.*"version": "\([^"]*\)".*/\1/'
+}
+
+update_patch_version() {
+    local version=$1
+    local major=$(echo $version | cut -d'.' -f1)
+    local minor=$(echo $version | cut -d'.' -f2)
+    local patch=$(echo $version | cut -d'.' -f3)
+    local new_patch=$((patch + 1))
+    echo "${major}.${minor}.${new_patch}"
+}
+
+OLD_VERSION=$(get_version)
+NEW_VERSION=$(update_patch_version $OLD_VERSION)
+
+# 使用 Perl 进行替换（macOS 兼容）
+perl -i -pe "s/\"version\": \"$OLD_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$VERSION_FILE"
+
+echo "📦 版本更新: $OLD_VERSION -> $NEW_VERSION"
+
+# 暂存版本更改
+git add "$VERSION_FILE"

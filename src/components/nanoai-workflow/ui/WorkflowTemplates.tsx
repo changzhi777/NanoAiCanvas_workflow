@@ -17,6 +17,8 @@ const getCategoryIcon = (category: string) => {
       return <Film className="w-5 h-5" />;
     case 'script':
       return <FileText className="w-5 h-5" />;
+    case 'image':
+      return <Sparkles className="w-5 h-5" />;
     default:
       return <Sparkles className="w-5 h-5" />;
   }
@@ -52,6 +54,7 @@ export function WorkflowTemplates({ show, onClose, onLoadTemplate }: WorkflowTem
     { value: 'scene', label: '场景', icon: '🏞️' },
     { value: 'storyboard', label: '分镜', icon: '🎬' },
     { value: 'script', label: '脚本', icon: '📝' },
+    { value: 'image', label: '图片', icon: '🖼️' },
   ];
 
   const filteredTemplates = uiTemplates.filter(template => {

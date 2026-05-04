@@ -49,3 +49,10 @@ lerna-debug.log*
 
 # Husky
 .husky/_/
+
+# Claude
+.claude/memory/
+
+# Playwright CLI
+.playwright-cli/
+.playwright-mcp/

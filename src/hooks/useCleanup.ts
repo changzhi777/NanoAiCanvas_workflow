@@ -53,48 +53,6 @@ export function useMemoryLeakDetector(componentName: string) {
   useEffect(() => {
     if (typeof import.meta.env?.DEV !== 'undefined' && import.meta.env.DEV) {
       console.log(`🔍 [${componentName}] 组件已挂载`)
-
-      // 检测是否有未清理的定时器
-      const originalSetTimeout = window.setTimeout
-      const originalSetInterval = window.setInterval
-      const originalAddEventListener = EventTarget.prototype.addEventListener
-
-      let timeoutCount = 0
-      let intervalCount = 0
-      let eventListenerCount = 0
-
-      window.setTimeout = function (...args) {
-        timeoutCount++
-        return originalSetTimeout.apply(this, args)
-      }
-
-      window.setInterval = function (...args) {
-        intervalCount++
-        return originalSetInterval.apply(this, args)
-      }
-
-      EventTarget.prototype.addEventListener = function (...args) {
-        eventListenerCount++
-        return originalAddEventListener.apply(this, args)
-      }
-
-      return () => {
-        window.setTimeout = originalSetTimeout
-        window.setInterval = originalSetInterval
-        EventTarget.prototype.addEventListener = originalAddEventListener
-
-        console.log(`🧹 [${componentName}] 组件已卸载`)
-        console.log(`  - setTimeout: ${timeoutCount}`)
-        console.log(`  - setInterval: ${intervalCount}`)
-        console.log(`  - addEventListener: ${eventListenerCount}`)
-
-        // 警告：如果创建了很多定时器但可能没有清理
-        if (timeoutCount > 10 || intervalCount > 5) {
-          console.warn(
-            `⚠️  [${componentName}] 可能存在内存泄漏：创建了 ${timeoutCount} 个 setTimeout 和 ${intervalCount} 个 setInterval`
-          )
-        }
-      }
     }
   }, [componentName])
 }

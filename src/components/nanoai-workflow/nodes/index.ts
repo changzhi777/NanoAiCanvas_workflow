@@ -19,6 +19,11 @@ export { default as MiniMaxVideoNode } from './MiniMaxVideoNode';
 export { default as MiniMaxMusicNode } from './MiniMaxMusicNode';
 export { default as MiniMaxImageNode } from './MiniMaxImageNode';
 export { default as MiniMaxCodingNode } from './MiniMaxCodingNode';
+export { default as NanoBanana2Node } from './NanoBanana2Node';
+export { default as GPTImage2Node } from './GPTImage2Node';
+export { default as VideoGeneratorNode } from './VideoGeneratorNode';
+export { default as BackgroundMusicNode } from './BackgroundMusicNode';
+export { default as TransitionNode } from './TransitionNode';
 
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
@@ -52,4 +57,11 @@ export const nodeTypes = {
   minimax_music: lazy(() => import('./MiniMaxMusicNode').then(m => ({ default: m.MiniMaxMusicNode }))),
   minimax_image: lazy(() => import('./MiniMaxImageNode').then(m => ({ default: m.MiniMaxImageNode }))),
   minimax_coding: lazy(() => import('./MiniMaxCodingNode').then(m => ({ default: m.MiniMaxCodingNode }))),
+  // 图片生成节点
+  nano_banana_2: lazy(() => import('./NanoBanana2Node').then(m => ({ default: m.NanoBanana2Node }))),
+  gpt_image_2: lazy(() => import('./GPTImage2Node').then(m => ({ default: m.GPTImage2Node }))),
+  // 故事板扩展节点
+  video_generator: lazy(() => import('./VideoGeneratorNode').then(m => ({ default: m.VideoGeneratorNode }))),
+  background_music: lazy(() => import('./BackgroundMusicNode').then(m => ({ default: m.BackgroundMusicNode }))),
+  transition: lazy(() => import('./TransitionNode').then(m => ({ default: m.TransitionNode }))),
 };

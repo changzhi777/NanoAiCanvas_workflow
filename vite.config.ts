@@ -24,6 +24,31 @@ export default defineConfig({
     port: 3000,
     host: true,
     open: true,
+    proxy: {
+      '/api/wuyinkeji': {
+        target: 'https://api.wuyinkeji.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/wuyinkeji/, '/api'),
+        secure: true,
+      },
+      '/api/v2/admin': {
+        target: 'http://64.118.135.134:8002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/v2\/admin/, '/v2/admin'),
+        secure: false,
+      },
+      '/api': {
+        target: 'http://64.118.135.134:8002',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: 'http://64.118.135.134:8002',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth/, '/api/auth'),
+        secure: false,
+      },
+    },
   },
   build: {
     outDir: 'dist',

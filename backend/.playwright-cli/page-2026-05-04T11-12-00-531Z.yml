@@ -1,0 +1,341 @@
+- generic:
+  - generic:
+    - generic:
+      - link:
+        - /url: "#main-content"
+        - text: 跳转到主内容
+      - generic:
+        - complementary:
+          - generic:
+            - heading [level=1]: 管理后台
+            - paragraph: NanoAI Canvas
+          - generic:
+            - button:
+              - img
+              - text: 返回主应用
+          - navigation:
+            - generic:
+              - heading [level=3]: 渠道商管理
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 渠道商列表
+                - generic:
+                  - generic:
+                    - img
+                    - text: API Key 池
+            - generic:
+              - heading [level=3]: 模型与定价
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 模型配置
+                - generic:
+                  - generic:
+                    - img
+                    - text: 积分管理
+                    - img
+                  - generic:
+                    - generic:
+                      - text: 发放积分
+                      - img
+                    - generic: 扣费设置
+                    - generic: 积分账户
+            - generic:
+              - heading [level=3]: 消息通知
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 发送消息
+                - generic:
+                  - generic:
+                    - img
+                    - text: 消息记录
+            - generic:
+              - heading [level=3]: 团队管理
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 团队列表
+                - generic:
+                  - generic:
+                    - img
+                    - text: 创建团队
+            - generic:
+              - heading [level=3]: 用户管理
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 用户申请
+                - generic:
+                  - generic:
+                    - img
+                    - text: 统计分析
+            - generic:
+              - heading [level=3]: 通讯管理
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: MQTT 配置
+            - generic:
+              - heading [level=3]: 系统
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - text: 系统配置
+          - generic:
+            - paragraph: 管理后台 v1.0.0
+        - generic:
+          - main:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=1]: 积分管理
+                  - paragraph: 管理用户积分、扣费规则和充值
+              - generic:
+                - tablist:
+                  - tab [selected]: 用户积分
+                  - tab: 扣费规则
+                  - tab: 交易记录
+                  - tab: 扫码充值
+                  - tab: 充值记录
+                - tabpanel:
+                  - generic:
+                    - generic:
+                      - heading [level=3]:
+                        - img
+                        - text: 用户积分管理
+                      - button:
+                        - img
+                        - text: 刷新
+                    - generic:
+                      - generic:
+                        - generic:
+                          - img
+                          - textbox:
+                            - /placeholder: 搜索用户名或邮箱...
+                      - generic:
+                        - table:
+                          - rowgroup:
+                            - row:
+                              - columnheader: 用户
+                              - columnheader: 邮箱
+                              - columnheader: 余额
+                              - columnheader: 累计发放
+                              - columnheader: 累计消耗
+                              - columnheader: 操作
+                          - rowgroup:
+                            - row:
+                              - cell: admin3
+                              - cell: admin3@example.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: test4user
+                              - cell: test4@example.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: admin4
+                              - cell: admin4@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: admin2
+                              - cell: admin2@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: 14455975@qq.com
+                              - cell: 14455975@qq.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: test@test.com
+                              - cell: test@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: testuser123
+                              - cell: testuser123@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: czlogin
+                              - cell: czlogin@nanoai.fun
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: tester
+                              - cell: tester@nanoai.fun
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: czmain
+                              - cell: czmain@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: test999
+                              - cell: test999@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: cz3
+                              - cell: cz3@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: cz2
+                              - cell: cz2@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: cz
+                              - cell: cz@nanoai.fun
+                              - cell:
+                                - generic: 1,500
+                              - cell: 1,500
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: testdebug
+                              - cell: testdebug@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: test123
+                              - cell: test123@test.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+                            - row:
+                              - cell: testuser
+                              - cell: test@example.com
+                              - cell:
+                                - generic: "0"
+                              - cell: "0"
+                              - cell: "0"
+                              - cell:
+                                - button:
+                                  - img
+                                  - text: 充值
+        - region "Notifications alt+T"
+  - dialog "为用户充值积分" [ref=e306]:
+    - generic [ref=e307]:
+      - heading "为用户充值积分" [level=2] [ref=e308]
+      - paragraph [ref=e309]: 向 cz (cz@nanoai.fun) 充值积分
+    - generic [ref=e310]:
+      - generic [ref=e311]:
+        - text: 充值积分数量
+        - spinbutton [active] [ref=e312]
+      - generic [ref=e313]:
+        - text: 备注（可选）
+        - textbox "输入备注说明" [ref=e314]
+    - generic [ref=e315]:
+      - button "取消" [ref=e316] [cursor=pointer]
+      - button "确认充值" [disabled]:
+        - img
+        - text: 确认充值
+    - button "Close" [ref=e317] [cursor=pointer]:
+      - img [ref=e318]
+      - generic [ref=e321]: Close

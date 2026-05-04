@@ -3,8 +3,8 @@
  * 速创API文档地址: https://api.wuyinkeji.com/doc/65
  */
 
-const API_BASE_URL = 'https://api.wuyinkeji.com/api';
-const API_KEY = 'dM2Gez6cbTHkRaKdoki5NBN3qc';
+const API_BASE_URL = '/api/wuyinkeji';
+const API_KEY = 'BQQPSV2KBlJsUSfoBGByekjs2s';
 
 // ==================== 类型定义 ====================
 
@@ -30,10 +30,15 @@ export interface SuchuangResultResponse {
   code: number;
   msg: string;
   data: {
-    id: string;
-    status: 'processing' | 'succeeded' | 'failed';
-    images?: string[];  // 生成的图片URL数组
-    error?: string;
+    task_id: string;
+    request: { prompt: string };
+    status: number;  // 0=处理中, 1=成功, 2=失败
+    result: string[] | null;  // 成功时返回图片URL数组
+    created_at: string;
+    updated_at: string;
+    count: string;
+    unit: string | null;
+    message: string;
   };
   exec_time: number;
   ip: string;
@@ -63,8 +68,7 @@ export async function generateNanoaiImage(
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': API_KEY,
-        'Content-Type': 'application/x-www-form-urlencoded;charset:utf-8',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
       },
       body: requestBody,
     });
@@ -86,22 +90,69 @@ export async function generateNanoaiImage(
   }
 }
 
+// ==================== GPT-Image-2 速创渠道 ====================
+
+export interface GPTImage2Params {
+  prompt: string;           // 提示词（必填）
+  size?: '1K' | '2K' | '4K'; // 输出图像大小，默认1K
+  aspectRatio?: 'auto' | '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '3:2' | '2:3' | '5:4' | '4:5' | '21:9'; // 输出图像比例，默认auto
+  urls?: string[];          // 参考图URL or Base64（可选）
+}
+
 /**
- * 查询生成结果
+ * 通过速创渠道生成 GPT-Image-2 图片（异步）
+ * @param params 生成参数
+ * @returns 请求ID
+ */
+export async function generateGPTImage2(
+  params: GPTImage2Params
+): Promise<string> {
+  const url = `${API_BASE_URL}/async/image_gpt`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': API_KEY,
+      },
+      body: JSON.stringify({
+        prompt: params.prompt,
+        size: params.aspectRatio || params.size || 'auto',
+        urls: params.urls || [],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API请求失败: ${response.status} ${response.statusText}`);
+    }
+
+    const result: SuchuangAsyncResponse = await response.json();
+
+    if (result.code !== 200) {
+      throw new Error(`API返回错误: ${result.msg}`);
+    }
+
+    return result.data.id;
+  } catch (error) {
+    console.error('GPT-Image-2 生成失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 查询GPT-Image-2生成结果
  * @param requestId 请求ID
  * @returns 生成结果
  */
-export async function getNanoaiResult(
+export async function getGPTImage2Result(
   requestId: string
 ): Promise<SuchuangResultResponse['data']> {
-  const url = `${API_BASE_URL}/async/image_result?key=${API_KEY}&id=${requestId}`;
+  const url = `${API_BASE_URL}/async/detail?key=${API_KEY}&id=${requestId}`;
 
   try {
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Authorization': API_KEY,
-      },
     });
 
     if (!response.ok) {
@@ -139,12 +190,13 @@ export async function pollNanoaiResult(
     try {
       const result = await getNanoaiResult(requestId);
 
-      if (result.status === 'succeeded' && result.images) {
-        return result.images;
+      // status: 0=处理中, 1=成功, 2=失败
+      if (result.status === 1 && result.result) {
+        return result.result;
       }
 
-      if (result.status === 'failed') {
-        throw new Error(result.error || '图片生成失败');
+      if (result.status === 2) {
+        throw new Error(result.message || '图片生成失败');
       }
 
       // 还在处理中，继续轮询
@@ -160,6 +212,79 @@ export async function pollNanoaiResult(
   }
 
   throw new Error('图片生成超时，请稍后重试');
+}
+
+/**
+ * 轮询获取GPT-Image-2生成结果（等待生成完成）
+ * @param requestId 请求ID
+ * @param maxAttempts 最大尝试次数（默认30次）
+ * @param interval 轮询间隔（毫秒，默认2000ms）
+ * @returns 生成的图片URL数组
+ */
+export async function pollGPTImage2Result(
+  requestId: string,
+  maxAttempts: number = 30,
+  interval: number = 2000
+): Promise<string[]> {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    try {
+      const result = await getGPTImage2Result(requestId);
+
+      // status: 0=处理中, 1=成功, 2=失败
+      if (result.status === 1 && result.result) {
+        return result.result;
+      }
+
+      if (result.status === 2) {
+        throw new Error(result.message || 'GPT-Image-2 图片生成失败');
+      }
+
+      // 还在处理中，继续轮询
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, interval));
+    } catch (error) {
+      if (attempts >= maxAttempts - 1) {
+        throw error;
+      }
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, interval));
+    }
+  }
+
+  throw new Error('GPT-Image-2 图片生成超时，请稍后重试');
+}
+
+/**
+ * 一站式生成GPT-Image-2图片（自动轮询）
+ * @param params 生成参数
+ * @param onProgress 进度回调
+ * @returns 生成的图片URL数组
+ */
+export async function generateGPTImage2WithPolling(
+  params: GPTImage2Params,
+  onProgress?: (status: string, progress: number) => void
+): Promise<string[]> {
+  try {
+    // 步骤1：提交生成请求
+    onProgress?.('提交GPT-Image-2生成请求...', 10);
+    const requestId = await generateGPTImage2(params);
+
+    // 步骤2：轮询获取结果
+    onProgress?.('正在生成图片...', 30);
+    const images = await pollGPTImage2Result(
+      requestId,
+      30,  // 最多30次尝试
+      2000 // 每2秒轮询一次
+    );
+
+    onProgress?.('生成完成！', 100);
+    return images;
+  } catch (error) {
+    onProgress?.('生成失败', 0);
+    throw error;
+  }
 }
 
 /**

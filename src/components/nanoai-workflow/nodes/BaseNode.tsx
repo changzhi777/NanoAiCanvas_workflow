@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { WorkflowNodeData, NodeStatus } from '@/stores/nanoaiWorkflowStore';
 import { useTheme } from '../ui/Theme';
 import { useToast } from '@/hooks/useToast';
-import { getNodeColorScheme, getDarkNodeColorScheme, NODE_TYPE_TO_CATEGORY, NodeFunctionCategory } from './nodeColors';
+import { NODE_TYPE_TO_CATEGORY, NodeFunctionCategory } from './nodeColors';
 import '@/styles/button-3d.css';
 
 // ==================== 状态指示器（优化版）====================
@@ -256,19 +256,8 @@ export const BaseNode = memo(({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
-  // 获取节点颜色方案
+  // 获取节点颜色方案（仅用于运行状态装饰）
   const nodeType = (data as any).type || 'input_text';
-  const colorScheme = isDark
-    ? getDarkNodeColorScheme(nodeType)
-    : getNodeColorScheme(nodeType);
-
-  const statusBorderColors = {
-    [NodeStatus.RUNNING]: 'border-blue-500 shadow-blue-200',
-    [NodeStatus.SUCCESS]: 'border-[#3ecf8e] shadow-[#3ecf8e]/30',
-    [NodeStatus.ERROR]: 'border-red-500 shadow-red-200',
-    [NodeStatus.IDLE]: 'border-[#2e2e2e] shadow-transparent',
-    [NodeStatus.DISABLED]: 'border-[#393939] shadow-transparent',
-  };
 
   const handleCopy = useCallback(() => {
     onCopy?.();
@@ -294,19 +283,13 @@ export const BaseNode = memo(({
   const getNodeCategory = (nodeType: string): 'input' | 'ai' | 'output' | 'tool' => {
     const category = NODE_TYPE_TO_CATEGORY[nodeType];
     if (category) {
-      // 将枚举映射到 CSS 类名
       switch (category) {
-        case NodeFunctionCategory.INPUT:
-          return 'input';
-        case NodeFunctionCategory.AI_GENERATOR:
-          return 'ai';
-        case NodeFunctionCategory.OUTPUT:
-          return 'output';
-        case NodeFunctionCategory.TOOL:
-          return 'tool';
+        case NodeFunctionCategory.INPUT: return 'input';
+        case NodeFunctionCategory.AI_GENERATOR: return 'ai';
+        case NodeFunctionCategory.OUTPUT: return 'output';
+        case NodeFunctionCategory.TOOL: return 'tool';
       }
     }
-    // 后备逻辑
     if (nodeType.startsWith('input')) return 'input';
     if (nodeType.includes('generator') || nodeType.includes('designer')) return 'ai';
     if (nodeType.startsWith('output')) return 'output';
@@ -315,6 +298,23 @@ export const BaseNode = memo(({
 
   const nodeCategory = getNodeCategory(nodeType);
 
+  // 功能分类颜色映射
+  const categoryColors = {
+    input: { stripe: 'bg-blue-500', iconBg: 'bg-blue-500/20', iconText: 'text-blue-400' },
+    ai: { stripe: 'bg-green-500', iconBg: 'bg-green-500/20', iconText: 'text-green-400' },
+    output: { stripe: 'bg-orange-500', iconBg: 'bg-orange-500/20', iconText: 'text-orange-400' },
+    tool: { stripe: 'bg-slate-500', iconBg: 'bg-slate-500/20', iconText: 'text-slate-400' },
+  };
+
+  // 状态阴影颜色
+  const statusShadowColors = {
+    [NodeStatus.IDLE]: '',
+    [NodeStatus.RUNNING]: 'shadow-[0_0_15px_rgba(59,130,246,0.3)]',
+    [NodeStatus.SUCCESS]: 'shadow-[0_0_15px_rgba(62,207,142,0.3)]',
+    [NodeStatus.ERROR]: 'shadow-[0_0_15px_rgba(239,68,68,0.3)]',
+    [NodeStatus.DISABLED]: '',
+  };
+
   return (
     <div
       className={cn(
@@ -322,68 +322,64 @@ export const BaseNode = memo(({
         'node-enhanced',
         // 功能分类
         `node-${nodeCategory}`,
-        // 左侧彩色竖条
-        'node-border-stripe',
         // 展开/折叠状态
         isCollapsed ? 'node-collapsed' : 'node-expanded',
-        // 原有样式
-        'rounded-xl shadow-lg border-2 transition-all duration-300',
-        'hover:shadow-xl hover:scale-[1.02]',
-        statusBorderColors[data.status],
-        selected && (isDark ? 'ring-4 ring-blue-500/50' : 'ring-4 ring-blue-200'),
+        // 统一阴影风格（CardNode风格）
+        'shadow-[0_4px_12px_-2px_rgba(0,0,0,0.3)] hover:shadow-[0_10px_30px_-5px_rgba(0,0,0,0.4)]',
+        // 统一边框
+        'border border-border/50 rounded-xl transition-all duration-300',
+        'hover:scale-[1.02]',
+        // 状态阴影
+        statusShadowColors[data.status],
+        selected && 'ring-4 ring-primary/30',
         'min-w-[320px] max-w-[400px]',
-        isDark && 'backdrop-blur-xl',
-        isHovered && 'shadow-2xl'
+        isDark ? 'bg-[#1a1a1a]/90 backdrop-blur-xl' : 'bg-white/90 backdrop-blur-xl',
+        isHovered && 'shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 节点头部 - 使用节点颜色方案 */}
+      {/* 左侧功能分类彩色竖条（CardNode风格） */}
+      <div className={cn('absolute left-0 top-0 bottom-0 w-1 rounded-l-xl', categoryColors[nodeCategory].stripe)} />
+
+      {/* 节点头部 - 扁平化设计 */}
       <div
         className={cn(
-          'flex items-center justify-between p-4 border-b rounded-t-xl cursor-pointer transition-all duration-200 backdrop-blur-xl',
-          'relative overflow-hidden',
-          colorScheme.headerBg,
-          colorScheme.borderHover
+          'flex items-center justify-between p-4 border-b border-border/50 rounded-t-xl cursor-pointer transition-all duration-200',
+          'relative overflow-hidden ml-2',
+          // 扁平半透明背景替代渐变
+          isDark ? 'bg-[#242424]/50' : 'bg-slate-50/50'
         )}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {/* 背景装饰 */}
+        {/* 运行状态时的背景脉冲效果 */}
         {data.status === NodeStatus.RUNNING && (
-          <div className={cn(
-            'absolute inset-0 bg-gradient-to-r opacity-10',
-            colorScheme.statusRunning,
-            'animate-pulse'
-          )} />
+          <div className="absolute inset-0 bg-blue-500/10 animate-pulse" />
         )}
 
         <div className="relative flex items-center gap-3">
           {icon && (
             <div className={cn(
               'p-2 rounded-lg transition-transform duration-200',
-              colorScheme.iconBg,
+              categoryColors[nodeCategory].iconBg,
               isHovered && 'scale-110'
             )}>
-              <div className={cn('transition-colors duration-200', colorScheme.iconText)}>
+              <div className={cn('transition-colors duration-200', categoryColors[nodeCategory].iconText)}>
                 {icon}
               </div>
             </div>
           )}
-          {/* 白色标题（在彩色背景上） */}
+          {/* 标题 - CardNode风格 */}
           <h3 className={cn(
             'font-semibold text-base',
-            'drop-shadow-sm', // 文字阴影增强可读性
-            'transition-all duration-200',
-            isHovered && 'scale-105' // 悬停时微放大
+            isDark ? 'text-slate-100' : 'text-gray-800',
+            'transition-all duration-200'
           )}>
             {data.label}
           </h3>
           <StatusIndicator status={data.status} />
           {data.status === NodeStatus.RUNNING && (
-            <div className={cn(
-              'flex items-center gap-1 text-xs',
-              colorScheme.statusRunning.replace('bg-', 'text-')
-            )}>
+            <div className="flex items-center gap-1 text-xs text-blue-400">
               <Zap className="w-3 h-3 animate-pulse" />
               <span>运行中</span>
             </div>
@@ -391,39 +387,29 @@ export const BaseNode = memo(({
         </div>
 
         <div className="relative flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {/* 折叠按钮 - 3D样式 */}
+          {/* 折叠按钮 - 简洁ghost样式 */}
           <Button
             variant="ghost"
-            size="sm"
-            className={cn(
-              'btn-3d btn-3d-sm',
-              'h-6 w-6 p-0'
-            )}
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setIsCollapsed(!isCollapsed)}
           >
-            <span className="btn-icon">
-              {isCollapsed ? (
-                <ChevronDown className="w-4 h-4" />
-              ) : (
-                <ChevronUp className="w-4 h-4" />
-              )}
-            </span>
+            {isCollapsed ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
           </Button>
 
-          {/* 节点操作菜单 - 3D样式 */}
+          {/* 节点操作菜单 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
-                className={cn(
-                  'btn-3d btn-3d-sm',
-                  'h-6 w-6 p-0'
-                )}
+                size="icon"
+                className="h-8 w-8"
               >
-                <span className="btn-icon">
-                  <MoreVertical className="w-4 h-4" />
-                </span>
+                <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

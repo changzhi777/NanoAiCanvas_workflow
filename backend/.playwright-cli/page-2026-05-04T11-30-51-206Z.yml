@@ -1,0 +1,6 @@
+- generic [ref=e3]:
+  - link "跳转到主内容" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e6]:
+    - img [ref=e7]
+    - paragraph [ref=e9]: 加载中...

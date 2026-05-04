@@ -12,6 +12,7 @@ import { FloatingMenuBar } from '../components/canvas/FloatingMenuBar'
 import { EdgeHoverTrigger } from '../components/canvas/EdgeHoverTrigger'
 import { ShortcutHintPanel } from '../components/canvas/ShortcutHintPanel'
 import { PerformanceMonitor } from '../components/canvas/PerformanceMonitor'
+import { LoginButton } from '../components/ui/AuthDialog'
 import { useAutosave } from '../hooks/useAutosave'
 import { useShortcuts } from '../hooks/useShortcuts'
 import { useCanvasHistory } from '../hooks/useCanvasHistory'
@@ -115,6 +116,22 @@ function CanvasPageContent() {
 
   return (
     <>
+      {/* 页面切换按钮 - 垂直排列 */}
+      <div className="fixed bottom-16 right-4 z-50 flex flex-col gap-1 rounded-full p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'canvas' }))}
+          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-primary text-primary-foreground whitespace-nowrap"
+        >
+          无限画布
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'workflow' }))}
+          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Workflow
+        </button>
+      </div>
+
       {/* 浮动菜单栏（左上角） */}
       <FloatingMenuBar
         onAddNode={handleAddNode}
@@ -150,6 +167,11 @@ function CanvasPageContent() {
 
       {/* 顶部工具栏（可通过快捷键显示） */}
       {showToolbar && <Toolbar />}
+
+      {/* 用户信息 - 右上角 */}
+      <div className="fixed top-4 right-4 z-40">
+        <LoginButton />
+      </div>
 
       {/* 主画布区域 */}
       <div

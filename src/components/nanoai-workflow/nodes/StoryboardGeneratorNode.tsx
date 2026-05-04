@@ -7,14 +7,18 @@ import {
   generateNanoaiImageWithPolling,
   buildStoryboardPrompt,
 } from '@/lib/api/suchuang-api';
+import { AssetReferenceSelector } from '@/components/ui/AssetLibrary/AssetReferenceSelector';
+import { CharacterConsistencyPanel } from '@/components/ui/AssetLibrary/CharacterConsistencyPanel';
 
 export interface StoryboardGeneratorData extends WorkflowNodeData {
   params: {
-    dataSource: string;  // 数据源选择
+    dataSource: string;
     style: string;
     aspectRatio: string;
     quality: 'standard' | 'hd';
     count: number;
+    referenceAssets: string[];
+    characterRefs: Array<{ id: string; name: string; imageUrl: string; traits: string[] }>;
   };
 }
 
@@ -50,9 +54,30 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
       setProgress(0);
       setProgressMessage('准备生成...');
 
-      // 构建提示词
-      const prompt = buildStoryboardPrompt(
-        data.params.dataSource || 'storyboard scene',
+      // 获取上游脚本数据
+      const scriptText = data.params.dataSource || '';
+
+      // 构建参考图提示词
+      let referencePrompt = '';
+      if (data.params.referenceAssets?.length > 0) {
+        referencePrompt = '\n\n参考图风格要求：' + data.params.referenceAssets.length + '张参考图用于保持视觉一致性';
+      }
+
+      // 构建角色一致性提示词
+      let characterPrompt = '';
+      if (data.params.characterRefs?.length > 0) {
+        const characterNames = data.params.characterRefs.map(c => c.name).join('、');
+        const sharedTraits = data.params.characterRefs[0]?.traits?.join('、') || '';
+        if (sharedTraits) {
+          characterPrompt = `\n\n角色一致性要求：${characterNames}，保持以下特征：${sharedTraits}`;
+        } else {
+          characterPrompt = `\n\n角色一致性要求：${characterNames}`;
+        }
+      }
+
+      // 构建完整提示词
+      const basePrompt = buildStoryboardPrompt(
+        scriptText || 'storyboard scene',
         data.params.style,
         {
           mood: 'cinematic',
@@ -60,10 +85,12 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
         }
       );
 
+      const fullPrompt = basePrompt + referencePrompt + characterPrompt;
+
       // 调用速创API
       const images = await generateNanoaiImageWithPolling(
         {
-          prompt,
+          prompt: fullPrompt,
           size: data.params.quality === 'hd' ? '2K' : '1K',
           aspectRatio: data.params.aspectRatio as any,
         },
@@ -79,6 +106,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
         result: {
           images,
           count: images.length,
+          prompt: fullPrompt,
         },
       });
       setProgress(100);
@@ -128,6 +156,16 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
     updateNodeParams(id, params);
   }, [id, updateNodeParams]);
 
+  // 更新参考图
+  const handleReferenceAssetsChange = useCallback((assetIds: string[]) => {
+    updateNodeParams(id, { referenceAssets: assetIds });
+  }, [id, updateNodeParams]);
+
+  // 更新角色一致性配置
+  const handleCharacterRefsChange = useCallback((refs: Array<{ id: string; name: string; imageUrl: string; traits: string[] }>) => {
+    updateNodeParams(id, { characterRefs: refs });
+  }, [id, updateNodeParams]);
+
   return (
     <BaseNode
       data={data}
@@ -139,6 +177,25 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
       }
     >
       <ParamEditor params={data.params} onChange={handleParamsChange} schema={paramSchema} />
+
+      {/* 参考图选择 */}
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <AssetReferenceSelector
+          selectedAssets={data.params.referenceAssets || []}
+          onAssetsChange={handleReferenceAssetsChange}
+          maxSelection={4}
+        />
+      </div>
+
+      {/* 角色一致性配置 */}
+      <div className="mt-3">
+        <CharacterConsistencyPanel
+          characterRefs={data.params.characterRefs || []}
+          onCharacterRefsChange={handleCharacterRefsChange}
+          maxCharacters={5}
+        />
+      </div>
+
       <ExecuteButton onExecute={handleExecute} status={data.status} label="生成分镜" />
 
       {/* 进度显示 */}

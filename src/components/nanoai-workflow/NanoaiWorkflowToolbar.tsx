@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
+import { useAuthStore, useSyncStore } from '@/stores/remoteStore';
 import {
   Play,
   Save,
@@ -7,14 +8,13 @@ import {
   Upload,
   Trash2,
   History,
-  Settings,
   HelpCircle,
   Sun,
   Moon,
   Puzzle,
-  Users,
   MoreHorizontal,
   Plus,
+  Image,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,11 +42,36 @@ import { PluginManagerDialog } from './ui/PluginManagerDialog';
 import { CollaborationPanel } from './ui/CollaborationPanel';
 import { AutoLayoutButton } from './ui/AutoLayoutButton';
 import { useI18n } from '@/hooks/useI18n';
+import { AssetLibraryPanel, SyncStatusIndicator } from '@/components/ui/AssetLibrary';
+import { LoginButton } from '@/components/ui/AuthDialog';
 
 export function NanoaiWorkflowToolbar() {
   const { isDark, toggleTheme } = useTheme();
   const { toast } = useToast();
   const { t } = useI18n();
+  const token = useAuthStore((s) => s.token);
+  const syncInit = useSyncStore((s) => s.init);
+
+  // Force re-render when auth state changes
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
+    // Subscribe to auth store changes
+    const unsub = useAuthStore.subscribe(() => {
+      forceUpdate({});
+    });
+    return unsub;
+  }, [token]);
+
+  // Listen for localStorage changes (for cross-tab sync)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'nanoai_token' || e.key === 'nanoai_user') {
+        forceUpdate({});
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const {
     executeWorkflow,
@@ -67,6 +92,12 @@ export function NanoaiWorkflowToolbar() {
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
   const [collaborationDialogOpen, setCollaborationDialogOpen] = useState(false);
+  const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+
+  // Initialize sync on mount
+  useEffect(() => {
+    syncInit();
+  }, [syncInit]);
 
   const handleSaveTemplate = () => {
     if (templateName.trim()) {
@@ -192,13 +223,44 @@ export function NanoaiWorkflowToolbar() {
           </div>
         </div>
 
-        {/* 右侧：操作按钮组 - 精简为5个主要按钮 */}
+        {/* 右侧：操作按钮组 */}
         <div className={cn(
           'flex items-center gap-2',
           'overflow-x-auto',
           'flex-nowrap',
           'scrollbar-hide'
         )}>
+          {/* 资产库 - 仅已登录用户，在用户按钮左边 */}
+          {token && (
+            <Button
+              onClick={() => setAssetLibraryOpen(true)}
+              variant="outline"
+              size="sm"
+              className={cn(
+                'shadow-sm hover:shadow transition-all duration-200',
+                isDark
+                  ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+              )}
+              title="资产库"
+            >
+              <Image className="w-4 h-4 mr-1" />
+              资产库
+            </Button>
+          )}
+
+          {/* 用户名按钮 */}
+          <LoginButton />
+
+          {/* 已登录用户：显示同步状态 */}
+          {token && <SyncStatusIndicator />}
+
+          {/* 分隔线 */}
+          <div className={cn(
+            'w-px h-6',
+            isDark ? 'bg-white/10' : 'bg-gray-200'
+          )} />
+
           {/* 1. 主题切换按钮 */}
           <Button
             onClick={toggleTheme}
@@ -286,51 +348,7 @@ export function NanoaiWorkflowToolbar() {
             </Button>
           )}
 
-          {/* 3. 保存操作组（下拉）- 有节点时显示 */}
-          {hasNodes && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isWorkflowActive}
-                  className={cn(
-                    'shadow-sm hover:shadow transition-all duration-200',
-                    isWorkflowActive && 'opacity-50'
-                  )}
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  保存
-                  <span className="ml-1 text-xs opacity-60">▼</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 dropdown-glass">
-                <DropdownMenuItem onClick={() => setSaveDialogOpen(true)} className="cursor-pointer dropdown-item rounded-xl">
-                  <Save className="w-4 h-4 mr-2 text-blue-600" />
-                  <div className="flex-1">
-                    <div className="font-medium">保存为模板</div>
-                    <div className="text-xs text-gray-500">保存当前工作流为模板</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    saveVersion('手动保存');
-                    toast.success('version snapshot created');
-                  }}
-                  className="cursor-pointer dropdown-item rounded-xl"
-                >
-                  <History className="w-4 h-4 mr-2 text-blue-600" />
-                  <div className="flex-1">
-                    <div className="font-medium">保存版本</div>
-                    <div className="text-xs text-gray-500">创建版本快照</div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {/* 4. 导入导出组（下拉） */}
-          <DropdownMenu>
+                    <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="shadow-sm hover:shadow transition-all duration-200">
                 <Download className="w-4 h-4" />
@@ -354,15 +372,7 @@ export function NanoaiWorkflowToolbar() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* 5. 自动布局按钮 */}
-          <AutoLayoutButton />
-
-          {/* 分隔线 */}
-          <div className={cn(
-            'w-px h-6',
-            isDark ? 'bg-white/10' : 'bg-gray-200'
-          )} />
-
+          
           {/* 更多操作（下拉菜单收纳其他6个按钮） */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -398,6 +408,34 @@ export function NanoaiWorkflowToolbar() {
                 </div>
               </DropdownMenuItem>
 
+              {/* 保存 - 有节点时显示 */}
+              {hasNodes && (
+                <>
+                  <DropdownMenuItem onClick={() => setSaveDialogOpen(true)} className="cursor-pointer">
+                    <Save className="w-4 h-4 mr-2 text-blue-600" />
+                    <div className="flex-1">
+                      <div className="font-medium">保存为模板</div>
+                      <div className="text-xs text-gray-500">保存当前工作流为模板</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      saveVersion('手动保存');
+                      toast.success('version snapshot created');
+                    }}
+                    className="cursor-pointer"
+                  >
+                    <History className="w-4 h-4 mr-2 text-blue-600" />
+                    <div className="flex-1">
+                      <div className="font-medium">保存版本</div>
+                      <div className="text-xs text-gray-500">创建版本快照</div>
+                    </div>
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {hasNodes && <DropdownMenuSeparator />}
+
               {/* 清空 - 有节点且未执行时显示 */}
               {hasNodes && !isWorkflowActive && (
                 <DropdownMenuItem
@@ -414,24 +452,20 @@ export function NanoaiWorkflowToolbar() {
 
               {hasNodes && !isWorkflowActive && <DropdownMenuSeparator />}
 
-              {/* 设置 */}
-              <DropdownMenuItem className="cursor-pointer">
-                <Settings className="w-4 h-4 mr-2" />
-                <div className="flex-1">
-                  <div className="font-medium">设置</div>
-                  <div className="text-xs text-gray-500">应用设置和偏好</div>
-                </div>
-              </DropdownMenuItem>
-
-              {/* 协作 */}
+              {/* 清除本地缓存 */}
               <DropdownMenuItem
-                onClick={() => setCollaborationDialogOpen(true)}
-                className="cursor-pointer"
+                onClick={() => {
+                  if (confirm('确定要清除本地缓存吗？页面将自动刷新。')) {
+                    localStorage.clear();
+                    window.location.reload();
+                  }
+                }}
+                className="cursor-pointer text-orange-600 focus:text-orange-600"
               >
-                <Users className="w-4 h-4 mr-2" />
+                <Trash2 className="w-4 h-4 mr-2" />
                 <div className="flex-1">
-                  <div className="font-medium">协作</div>
-                  <div className="text-xs text-gray-500">多人协作编辑</div>
+                  <div className="font-medium">清除本地缓存</div>
+                  <div className="text-xs text-gray-500">重置应用状态</div>
                 </div>
               </DropdownMenuItem>
 
@@ -458,6 +492,13 @@ export function NanoaiWorkflowToolbar() {
                   <div className="text-xs text-gray-500">使用指南和快捷键</div>
                 </div>
               </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              {/* 自动布局 */}
+              <div className="px-2 py-1.5">
+                <AutoLayoutButton />
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -471,6 +512,12 @@ export function NanoaiWorkflowToolbar() {
 
       {/* 协作面板 */}
       <CollaborationPanel open={collaborationDialogOpen} onOpenChange={setCollaborationDialogOpen} />
+
+      {/* 资产库面板 */}
+      <AssetLibraryPanel
+        open={assetLibraryOpen}
+        onClose={() => setAssetLibraryOpen(false)}
+      />
 
       {/* 保存模板对话框 */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

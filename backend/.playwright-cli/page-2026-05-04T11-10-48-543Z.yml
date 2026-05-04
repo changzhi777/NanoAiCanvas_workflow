@@ -1,0 +1,405 @@
+- generic:
+  - generic:
+    - generic:
+      - link:
+        - /url: "#main-content"
+        - text: 跳转到主内容
+      - generic:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: "N"
+                - generic:
+                  - heading [level=2]: 节点库
+                  - paragraph: 拖拽或点击添加节点
+              - generic:
+                - img
+                - textbox:
+                  - /placeholder: 搜索节点...
+            - generic:
+              - generic:
+                - button:
+                  - img
+                  - generic:
+                    - generic: ⚡
+                    - generic: 生成节点
+                    - generic: (7)
+                - generic:
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 脚本生成
+                          - generic:
+                            - generic:
+                              - img
+                              - text: 热门
+                        - paragraph: 生成故事脚本
+                        - generic:
+                          - generic: 文本
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 分镜头生成
+                          - generic:
+                            - generic:
+                              - img
+                              - text: 热门
+                        - paragraph: 生成分镜图片
+                        - generic:
+                          - generic: 图片
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 对白生成
+                        - paragraph: 生成语音
+                        - generic:
+                          - generic: 音频
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 角色设计
+                          - generic:
+                            - generic:
+                              - img
+                              - text: 热门
+                        - paragraph: 生成角色设计图
+                        - generic:
+                          - generic: 图片
+                          - generic: 角色
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 场景设计
+                          - generic:
+                            - generic: NEW
+                        - paragraph: 生成场景设计图
+                        - generic:
+                          - generic: 图片
+                          - generic: 场景
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 导演Agent
+                          - generic:
+                            - generic: NEW
+                        - paragraph: 智能决策和流程控制
+                        - generic:
+                          - generic: 决策
+                          - generic: 逻辑
+                      - generic:
+                        - generic:
+                          - img
+                  - button:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - generic: 编剧Agent
+                          - generic:
+                            - generic: NEW
+                        - paragraph: 创意处理和内容优化
+                        - generic:
+                          - generic: 创意
+                          - generic: 优化
+                      - generic:
+                        - generic:
+                          - img
+            - generic:
+              - button:
+                - img
+                - text: 添加工作流模板
+                - generic: ⌘T
+              - generic:
+                - generic:
+                  - img
+                  - text: 快速提示
+                - list:
+                  - listitem:
+                    - generic: •
+                    - generic: 点击节点添加到画布
+                  - listitem:
+                    - generic: •
+                    - generic: 拖拽节点调整位置
+                  - listitem:
+                    - generic: •
+                    - generic: 连接节点创建工作流
+          - button:
+            - img
+          - button:
+            - img
+          - button:
+            - img
+          - button:
+            - img
+          - button:
+            - img
+          - generic:
+            - button: 无限画布
+            - button: Workflow
+            - button: Nano2
+          - button:
+            - img
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: "N"
+                  - generic:
+                    - heading [level=1]: 工作流
+                    - generic:
+                      - generic: 3 个节点
+                      - generic: •
+                      - generic: 2 条连线
+                      - generic: •
+                      - generic: 0 个已完成
+                - generic:
+                  - button:
+                    - img
+                    - text: 登录
+                  - button:
+                    - generic:
+                      - img
+                  - button:
+                    - generic:
+                      - img
+                      - text: 执行工作流
+                  - button:
+                    - img
+                  - button:
+                    - img
+                    - generic: ▼
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - img:
+                        - generic:
+                          - button [ref=e10] [cursor=pointer]
+                          - button [ref=e13] [cursor=pointer]
+                      - generic:
+                        - button [ref=e16] [cursor=pointer]:
+                          - generic [ref=e17]:
+                            - generic [ref=e19]:
+                              - generic [ref=e20]:
+                                - img [ref=e23]
+                                - heading [level=3] [ref=e26]: 脚本生成
+                              - generic [ref=e29]:
+                                - button [ref=e30]:
+                                  - img
+                                - button [ref=e31]:
+                                  - img
+                                - button [ref=e32]:
+                                  - img [ref=e33]
+                            - generic [ref=e35]:
+                              - generic [ref=e36]:
+                                - generic [ref=e37]:
+                                  - generic [ref=e38]:
+                                    - text: 输入文案
+                                    - generic [ref=e39]: "*"
+                                  - textbox [ref=e40]:
+                                    - /placeholder: 请输入故事梗概或创作灵感...
+                                - generic [ref=e41]:
+                                  - generic [ref=e42]: 风格选择
+                                  - combobox [ref=e43]
+                                - generic [ref=e44]:
+                                  - generic [ref=e45]: 模型选择
+                                  - combobox [ref=e46]
+                                - generic [ref=e47]:
+                                  - generic [ref=e48]: 创意程度
+                                  - spinbutton [ref=e49]: "0.7"
+                                  - paragraph [ref=e50]: 0-1之间，越高越有创意
+                                - generic [ref=e51]:
+                                  - generic [ref=e52]: 最大长度
+                                  - spinbutton [ref=e53]: "2000"
+                                  - paragraph [ref=e54]: 脚本最大字符数
+                              - button [ref=e56]:
+                                - generic [ref=e57]:
+                                  - img [ref=e58]
+                                  - text: 生成脚本
+                            - generic [ref=e60]:
+                              - generic [ref=e61]: 输出端口
+                              - generic [ref=e64]:
+                                - generic [ref=e65]: 文本
+                                - generic [ref=e66]: 脚本
+                        - button [ref=e68] [cursor=pointer]:
+                          - generic [ref=e69]:
+                            - generic [ref=e71]:
+                              - generic [ref=e72]:
+                                - img [ref=e75]
+                                - heading [level=3] [ref=e77]: 分镜头生成
+                              - generic [ref=e80]:
+                                - button [ref=e81]:
+                                  - img
+                                - button [ref=e82]:
+                                  - img
+                                - button [ref=e83]:
+                                  - img [ref=e84]
+                            - generic [ref=e87]:
+                              - generic [ref=e88]:
+                                - generic [ref=e89]:
+                                  - generic [ref=e90]: 场景描述
+                                  - textbox [ref=e91]:
+                                    - /placeholder: 请描述要生成的场景...
+                                    - text: 冒险故事场景
+                                  - paragraph [ref=e92]: 从上游节点获取脚本数据，或手动输入场景描述
+                                - generic [ref=e93]:
+                                  - generic [ref=e94]: 风格
+                                  - combobox [ref=e95]
+                                - generic [ref=e96]:
+                                  - generic [ref=e97]: 宽高比
+                                  - combobox [ref=e98]
+                                - generic [ref=e99]:
+                                  - generic [ref=e100]: 质量
+                                  - combobox [ref=e101]
+                              - generic [ref=e103]:
+                                - generic [ref=e104]:
+                                  - img [ref=e105]
+                                  - text: 参考图选择
+                                  - generic [ref=e109]: （最多4张）
+                                - button [ref=e110]:
+                                  - generic [ref=e111]:
+                                    - img
+                                    - text: 添加参考图
+                                  - img
+                              - generic [ref=e113]:
+                                - generic [ref=e114]:
+                                  - img [ref=e115]
+                                  - text: 角色一致性
+                                  - generic [ref=e120]: （0/5）
+                                - generic [ref=e121]:
+                                  - textbox [ref=e122]:
+                                    - /placeholder: 角色名称...
+                                  - button [disabled]:
+                                    - img
+                              - button [ref=e124]:
+                                - generic [ref=e125]:
+                                  - img [ref=e126]
+                                  - text: 生成分镜
+                            - generic [ref=e128]:
+                              - generic [ref=e129]: 输入端口
+                              - generic [ref=e133]:
+                                - generic [ref=e134]: 脚本
+                                - generic [ref=e135]: "*"
+                                - generic [ref=e136]: 文本
+                            - generic [ref=e137]:
+                              - generic [ref=e138]: 输出端口
+                              - generic [ref=e141]:
+                                - generic [ref=e142]: 图片
+                                - generic [ref=e143]: 图片
+                        - button [ref=e145] [cursor=pointer]:
+                          - generic [ref=e146]:
+                            - generic [ref=e148]:
+                              - generic [ref=e149]:
+                                - img [ref=e152]
+                                - heading [level=3] [ref=e155]: 角色设计
+                              - generic [ref=e158]:
+                                - button [ref=e159]:
+                                  - img
+                                - button [ref=e160]:
+                                  - img
+                                - button [ref=e161]:
+                                  - img [ref=e162]
+                            - generic [ref=e168]:
+                              - generic [ref=e169]:
+                                - generic [ref=e170]:
+                                  - generic [ref=e171]:
+                                    - text: 角色描述
+                                    - generic [ref=e172]: "*"
+                                  - textbox [ref=e173]:
+                                    - /placeholder: 请描述角色的外貌、性格、服装等...
+                                    - text: 勇敢的冒险者
+                                - generic [ref=e174]:
+                                  - generic [ref=e175]: 风格
+                                  - combobox [ref=e176]
+                                - generic [ref=e177]:
+                                  - generic [ref=e178]: 姿势
+                                  - combobox [ref=e179]
+                                - generic [ref=e180]:
+                                  - generic [ref=e181]: 表情
+                                  - combobox [ref=e182]
+                                - generic [ref=e183]:
+                                  - generic [ref=e184]: 背景
+                                  - combobox [ref=e185]
+                                - generic [ref=e186]:
+                                  - generic [ref=e187]: 视角
+                                  - combobox [ref=e188]
+                              - button [ref=e190]:
+                                - generic [ref=e191]:
+                                  - img [ref=e192]
+                                  - text: 设计角色
+                            - generic [ref=e194]:
+                              - generic [ref=e195]: 输入端口
+                              - generic [ref=e199]:
+                                - generic [ref=e200]: 脚本
+                                - generic [ref=e201]: "*"
+                                - generic [ref=e202]: 文本
+                            - generic [ref=e203]:
+                              - generic [ref=e204]: 输出端口
+                              - generic [ref=e207]:
+                                - generic [ref=e208]: 图片
+                                - generic [ref=e209]: 角色图
+                - img
+                - button [ref=e212] [cursor=pointer]:
+                  - img [ref=e213]
+                - generic:
+                  - img
+              - generic:
+                - button:
+                  - img
+  - dialog "登录" [ref=e216]:
+    - generic [ref=e217]:
+      - heading "登录" [level=2] [ref=e218]
+      - paragraph [ref=e219]: 登录以同步您的数据和资产到云端
+    - generic [ref=e220]:
+      - generic [ref=e222]:
+        - img [ref=e223]
+        - textbox "邮箱" [active] [ref=e226]
+      - generic [ref=e228]:
+        - img [ref=e229]
+        - textbox "密码" [ref=e232]
+        - button [ref=e233] [cursor=pointer]:
+          - img [ref=e234]
+      - button "登录" [ref=e237] [cursor=pointer]
+    - generic [ref=e242]: 或者
+    - button "没有账号？立即注册" [ref=e243] [cursor=pointer]
+    - button "Close" [ref=e244] [cursor=pointer]:
+      - img [ref=e245]
+      - generic [ref=e248]: Close

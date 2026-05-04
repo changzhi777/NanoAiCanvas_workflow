@@ -14,7 +14,10 @@ import {
   Maximize,
   Settings,
   HelpCircle,
-  X
+  X,
+  LayoutGrid,
+  Workflow,
+  Image,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +34,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+
+// 页面切换事件
+function switchPage(page: 'canvas' | 'workflow') {
+  window.dispatchEvent(new CustomEvent('switch-page', { detail: page }))
+}
 
 interface FloatingMenuBarProps {
   onAddNode?: () => void
@@ -91,6 +99,31 @@ export function FloatingMenuBar({
       onClick: onSave,
       variant: 'ghost' as const,
       tooltip: '保存画布 (⌘S)'
+    },
+  ]
+
+  // 页面切换按钮
+  const pageSwitchActions = [
+    {
+      icon: LayoutGrid,
+      label: '无限画布',
+      onClick: () => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'canvas' })),
+      active: true,
+      tooltip: '切换到无限画布'
+    },
+    {
+      icon: Workflow,
+      label: 'Workflow',
+      onClick: () => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'workflow' })),
+      active: false,
+      tooltip: '切换到 Workflow'
+    },
+    {
+      icon: Image,
+      label: 'Nano2',
+      onClick: () => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'nano2' })),
+      active: false,
+      tooltip: '切换到 Nano2'
     },
   ]
 
@@ -169,6 +202,31 @@ export function FloatingMenuBar({
       >
         {/* 主按钮组 - 水平排列 */}
         <div className="flex items-center gap-1.5 bg-card/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-1.5">
+          {/* 页面切换按钮 */}
+          {pageSwitchActions.map((action) => (
+            <Tooltip key={action.label}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={action.onClick}
+                  className={cn(
+                    'relative group',
+                    action.active && 'bg-primary/20 text-primary'
+                  )}
+                >
+                  <action.icon className="w-4 h-4" />
+                  <span className="sr-only">{action.label}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>{action.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+
+          <div className="w-px h-6 bg-border mx-1" />
+
           {/* 添加节点按钮 - 主要操作 */}
           {primaryActions.map((action) => (
             <Tooltip key={action.label}>

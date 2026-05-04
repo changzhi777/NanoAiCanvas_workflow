@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { Type, FileText } from 'lucide-react';
+import { Type, FileText, Sparkles, Wand2, ChevronDown, ChevronUp } from 'lucide-react';
 import { NodeProps } from 'reactflow';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode';
+import { BaseNode, ExecuteButton } from './BaseNode';
 import { useTheme } from '../ui/Theme';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,8 @@ export interface TextInputNodeData extends WorkflowNodeData {
     maxLength?: number;
     defaultValue?: string;
     rows?: number;
+    showPromptGuide?: boolean;
+    promptGuide?: string;
   };
   result?: {
     text?: string;
@@ -21,15 +23,23 @@ export interface TextInputNodeData extends WorkflowNodeData {
   };
 }
 
+const DEFAULT_PROMPT_GUIDE = `角色描述指南：
+• 三视图：正面、侧面、背面三个角度的完整人物形象
+• 脸部特写：微笑表情的细腻刻画
+• 人物特征：发型、服装、体型、姿态等细节描述
+• 背景环境：场景氛围、光线效果等
+
+请输入您想要设计的角色描述...`;
+
 export const TextInputNode = ({ id, data }: NodeProps<TextInputNodeData>) => {
   const { isDark } = useTheme();
   const { updateNode, updateNodeParams } = useNanoaiWorkflowStore();
   const [inputValue, setInputValue] = useState(data.params.defaultValue || '');
+  const [showGuide, setShowGuide] = useState(true);
 
   const handleExecute = useCallback(() => {
     updateNode(id, { status: NodeStatus.RUNNING });
 
-    // 文本输入节点立即返回结果
     setTimeout(() => {
       updateNode(id, {
         status: NodeStatus.SUCCESS,
@@ -47,38 +57,6 @@ export const TextInputNode = ({ id, data }: NodeProps<TextInputNodeData>) => {
     updateNodeParams(id, { defaultValue: value });
   }, [id, updateNodeParams]);
 
-  const paramSchema = [
-    {
-      key: 'inputType',
-      label: '输入类型',
-      type: 'select' as const,
-      options: [
-        { label: '单行文本', value: 'text' },
-        { label: '多行文本', value: 'multiline' },
-        { label: '代码', value: 'code' },
-      ],
-      defaultValue: 'multiline',
-    },
-    {
-      key: 'placeholder',
-      label: '占位符',
-      type: 'text' as const,
-      placeholder: '请输入占位符提示...',
-      defaultValue: '请输入内容...',
-    },
-    {
-      key: 'maxLength',
-      label: '最大长度',
-      type: 'number' as const,
-      defaultValue: 1000,
-    },
-  ];
-
-  const handleParamsChange = useCallback((params: Record<string, any>) => {
-    // 参数已通过ParamEditor更新到data.params中
-    console.log('文本输入参数已更新:', params);
-  }, []);
-
   return (
     <BaseNode
       data={data}
@@ -87,83 +65,110 @@ export const TextInputNode = ({ id, data }: NodeProps<TextInputNodeData>) => {
         <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium"
              style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#898989' }}>
           <FileText className="w-3 h-3" />
-          <span>输入</span>
+          <span>角色输入</span>
         </div>
       }
     >
-      <ParamEditor params={data.params} onChange={handleParamsChange} schema={paramSchema} />
-      <ExecuteButton onExecute={handleExecute} status={data.status} label="确认输入" />
+      {/* 提示词指南折叠面板 */}
+      <div className="mt-3 rounded-xl border overflow-hidden" style={{
+        background: isDark ? '#171717' : '#f8fafc',
+        borderColor: isDark ? '#2e2e2e' : '#e2e8f0',
+      }}>
+        <button
+          onClick={() => setShowGuide(!showGuide)}
+          className="w-full px-4 py-3 flex items-center justify-between text-left transition-colors hover:bg-white/5"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#3ecf8e]" />
+            <span className="text-sm font-medium" style={{ color: isDark ? '#fafafa' : '#1e293b' }}>
+              角色描述指南
+            </span>
+          </div>
+          {showGuide ? (
+            <ChevronUp className="w-4 h-4 text-gray-400" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          )}
+        </button>
 
-      {/* 文本输入区 */}
-      <div className="mt-3">
-        {data.params.inputType === 'text' && (
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder={data.params.placeholder}
-            maxLength={data.params.maxLength}
-            className={cn(
-              'w-full px-3 py-2 rounded-lg border transition-all duration-200',
-              'focus:outline-none focus:ring-2',
-              isDark
-                ? 'bg-[#0f0f0f] border-[#2e2e2e] text-[#fafafa] focus:border-[#3ecf8e] focus:ring-[#3ecf8e]/20'
-                : 'bg-white border-gray-300 text-gray-900 focus:border-[#3ecf8e] focus:ring-[#3ecf8e]/20'
-            )}
-          />
-        )}
-
-        {(data.params.inputType === 'multiline' || data.params.inputType === 'code') && (
-          <textarea
-            value={inputValue}
-            onChange={(e) => handleInputChange(e.target.value)}
-            placeholder={data.params.placeholder}
-            maxLength={data.params.maxLength}
-            rows={data.params.inputType === 'code' ? 8 : 4}
-            className={cn(
-              'w-full px-3 py-2 rounded-lg border transition-all duration-200 resize-none',
-              'focus:outline-none focus:ring-2 font-mono text-xs',
-              isDark
-                ? 'bg-[#0f0f0f] border-[#2e2e2e] text-[#fafafa] focus:border-[#3ecf8e] focus:ring-[#3ecf8e]/20'
-                : 'bg-white border-gray-300 text-gray-900 focus:border-[#3ecf8e] focus:ring-[#3ecf8e]/20'
-            )}
-            style={{
-              fontFamily: data.params.inputType === 'code'
-                ? '"Source Code Pro", monospace'
-                : 'inherit'
-            }}
-          />
-        )}
-
-        {/* 字数统计 */}
-        {inputValue && (
-          <div className="mt-2 flex items-center justify-between text-xs" style={{ color: '#898989' }}>
-            <span>字符数: {inputValue.length}</span>
-            <span>词数: {inputValue.split(/\s+/).filter(w => w.length > 0).length}</span>
+        {showGuide && (
+          <div className="px-4 pb-4">
+            <div className="p-3 rounded-lg text-xs leading-relaxed whitespace-pre-line" style={{
+              background: isDark ? '#0f0f0f' : '#f1f5f9',
+              color: isDark ? '#a1a1aa' : '#64748b',
+              fontFamily: 'monospace',
+            }}>
+              {data.params.promptGuide || DEFAULT_PROMPT_GUIDE}
+            </div>
           </div>
         )}
       </div>
 
+      {/* 主文本输入区 */}
+      <div className="mt-3">
+        <label className="block text-sm font-medium mb-2" style={{ color: isDark ? '#fafafa' : '#374151' }}>
+          角色描述内容
+        </label>
+        <textarea
+          value={inputValue}
+          onChange={(e) => handleInputChange(e.target.value)}
+          placeholder="请输入角色描述：三视图+脸部特写..."
+          maxLength={data.params.maxLength || 2000}
+          rows={6}
+          className={cn(
+            'w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 resize-none',
+            'focus:outline-none focus:ring-2 text-sm leading-relaxed',
+            isDark
+              ? 'bg-[#0f0f0f] border-[#2e2e2e] text-[#fafafa] placeholder:text-gray-600'
+              : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+          )}
+          style={{
+            fontFamily: '"Inter", system-ui, sans-serif',
+          }}
+        />
+
+        {/* 底部状态栏 */}
+        <div className="mt-2 flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs" style={{ color: '#898989' }}>
+            <span>{inputValue.length} / {data.params.maxLength || 2000} 字符</span>
+            <span>•</span>
+            <span>{inputValue.split(/\s+/).filter(w => w.length > 0).length} 词</span>
+          </div>
+
+          {inputValue.length > 0 && (
+            <button
+              onClick={() => setInputValue('')}
+              className="text-xs px-2 py-1 rounded hover:bg-white/10 transition-colors"
+              style={{ color: '#898989' }}
+            >
+              清空
+            </button>
+          )}
+        </div>
+      </div>
+
+      <ExecuteButton onExecute={handleExecute} status={data.status} label="确认输入" />
+
       {/* 执行结果 */}
       {data.status === NodeStatus.SUCCESS && data.result && (
-        <div className="mt-3 p-3 rounded-lg border" style={{
-          background: 'rgba(62, 207, 142, 0.1)',
+        <div className="mt-3 p-4 rounded-xl border-2" style={{
+          background: 'rgba(62, 207, 142, 0.08)',
           borderColor: 'rgba(62, 207, 142, 0.3)',
         }}>
-          <div className="text-sm font-semibold mb-1" style={{ color: '#3ecf8e' }}>
-            ✓ 输入成功
+          <div className="flex items-center gap-2 mb-2">
+            <Wand2 className="w-4 h-4 text-[#3ecf8e]" />
+            <span className="text-sm font-semibold" style={{ color: '#3ecf8e' }}>
+              输入已确认
+            </span>
           </div>
-          <div className="text-xs space-y-1" style={{ color: '#898989' }}>
-            <div>字符数: {data.result.charCount}</div>
-            <div>词数: {data.result.wordCount}</div>
-            <div className="mt-2 p-2 rounded truncate" style={{
-              background: isDark ? '#242424' : '#e5e7eb',
-              fontFamily: 'monospace',
-              fontSize: '11px'
-            }}>
-              {data.result.text?.substring(0, 100)}
-              {data.result.text && data.result.text.length > 100 && '...'}
-            </div>
+          <div className="p-3 rounded-lg truncate" style={{
+            background: isDark ? '#242424' : '#e5e7eb',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            color: isDark ? '#a1a1aa' : '#64748b',
+          }}>
+            {data.result.text?.substring(0, 150)}
+            {data.result.text && data.result.text.length > 150 && '...'}
           </div>
         </div>
       )}

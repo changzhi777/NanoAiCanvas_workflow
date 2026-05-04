@@ -1,0 +1,125 @@
+- generic [ref=e3]:
+  - link "跳转到主内容" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e10]:
+    - complementary [ref=e11]:
+      - generic [ref=e12]:
+        - heading "管理后台" [level=1] [ref=e13]
+        - paragraph [ref=e14]: NanoAI Canvas
+      - button "返回主应用" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - text: 返回主应用
+      - navigation [ref=e19]:
+        - generic [ref=e20]:
+          - heading "渠道商管理" [level=3] [ref=e21]
+          - generic [ref=e22]:
+            - generic [ref=e24] [cursor=pointer]:
+              - img [ref=e25]
+              - text: 渠道商列表
+            - generic [ref=e29] [cursor=pointer]:
+              - img [ref=e30]
+              - text: API Key 池
+        - generic [ref=e34]:
+          - heading "模型与定价" [level=3] [ref=e35]
+          - generic [ref=e36]:
+            - generic [ref=e38] [cursor=pointer]:
+              - img [ref=e39]
+              - text: 模型配置
+            - generic [ref=e42]:
+              - generic [ref=e43] [cursor=pointer]:
+                - img [ref=e44]
+                - text: 积分管理
+                - img [ref=e46]
+              - generic [ref=e48]:
+                - generic [ref=e49] [cursor=pointer]:
+                  - text: 发放积分
+                  - img [ref=e50]
+                - generic [ref=e52] [cursor=pointer]: 扣费设置
+                - generic [ref=e53] [cursor=pointer]: 积分账户
+        - generic [ref=e54]:
+          - heading "消息通知" [level=3] [ref=e55]
+          - generic [ref=e56]:
+            - generic [ref=e58] [cursor=pointer]:
+              - img [ref=e59]
+              - text: 发送消息
+            - generic [ref=e63] [cursor=pointer]:
+              - img [ref=e64]
+              - text: 消息记录
+        - generic [ref=e66]:
+          - heading "团队管理" [level=3] [ref=e67]
+          - generic [ref=e68]:
+            - generic [ref=e70] [cursor=pointer]:
+              - img [ref=e71]
+              - text: 团队列表
+            - generic [ref=e77] [cursor=pointer]:
+              - img [ref=e78]
+              - text: 创建团队
+        - generic [ref=e81]:
+          - heading "用户管理" [level=3] [ref=e82]
+          - generic [ref=e83]:
+            - generic [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+              - text: 用户申请
+            - generic [ref=e90] [cursor=pointer]:
+              - img [ref=e91]
+              - text: 统计分析
+        - generic [ref=e94]:
+          - heading "通讯管理" [level=3] [ref=e95]
+          - generic [ref=e98] [cursor=pointer]:
+            - img [ref=e99]
+            - text: MQTT 配置
+        - generic [ref=e103]:
+          - heading "系统" [level=3] [ref=e104]
+          - generic [ref=e107] [cursor=pointer]:
+            - img [ref=e108]
+            - text: 系统配置
+      - paragraph [ref=e112]: 管理后台 v1.0.0
+    - main [ref=e114]:
+      - generic [ref=e115]:
+        - generic [ref=e117]:
+          - heading "积分管理" [level=1] [ref=e118]
+          - paragraph [ref=e119]: 管理用户积分、扣费规则和充值
+        - generic [ref=e120]:
+          - tablist [ref=e121]:
+            - tab "用户积分" [ref=e122] [cursor=pointer]
+            - tab "扣费规则" [ref=e123] [cursor=pointer]
+            - tab "交易记录" [ref=e124] [cursor=pointer]
+            - tab "扫码充值" [active] [selected] [ref=e125] [cursor=pointer]
+            - tab "充值记录" [ref=e126] [cursor=pointer]
+          - tabpanel [ref=e305]:
+            - generic [ref=e306]:
+              - heading "扫码充值（预留扩展）" [level=3] [ref=e308]:
+                - img [ref=e309]
+                - text: 扫码充值（预留扩展）
+              - generic [ref=e316]:
+                - generic [ref=e317]:
+                  - generic [ref=e318]:
+                    - generic [ref=e319]: 选择充值金额
+                    - generic [ref=e320]:
+                      - button "50 积分" [ref=e321] [cursor=pointer]
+                      - button "100 积分" [ref=e322] [cursor=pointer]
+                      - button "200 积分" [ref=e323] [cursor=pointer]
+                      - button "500 积分" [ref=e324] [cursor=pointer]
+                      - button "1000 积分" [ref=e325] [cursor=pointer]
+                  - generic [ref=e326]:
+                    - text: 自定义金额
+                    - spinbutton [ref=e327]: "100"
+                  - generic [ref=e328]:
+                    - generic [ref=e329]: 支付方式
+                    - generic [ref=e330]:
+                      - button "微 微信支付" [ref=e331] [cursor=pointer]:
+                        - generic [ref=e332]: 微
+                        - text: 微信支付
+                      - button "支 支付宝" [ref=e333] [cursor=pointer]:
+                        - generic [ref=e334]: 支
+                        - text: 支付宝
+                  - button "生成付款码" [ref=e335] [cursor=pointer]:
+                    - img
+                    - text: 生成付款码
+                  - paragraph [ref=e336]: "* 扫码充值功能需要对接第三方支付接口，当前为预留实现"
+                - generic [ref=e338]:
+                  - img [ref=e340]
+                  - paragraph [ref=e346]: 请使用 微信 扫码支付
+                  - paragraph [ref=e347]: 100 积分
+                  - paragraph [ref=e348]: 支付完成后积分将自动到账
+    - region "Notifications alt+T"

@@ -332,6 +332,23 @@ export function DeveloperTools({ show, onClose }: DeveloperToolsProps) {
                 <Trash2 className="w-4 h-4" />
                 <span>清空工作流</span>
               </button>
+
+              <button
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.reload();
+                }}
+                className={cn(
+                  'w-full flex items-center gap-2 p-3 rounded-lg text-sm transition-colors',
+                  'hover:shadow-md',
+                  isDark
+                    ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+                    : 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                )}
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>清除本地缓存</span>
+              </button>
             </div>
           )}
 

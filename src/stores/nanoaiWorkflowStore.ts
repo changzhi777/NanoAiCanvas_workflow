@@ -5,7 +5,10 @@ import { storyboard01Template } from '@/components/nanoai-workflow/templates/sto
 import { characterWorkflowTemplate } from '@/components/nanoai-workflow/templates/characterWorkflow';
 import { sceneWorkflowTemplate } from '@/components/nanoai-workflow/templates/sceneWorkflow';
 import { quickStoryboardTemplate } from '@/components/nanoai-workflow/templates/quickStoryboard';
+import { textToImageWorkflowTemplate } from '@/components/nanoai-workflow/templates/textToImageWorkflow';
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
+import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
+import { buildPrompt } from '@/lib/prompt-builder';
 
 // ==================== 类型定义 ====================
 
@@ -45,6 +48,10 @@ export enum WorkflowNodeType {
   MINIMAX_MUSIC = 'minimax_music',
   MINIMAX_IMAGE = 'minimax_image',
   MINIMAX_CODING = 'minimax_coding',
+
+  // 图片生成节点
+  NANO_BANANA_2 = 'nano_banana_2',
+  GPT_IMAGE_2 = 'gpt_image_2',
 }
 
 export enum NodeStatus {
@@ -99,7 +106,7 @@ export interface WorkflowTemplate {
   thumbnail?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
-  category: 'script' | 'character' | 'scene' | 'custom' | 'storyboard' | 'story';
+  category: 'script' | 'character' | 'scene' | 'custom' | 'storyboard' | 'story' | 'image';
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -329,6 +336,18 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
     updatedAt: new Date().toISOString(),
     nodes: quickStoryboardTemplate.nodes,
     edges: quickStoryboardTemplate.edges,
+  },
+  // ==================== 文生图工作流模板 ====================
+  {
+    id: 'dual-line-character-design',
+    name: '双线角色设计',
+    description: '文本输入+提示词优化+双模型并行图片生成+预览对比',
+    category: 'image',
+    tags: ['文生图', '角色设计', '三视图', '并行生成', '提示词优化'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    nodes: textToImageWorkflowTemplate.nodes,
+    edges: textToImageWorkflowTemplate.edges,
   }
 ];
 
@@ -553,17 +572,172 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         updateNode(nodeId, { status: NodeStatus.RUNNING });
 
         try {
-          // TODO: 根据节点类型执行不同的逻辑
-          // 这里暂时模拟异步操作
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          const nodeType = node.type;
+          let result: any = { message: '执行成功' };
 
-          // 更新节点状态为成功
+          // 根据节点类型执行不同逻辑
+          switch (nodeType) {
+            case 'input_text': {
+              // 文本输入节点：直接返回输入内容
+              const inputText = node.data.params?.defaultValue || '';
+              result = {
+                text: inputText,
+                charCount: inputText.length,
+                wordCount: inputText.split(/\s+/).filter((w: string) => w.length > 0).length,
+              };
+              break;
+            }
+
+            case 'minimax_text': {
+              // MiniMax 文本生成：调用 API
+              const { generateText } = await import('@/lib/api/minimax-api');
+              const { inputText, model, temperature, maxLength, systemPrompt } = node.data.params || {};
+              if (!inputText) throw new Error('请输入文案');
+
+              const messages: Array<{ role: string; content: string }> = [];
+              if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+              messages.push({ role: 'user', content: inputText });
+
+              const generatedText = await generateText({
+                model: model || 'MiniMax-Text-01',
+                messages,
+                temperature: temperature ?? 0.7,
+                maxTokens: maxLength ?? 1024,
+              });
+
+              result = { text: generatedText };
+              break;
+            }
+
+            case 'nano_banana_2': {
+              // NanoBanana2 图片生成
+              const { generateNanoaiImageWithPolling } = await import('@/lib/api/suchuang-api');
+              const { prompt, size, aspectRatio } = node.data.params || {};
+              if (!prompt) throw new Error('请输入图片描述');
+
+              const images = await generateNanoaiImageWithPolling({
+                prompt,
+                size: size || '1K',
+                aspectRatio: aspectRatio || '1:1',
+              });
+
+              result = { imageUrl: images[0], images };
+              break;
+            }
+
+            case 'gpt_image_2': {
+              // GPT-Image-2 图片生成（支持文生图和溶图）
+              const { generateGPTImageWithPolling } = await import('@/lib/api/gpt-image-api');
+              const { prompt, size, aspectRatio, quality, referenceUrls } = node.data.params || {};
+              if (!prompt) throw new Error('请输入图片描述');
+
+              const images = await generateGPTImageWithPolling({
+                prompt,
+                size: size || 'auto',
+                aspect_ratio: aspectRatio || '1:1',
+                quality: quality || 'standard',
+                urls: referenceUrls || [],  // 溶图参考图
+              });
+
+              result = { imageUrl: images[0], images };
+              break;
+            }
+
+            case 'storyboard_generator': {
+              // 分镜生成节点：从上游获取脚本数据
+              const { edges } = get();
+              const incomingEdge = edges.find(e => e.target === nodeId);
+              let scriptText = node.data.params?.dataSource || '';
+
+              if (incomingEdge) {
+                const sourceNode = nodes.find(n => n.id === incomingEdge.source);
+                const sourceResult = sourceNode?.data?.result;
+                // 尝试从上游获取脚本文本
+                if (sourceResult?.text) {
+                  scriptText = sourceResult.text;
+                }
+              }
+
+              // 构建提示词
+              const prompt = buildPrompt(scriptText || 'storyboard scene', node.data.params?.style || 'realistic', {
+                mood: 'cinematic',
+                lighting: 'professional',
+              });
+
+              // 调用速创API生成
+              const images = await generateNanoaiImageWithPolling({
+                prompt,
+                size: node.data.params?.quality === 'hd' ? '2K' : '1K',
+                aspectRatio: node.data.params?.aspectRatio || '16:9',
+              });
+
+              result = { images, count: images.length, prompt };
+              break;
+            }
+
+            case 'output_preview': {
+              // 预览节点：从前置节点获取数据
+              // 通过 edges 找到前驱节点的输出
+              const { edges } = get();
+              const incomingEdge = edges.find(e => e.target === nodeId);
+              if (incomingEdge) {
+                const sourceNode = nodes.find(n => n.id === incomingEdge.source);
+                result = sourceNode?.data?.result || { message: '暂无数据' };
+              }
+              break;
+            }
+
+            case 'video_generator': {
+              // 视频生成节点：从 storyboard_generator 获取图片
+              const { edges } = get();
+              const incomingEdge = edges.find(e => e.target === nodeId);
+              if (incomingEdge) {
+                const sourceNode = nodes.find(n => n.id === incomingEdge.source);
+                const sourceResult = sourceNode?.data?.result;
+                if (sourceResult?.images?.length) {
+                  result = {
+                    videoUrl: `blob:${Date.now()}`,
+                    frameCount: sourceResult.images.length,
+                    duration: node.data.params?.duration || 10,
+                  };
+                } else {
+                  throw new Error('请先执行分镜生成节点');
+                }
+              } else {
+                throw new Error('请连接分镜图片来源');
+              }
+              break;
+            }
+
+            case 'background_music': {
+              // 背景音乐节点：模拟获取音乐
+              result = {
+                musicUrl: `https://example.com/music/${Date.now()}.mp3`,
+                duration: node.data.params?.duration || 60,
+                mood: node.data.params?.mood || 'calm',
+              };
+              break;
+            }
+
+            case 'transition': {
+              // 转场节点：直接标记成功
+              result = {
+                transitionType: node.data.params?.transitionType || 'fade',
+                duration: node.data.params?.duration || 500,
+                easing: node.data.params?.easing || 'ease-in-out',
+              };
+              break;
+            }
+
+            default:
+              result = { message: `节点类型 ${nodeType} 暂未实现` };
+          }
+
           updateNode(nodeId, {
             status: NodeStatus.SUCCESS,
-            result: { message: '执行成功' }
+            result,
           });
         } catch (error) {
-          // 更新节点状态为错误
           updateNode(nodeId, {
             status: NodeStatus.ERROR,
             error: error instanceof Error ? error.message : '未知错误'
@@ -572,12 +746,59 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
       },
 
       executeWorkflow: async () => {
-        const { nodes } = get();
+        const { nodes, edges } = get();
         set({ isExecuting: true, executionLog: [] });
 
-        // TODO: 实现拓扑排序和依赖执行
-        for (const node of nodes) {
-          await get().executeNode(node.id);
+        // 构建邻接表和入度
+        const adjacency = new Map<string, string[]>();
+        const inDegree = new Map<string, number>();
+
+        // 初始化
+        nodes.forEach(node => {
+          adjacency.set(node.id, []);
+          inDegree.set(node.id, 0);
+        });
+
+        // 构建图
+        edges.forEach(edge => {
+          if (adjacency.has(edge.source)) {
+            adjacency.get(edge.source)!.push(edge.target);
+          }
+          inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
+        });
+
+        // 并行执行函数
+        const executeInParallel = async (nodeIds: string[]) => {
+          await Promise.all(nodeIds.map(nodeId => get().executeNode(nodeId)));
+        };
+
+        // Kahn算法并行版本
+        const queue: string[] = [];
+        nodes.forEach(node => {
+          if (inDegree.get(node.id) === 0) {
+            queue.push(node.id);
+          }
+        });
+
+        while (queue.length > 0) {
+          // 取出当前层的所有节点（可并行）
+          const currentBatch = [...queue];
+          queue.length = 0;
+
+          // 并行执行当前批次的节点
+          await executeInParallel(currentBatch);
+
+          // 更新依赖节点的入度
+          currentBatch.forEach(nodeId => {
+            const neighbors = adjacency.get(nodeId) || [];
+            neighbors.forEach(neighborId => {
+              const newDegree = (inDegree.get(neighborId) || 1) - 1;
+              inDegree.set(neighborId, newDegree);
+              if (newDegree === 0) {
+                queue.push(neighborId);
+              }
+            });
+          });
         }
 
         set({ isExecuting: false });
