@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
-from app.api import auth, assets, workflows, sync, points, points_admin, prompt_restrictions
+from app.api import auth, assets, workflows, sync, points, points_admin, prompt_restrictions, categories, teams, assets_export
+from app.routers import nanobanana2, gpt_image_2
 
 settings = get_settings()
 
@@ -41,6 +42,13 @@ app.include_router(sync.router, prefix="/api")
 app.include_router(points.router, prefix="/api")
 app.include_router(points_admin.router, prefix="/api")
 app.include_router(prompt_restrictions.router, prefix="/api")
+app.include_router(categories.router, prefix="/api")
+app.include_router(teams.router, prefix="/api")
+app.include_router(assets_export.router, prefix="/api")
+
+# Image generation routers (v2)
+app.include_router(nanobanana2.router)
+app.include_router(gpt_image_2.router)
 
 
 @app.get("/")
