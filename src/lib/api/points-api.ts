@@ -72,8 +72,8 @@ export const pointsApi = {
   /**
    * 获取当前用户积分余额
    */
-  async getBalance(): Promise<BalanceResponse> {
-    return client.get<BalanceResponse>('/points/balance')
+  async getBalance(token?: string): Promise<BalanceResponse> {
+    return client.get<BalanceResponse>('/points/balance', token)
   },
 
   /**

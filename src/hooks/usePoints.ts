@@ -60,7 +60,7 @@ export function usePoints(): UsePointsReturn {
     setLoading(true)
     setError(null)
     try {
-      const data = await pointsApi.getBalance()
+      const data = await pointsApi.getBalance(token || undefined)
       setBalance(data.balance)
       setTotalGranted(data.total_granted)
       setTotalUsed(data.total_used)
