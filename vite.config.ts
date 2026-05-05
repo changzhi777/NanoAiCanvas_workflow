@@ -67,7 +67,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -94,10 +94,6 @@ export default defineConfig({
           // i18next 国际化
           if (id.includes('node_modules/i18next/') || id.includes('node_modules/react-i18next/')) {
             return 'i18n-vendor'
-          }
-          // 其他 node_modules
-          if (id.includes('node_modules/')) {
-            return 'vendor'
           }
         },
       },

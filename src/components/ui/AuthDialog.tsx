@@ -240,7 +240,7 @@ export function LoginButton({ className }: LoginButtonProps) {
       // 3. 更新本地用户状态
       useAuthStore.getState().setUser({
         ...user!,
-        username: newUsername.trim() || user?.username,
+        username: newUsername.trim() || user?.username || '',
       });
       toast.success('配置已保存');
       setEditingUsername(false);
