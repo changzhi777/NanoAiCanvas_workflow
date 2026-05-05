@@ -1,10 +1,17 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+from starlette.routing import Route
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
-from app.api import auth, assets, workflows, sync, points, points_admin, prompt_restrictions, categories, teams, assets_export
-from app.routers import nanobanana2, gpt_image_2
+from app.api import (
+    auth, assets, workflows, sync, points, points_admin,
+    prompt_restrictions, categories, teams, assets_export
+)
+from app.api.v2 import image as v2_image
+from app.api.v2 import skills as v2_skills
+from app.api.websocket import websocket_routes
 
 settings = get_settings()
 
@@ -46,9 +53,15 @@ app.include_router(categories.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(assets_export.router, prefix="/api")
 
-# Image generation routers (v2)
-app.include_router(nanobanana2.router)
-app.include_router(gpt_image_2.router)
+# V2 Image generation routers (new unified routes)
+app.include_router(v2_image.router)
+
+# V2 Skills routers (AI skill-based image generation)
+app.include_router(v2_skills.router)
+
+# WebSocket routes for real-time task status
+for route in websocket_routes:
+    app.add_route(route.path, route.endpoint, methods=["GET"])
 
 
 @app.get("/")
