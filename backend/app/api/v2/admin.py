@@ -11,7 +11,7 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 
 from app.database import get_db
-from app.models.api_key import Provider, Model, ModelUsageLog, APIKey
+from app.models.api_key import Provider, Model, ModelUsageLog, APIKey, ModelRoute
 
 router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
 
@@ -579,3 +579,100 @@ async def get_model_health(model_id: int, db: AsyncSession = Depends(get_db)):
             for k in active_keys
         ],
     }
+
+
+# ============ 模型路由管理 ============
+
+class RouteSetRequest(BaseModel):
+    category: str
+    model_id: int
+
+class RouteOut(BaseModel):
+    id: int
+    category: str
+    model_id: int
+    model_name: str
+    model_code: str
+    provider_name: str
+    is_active: bool
+
+
+@router.get("/model-routes", response_model=List[RouteOut])
+async def list_routes(db: AsyncSession = Depends(get_db)):
+    """获取所有路由映射"""
+    stmt = (
+        select(ModelRoute, Model, Provider)
+        .join(Model, ModelRoute.model_id == Model.id)
+        .join(Provider, Provider.id == Model.provider_id)
+        .order_by(ModelRoute.category)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [
+        {
+            "id": route.id,
+            "category": route.category,
+            "model_id": route.model_id,
+            "model_name": model.name,
+            "model_code": model.code,
+            "provider_name": provider.name,
+            "is_active": route.is_active,
+        }
+        for route, model, provider in rows
+    ]
+
+
+@router.post("/model-routes")
+async def set_route(data: RouteSetRequest, db: AsyncSession = Depends(get_db)):
+    """设置路由（category → model_id），存在则更新"""
+    model = await db.get(Model, data.model_id)
+    if not model:
+        raise HTTPException(400, "模型不存在")
+
+    stmt = select(ModelRoute).where(ModelRoute.category == data.category)
+    result = await db.execute(stmt)
+    existing = result.scalar_one_or_none()
+
+    if existing:
+        existing.model_id = data.model_id
+    else:
+        db.add(ModelRoute(category=data.category, model_id=data.model_id))
+
+    await db.commit()
+    return {"category": data.category, "model_id": data.model_id, "model_code": model.code}
+
+
+@router.delete("/model-routes/{route_id}")
+async def delete_route(route_id: int, db: AsyncSession = Depends(get_db)):
+    """删除路由映射"""
+    r = await db.get(ModelRoute, route_id)
+    if not r:
+        raise HTTPException(404, "路由不存在")
+    await db.delete(r)
+    await db.commit()
+    return {"message": "已删除"}
+
+
+# ============ 公开路由映射（前端调用） ============
+
+@router.get("/model-routes/map")
+async def get_routes_map(db: AsyncSession = Depends(get_db)):
+    """前端使用的路由映射：category → {model_code, provider_code, api_base_url}"""
+    stmt = (
+        select(ModelRoute.category, Model.code, Model.model_type, Provider.code, Provider.api_base_url)
+        .join(Model, ModelRoute.model_id == Model.id)
+        .join(Provider, Provider.id == Model.provider_id)
+        .where(and_(ModelRoute.is_active == True, Model.is_active == True, Provider.is_active == True))
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    mapping = {}
+    for category, model_code, model_type, provider_code, api_base_url in rows:
+        mapping[category] = {
+            "model_code": model_code,
+            "model_type": model_type,
+            "provider_code": provider_code,
+            "api_base_url": api_base_url,
+        }
+    return mapping

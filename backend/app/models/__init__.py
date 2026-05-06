@@ -29,6 +29,7 @@ from app.models.api_key import (
     Model,
     ModelUsageLog,
     APIKey,
+    ModelRoute,
 )
 
 __all__ = [
@@ -64,4 +65,5 @@ __all__ = [
     "Model",
     "ModelUsageLog",
     "APIKey",
+    "ModelRoute",
 ]

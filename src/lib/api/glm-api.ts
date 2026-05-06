@@ -4,6 +4,7 @@
  */
 
 import { GLM_CONFIG } from '@/config/glm';
+import { getModelCode } from './model-routing';
 
 // ==================== 类型定义 ====================
 
@@ -93,7 +94,7 @@ export async function generateText(
     msg: string;
     data: { choices: Array<{ message: { content: string } }> };
   }>('/text/chatcompletion', {
-    model: params.model || GLM_CONFIG.MODELS.TEXT,
+    model: params.model || getModelCode('glm_text', GLM_CONFIG.MODELS.TEXT),
     messages: params.messages,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.maxTokens ?? 1024,
@@ -113,7 +114,7 @@ export async function generateVideo(
 ): Promise<string> {
   const durationNum = typeof params.duration === 'string' ? parseInt(params.duration, 10) : params.duration;
   const response = await glmRequest<GlmAsyncResponse>('/video/generation', {
-    model: params.model || GLM_CONFIG.MODELS.VIDEO,
+    model: params.model || getModelCode('glm_video', GLM_CONFIG.MODELS.VIDEO),
     prompt: params.prompt,
     duration: durationNum || 6,
     resolution: params.resolution || '1080p',
@@ -201,7 +202,7 @@ export async function generateMultimodal(
     msg: string;
     data: { choices: Array<{ message: { content: string } }> };
   }>('/multimodal/chatcompletion', {
-    model: params.model || GLM_CONFIG.MODELS.MULTIMODAL,
+    model: params.model || getModelCode('glm_multimodal', GLM_CONFIG.MODELS.MULTIMODAL),
     messages: params.messages,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.maxTokens ?? 1024,

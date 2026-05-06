@@ -7,6 +7,7 @@ import { CursorProvider, useCursor } from './contexts/CursorContext'
 import { ThemeProvider } from './components/nanoai-workflow/ui/Theme'
 import { Toaster, toast } from 'sonner'
 import { setGlobalErrorHandler, type ErrorSeverity } from './lib/api/client'
+import { loadRoutes } from './lib/api/model-routing'
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'))
 const NanoaiWorkflowPage = lazy(() => import('./pages/NanoaiWorkflowPage'))
@@ -76,6 +77,8 @@ function AppContent() {
       const display = severity === 'client' ? message : ERROR_MESSAGES[severity]
       toast.error(display)
     })
+    // 启动时加载模型路由配置
+    loadRoutes()
   }, [])
 
   // 监听页面切换事件

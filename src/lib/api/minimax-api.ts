@@ -4,6 +4,7 @@
  */
 
 import { MINIMAX_CONFIG } from '@/config/minimax';
+import { getModelCode } from './model-routing';
 
 // ==================== 类型定义 ====================
 
@@ -99,7 +100,7 @@ export async function generateText(
     msg: string;
     data: { choices: Array<{ message: { content: string } }> };
   }>('/text/chatcompletion_v2', {
-    model: params.model || MINIMAX_CONFIG.MODELS.TEXT.m2_7,
+    model: params.model || getModelCode('minimax_text', MINIMAX_CONFIG.MODELS.TEXT.m2_7),
     messages: params.messages,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.maxTokens ?? 1024,
@@ -122,7 +123,7 @@ export async function generateSpeech(
     msg: string;
     data: { audio_url: string };
   }>('/speech/synthesis', {
-    model: params.model || MINIMAX_CONFIG.MODELS.SPEECH.hd,
+    model: params.model || getModelCode('minimax_speech', MINIMAX_CONFIG.MODELS.SPEECH.hd),
     text: params.text,
     voice: params.voice || 'female_yunyang',
     speed: params.speed || 1.0,
@@ -140,7 +141,7 @@ export async function generateSpeech(
 export async function generateVideo(
   params: MiniMaxVideoParams
 ): Promise<string> {
-  const model = params.model || MINIMAX_CONFIG.MODELS.VIDEO.hailuo_2_3_fast;
+  const model = params.model || getModelCode('minimax_video', MINIMAX_CONFIG.MODELS.VIDEO.hailuo_2_3_fast);
 
   const response = await minimaxRequest<MiniMaxAsyncResponse>('/video/generation', {
     model,
@@ -202,7 +203,7 @@ export async function generateMusic(
   params: MiniMaxMusicParams
 ): Promise<string> {
   const response = await minimaxRequest<MiniMaxAsyncResponse>('/music/generate', {
-    model: params.model || MINIMAX_CONFIG.MODELS.MUSIC.v2_6,
+    model: params.model || getModelCode('minimax_music', MINIMAX_CONFIG.MODELS.MUSIC.v2_6),
     prompt: params.prompt,
     lyrics: params.lyrics ?? true,
   });
@@ -265,7 +266,7 @@ export async function generateImage(
     msg: string;
     data: { image_url: string };
   }>('/image/generation', {
-    model: params.model || MINIMAX_CONFIG.MODELS.IMAGE.image_01,
+    model: params.model || getModelCode('minimax_image', MINIMAX_CONFIG.MODELS.IMAGE.image_01),
     prompt: params.prompt,
     size: params.size || '1K',
     aspect_ratio: params.aspectRatio || '16:9',
@@ -289,7 +290,7 @@ export async function codingPlanSearch(
     data: { content: string };
   }>('/search/coding-plan', {
     query,
-    model: MINIMAX_CONFIG.MODELS.CODING.search,
+    model: getModelCode('minimax_coding', MINIMAX_CONFIG.MODELS.CODING.search),
   });
 
   if (response.code !== 0 && response.code !== 200) {

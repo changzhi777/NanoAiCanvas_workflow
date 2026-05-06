@@ -4,6 +4,7 @@
  */
 
 import { QWEN_CONFIG } from '@/config/qwen';
+import { getModelCode } from './model-routing';
 
 // ==================== 类型定义 ====================
 
@@ -64,7 +65,7 @@ export async function generateText(
   params: QwenTextParams
 ): Promise<string> {
   const response = await qwenRequest<QwenResponse>('/text/chatcompletion', {
-    model: params.model || QWEN_CONFIG.MODELS.TEXT,
+    model: params.model || getModelCode('qwen_text', QWEN_CONFIG.MODELS.TEXT),
     messages: params.messages,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.maxTokens ?? 1024,
@@ -85,7 +86,7 @@ export async function generateCode(
   params: QwenCodingParams
 ): Promise<string> {
   const response = await qwenRequest<QwenResponse>('/code/generation', {
-    model: params.model || QWEN_CONFIG.MODELS.CODING,
+    model: params.model || getModelCode('qwen_coding', QWEN_CONFIG.MODELS.CODING),
     messages: params.messages,
     temperature: params.temperature ?? 0.2,
     max_tokens: params.maxTokens ?? 2048,

@@ -4,6 +4,7 @@
  */
 
 import { KIMI_CONFIG } from '@/config/kimi';
+import { getModelCode } from './model-routing';
 
 // ==================== 类型定义 ====================
 
@@ -63,7 +64,7 @@ export async function generateText(
   params: KimiTextParams
 ): Promise<string> {
   const response = await kimiRequest<KimiResponse>('/text/chatcompletion', {
-    model: params.model || KIMI_CONFIG.MODELS.TEXT,
+    model: params.model || getModelCode('kimi_text', KIMI_CONFIG.MODELS.TEXT),
     messages: params.messages,
     temperature: params.temperature ?? 0.7,
     max_tokens: params.maxTokens ?? 1024,
@@ -83,7 +84,7 @@ export async function processLongContext(
   params: KimiLongContextParams
 ): Promise<string> {
   const response = await kimiRequest<KimiResponse>('/text/longcontext', {
-    model: params.model || KIMI_CONFIG.MODELS.LONGCONTEXT,
+    model: params.model || getModelCode('kimi_longcontext', KIMI_CONFIG.MODELS.LONGCONTEXT),
     document: params.document,
     query: params.query,
     max_tokens: params.maxTokens ?? 4096,

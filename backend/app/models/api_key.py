@@ -117,6 +117,20 @@ class Model(Base):
     )
 
 
+class ModelRoute(Base):
+    """模型路由表 — 节点类型到模型的映射"""
+    __tablename__ = "model_routes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    category = Column(String(64), unique=True, nullable=False, index=True)  # 节点类型: glm_text, minimax_video 等
+    model_id = Column(Integer, ForeignKey("models.id"), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    model = relationship("Model")
+
+
 class ModelUsageLog(Base):
     """模型调用日志表"""
     __tablename__ = "model_usage_logs"

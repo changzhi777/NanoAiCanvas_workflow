@@ -4,6 +4,7 @@
  */
 
 import { JIMENG_CONFIG } from '@/config/jimeng';
+import { getModelCode } from './model-routing';
 
 // ==================== 类型定义 ====================
 
@@ -77,7 +78,7 @@ export async function generateImage(
     msg: string;
     data: { image_url: string };
   }>('/image/generation', {
-    model: params.model || JIMENG_CONFIG.MODELS.IMAGE,
+    model: params.model || getModelCode('jimeng_image', JIMENG_CONFIG.MODELS.IMAGE),
     prompt: params.prompt,
     size: params.size || '1K',
     aspect_ratio: params.aspectRatio || '1:1',
@@ -97,7 +98,7 @@ export async function generateVideo(
 ): Promise<string> {
   const durationNum = typeof params.duration === 'string' ? parseInt(params.duration, 10) : params.duration;
   const response = await jimengRequest<JimengAsyncResponse>('/video/generation', {
-    model: params.model || JIMENG_CONFIG.MODELS.VIDEO,
+    model: params.model || getModelCode('jimeng_video', JIMENG_CONFIG.MODELS.VIDEO),
     prompt: params.prompt,
     duration: durationNum || 6,
     resolution: params.resolution || '1080p',

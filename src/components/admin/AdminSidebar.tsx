@@ -86,6 +86,11 @@ const navigation = [
         icon: BarChart3,
       },
       {
+        title: '模型路由',
+        href: '/nanoaicanvas/admin/models/routes',
+        icon: Activity,
+      },
+      {
         title: '积分管理',
         href: '/nanoaicanvas/admin/points',
         icon: Zap,
