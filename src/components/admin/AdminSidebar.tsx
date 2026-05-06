@@ -81,6 +81,11 @@ const navigation = [
         icon: Server,
       },
       {
+        title: '用量统计',
+        href: '/nanoaicanvas/admin/models/usage',
+        icon: BarChart3,
+      },
+      {
         title: '积分管理',
         href: '/nanoaicanvas/admin/points',
         icon: Zap,

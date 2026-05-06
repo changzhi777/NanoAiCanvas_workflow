@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,9 @@ import {
   Edit,
   Trash2,
   Loader2,
+  RefreshCw,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { adminApi, Provider, Model } from '@/lib/api/admin-api'
@@ -29,66 +32,15 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 
-// 模拟数据 - 当API不可用时使用
-const mockProviders: Provider[] = [
-  {
-    id: 1,
-    name: '速创API',
-    code: 'wuyin',
-    description: '速创图像生成API服务',
-    website: 'https://api.wuyinkeji.com',
-    is_active: true,
-    created_at: '2026-01-15T10:00:00Z',
-    model_count: 2,
-    active_key_count: 1,
-  },
-  {
-    id: 2,
-    name: '智谱AI',
-    code: 'zhipu',
-    description: '智谱大语言模型API',
-    website: 'https://open.bigmodel.cn',
-    is_active: true,
-    created_at: '2026-01-10T10:00:00Z',
-    model_count: 5,
-    active_key_count: 2,
-  },
-  {
-    id: 3,
-    name: 'MiniMax',
-    code: 'minimax',
-    description: 'MiniMax Token Plan 全模态AI服务',
-    website: 'https://platform.minimaxi.com',
-    is_active: true,
-    created_at: '2026-05-03T00:00:00Z',
-    model_count: 8,
-    active_key_count: 1,
-  },
-]
-
-const mockModels: Record<number, Model[]> = {
-  1: [
-    { id: 1, name: 'GPT-Image-2', code: 'gpt-image-2', provider_id: 1, model_type: 'image', points_per_call: 10, points_per_token: 0, is_active: true },
-    { id: 2, name: 'NanoBanana-2', code: 'nano-banana-2', provider_id: 1, model_type: 'image', points_per_call: 8, points_per_token: 0, is_active: true },
-  ],
-  2: [
-    { id: 3, name: 'GLM-5', code: 'glm-5', provider_id: 2, model_type: 'text', points_per_call: 0, points_per_token: 100, is_active: true },
-    { id: 4, name: 'GLM-5-Turbo', code: 'glm-5-turbo', provider_id: 2, model_type: 'text', points_per_call: 0, points_per_token: 80, is_active: true },
-  ],
-  3: [
-    // MiniMax Token Plan 模型 - 文本模型（按请求计费）
-    { id: 5, name: 'MiniMax-M2.7', code: 'MiniMax-M2.7', provider_id: 3, model_type: 'text', points_per_call: 1, points_per_token: 0, is_active: true },
-    { id: 6, name: 'MiniMax-M2.7-highspeed', code: 'MiniMax-M2.7-highspeed', provider_id: 3, model_type: 'text', points_per_call: 2, points_per_token: 0, is_active: true },
-    // MiniMax Token Plan 模型 - 语音模型（每日配额）
-    { id: 7, name: 'Speech 2.8', code: 'speech-2.8-hd', provider_id: 3, model_type: 'audio', points_per_call: 1, points_per_token: 0, is_active: true },
-    // MiniMax Token Plan 模型 - 图像模型（每日配额）
-    { id: 8, name: 'image-01', code: 'image-01', provider_id: 3, model_type: 'image', points_per_call: 1, points_per_token: 0, is_active: true },
-    // MiniMax Token Plan 模型 - 视频模型（每日配额）
-    { id: 9, name: 'Hailuo-2.3-Fast', code: 'hailuo-2.3-fast-768P', provider_id: 3, model_type: 'video', points_per_call: 1, points_per_token: 0, is_active: true },
-    { id: 10, name: 'Hailuo-2.3', code: 'hailuo-2.3-768P', provider_id: 3, model_type: 'video', points_per_call: 1, points_per_token: 0, is_active: true },
-    // MiniMax Token Plan 模型 - 音乐模型（每日配额）
-    { id: 11, name: 'Music-2.6', code: 'music-2.6', provider_id: 3, model_type: 'music', points_per_call: 1, points_per_token: 0, is_active: true },
-  ],
+const modelTypeLabels: Record<string, string> = {
+  text: '文本',
+  image: '图像',
+  video: '视频',
+  audio: '语音',
+  music: '音乐',
+  multimodal: '多模态',
+  tts: '语音合成',
+  coding: '编程',
 }
 
 export default function ProvidersPage() {
@@ -99,7 +51,7 @@ export default function ProvidersPage() {
   const [loading, setLoading] = useState(true)
   const [useMock, setUseMock] = useState(false)
 
-  // 创建/编辑渠道商对话框状态
+  // 渠道商对话框
   const [providerDialogOpen, setProviderDialogOpen] = useState(false)
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
   const [providerForm, setProviderForm] = useState({
@@ -110,6 +62,22 @@ export default function ProvidersPage() {
   })
   const [configJson, setConfigJson] = useState('')
   const [useJsonMode, setUseJsonMode] = useState(false)
+
+  // 模型对话框
+  const [modelDialogOpen, setModelDialogOpen] = useState(false)
+  const [editingModel, setEditingModel] = useState<Model | null>(null)
+  const [modelForm, setModelForm] = useState({
+    name: '',
+    code: '',
+    model_type: 'text',
+    category: '',
+    points_per_call: 0,
+    points_per_token: 0,
+  })
+  const [modelProviderId, setModelProviderId] = useState<number>(0)
+
+  // 提交状态
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     loadProviders()
@@ -122,22 +90,48 @@ export default function ProvidersPage() {
       setProviders(data)
       setUseMock(false)
     } catch {
-      // API不可用，使用模拟数据
-      setProviders(mockProviders)
-      setModels(mockModels)
+      toast.error('加载渠道商失败，API 未连接')
+      setProviders([])
       setUseMock(true)
     }
     setLoading(false)
   }
 
-  const toggleProvider = (providerId: number) => {
-    setExpandedProviders(prev => ({
-      ...prev,
-      [providerId]: !prev[providerId]
-    }))
+  const loadModels = useCallback(async (providerId: number) => {
+    try {
+      const data = await adminApi.getProviderModels(providerId)
+      setModels(prev => {
+        if (prev[providerId]) return prev
+        return { ...prev, [providerId]: data }
+      })
+    } catch {
+      setModels(prev => {
+        if (prev[providerId]) return prev
+        return { ...prev, [providerId]: [] }
+      })
+    }
+  }, [])
+
+  const toggleProvider = async (provider: Provider) => {
+    try {
+      await adminApi.toggleProvider(provider.id, !provider.is_active)
+      setProviders(prev => prev.map(p =>
+        p.id === provider.id ? { ...p, is_active: !p.is_active } : p
+      ))
+      toast.success(`渠道商已${provider.is_active ? '禁用' : '启用'}`)
+    } catch {
+      toast.error('操作失败')
+    }
   }
 
-  // 打开添加渠道商对话框
+  const expandProvider = (providerId: number) => {
+    const isExpanded = expandedProviders[providerId]
+    setExpandedProviders(prev => ({ ...prev, [providerId]: !prev[providerId] }))
+    if (!isExpanded) loadModels(providerId)
+  }
+
+  // ---- 渠道商 CRUD ----
+
   const openAddProviderDialog = () => {
     setEditingProvider(null)
     setProviderForm({ name: '', code: '', description: '', website: '' })
@@ -146,7 +140,6 @@ export default function ProvidersPage() {
     setProviderDialogOpen(true)
   }
 
-  // 打开编辑渠道商对话框
   const openEditProviderDialog = (provider: Provider) => {
     setEditingProvider(provider)
     setProviderForm({
@@ -160,83 +153,147 @@ export default function ProvidersPage() {
     setProviderDialogOpen(true)
   }
 
-  // 保存渠道商（创建或更新）
   const saveProvider = async () => {
     if (useJsonMode) {
-      // JSON 模式验证和解析
-      if (!configJson.trim()) {
-        toast.error('请输入 JSON 配置')
-        return
-      }
+      if (!configJson.trim()) { toast.error('请输入 JSON 配置'); return }
       try {
         const jsonData = JSON.parse(configJson)
-        // 验证必需字段
-        if (!jsonData.name || !jsonData.code) {
-          toast.error('JSON 必须包含 name 和 code 字段')
-          return
-        }
-        const createData = {
-          name: jsonData.name,
-          code: jsonData.code,
-          description: jsonData.description || '',
-          website: jsonData.website || '',
-          config: jsonData.config || {},
-        }
+        if (!jsonData.name || !jsonData.code) { toast.error('JSON 必须包含 name 和 code 字段'); return }
+        setSubmitting(true)
         if (editingProvider) {
-          const updated = await adminApi.updateProvider(editingProvider.id, createData)
+          const updated = await adminApi.updateProvider(editingProvider.id, jsonData)
           setProviders(prev => prev.map(p => p.id === updated.id ? updated : p))
           toast.success('渠道商已更新')
         } else {
-          const created = await adminApi.createProvider(createData)
+          const created = await adminApi.createProvider(jsonData)
           setProviders(prev => [...prev, created])
           toast.success('渠道商已创建')
         }
         setProviderDialogOpen(false)
-      } catch (e) {
-        toast.error('JSON 格式错误，请检查')
-        return
+      } catch (e: any) {
+        toast.error(e.message || 'JSON 格式错误')
+      } finally {
+        setSubmitting(false)
       }
       return
     }
 
-    // 表单模式验证
     if (!providerForm.name.trim() || !providerForm.code.trim()) {
       toast.error('请填写名称和代码')
       return
     }
 
+    setSubmitting(true)
     try {
-      const createData = {
-        name: providerForm.name,
-        code: providerForm.code,
-        description: providerForm.description,
-        website: providerForm.website,
-      }
       if (editingProvider) {
-        // 更新
-        const updated = await adminApi.updateProvider(editingProvider.id, createData)
+        const updated = await adminApi.updateProvider(editingProvider.id, providerForm)
         setProviders(prev => prev.map(p => p.id === updated.id ? updated : p))
         toast.success('渠道商已更新')
       } else {
-        // 创建
-        const created = await adminApi.createProvider(createData)
+        const created = await adminApi.createProvider(providerForm)
         setProviders(prev => [...prev, created])
         toast.success('渠道商已创建')
       }
       setProviderDialogOpen(false)
-    } catch (e) {
+    } catch (e: any) {
       toast.error(editingProvider ? '更新失败' : '创建失败')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  // 删除渠道商
   const deleteProvider = async (providerId: number) => {
-    if (!confirm('确定要删除这个渠道商吗？')) return
+    if (!confirm('确定要删除这个渠道商吗？关联的模型和密钥也会被删除。')) return
     try {
       await adminApi.deleteProvider(providerId)
       setProviders(prev => prev.filter(p => p.id !== providerId))
+      setModels(prev => { const n = { ...prev }; delete n[providerId]; return n })
       toast.success('渠道商已删除')
-    } catch (e) {
+    } catch {
+      toast.error('删除失败')
+    }
+  }
+
+  // ---- 模型 CRUD ----
+
+  const openAddModelDialog = (providerId: number) => {
+    setModelProviderId(providerId)
+    setEditingModel(null)
+    setModelForm({ name: '', code: '', model_type: 'text', category: '', points_per_call: 0, points_per_token: 0 })
+    setModelDialogOpen(true)
+  }
+
+  const openEditModelDialog = (model: Model) => {
+    setModelProviderId(model.provider_id)
+    setEditingModel(model)
+    setModelForm({
+      name: model.name,
+      code: model.code,
+      model_type: model.model_type,
+      category: (model as any).category || '',
+      points_per_call: model.points_per_call,
+      points_per_token: model.points_per_token,
+    })
+    setModelDialogOpen(true)
+  }
+
+  const saveModel = async () => {
+    if (!modelForm.name.trim() || !modelForm.code.trim()) {
+      toast.error('请填写模型名称和代码')
+      return
+    }
+    setSubmitting(true)
+    try {
+      if (editingModel) {
+        const updated = await adminApi.updateModel(modelProviderId, editingModel.id, modelForm)
+        setModels(prev => ({
+          ...prev,
+          [modelProviderId]: (prev[modelProviderId] || []).map(m =>
+            m.id === updated.id ? updated : m
+          ),
+        }))
+        toast.success('模型已更新')
+      } else {
+        const created = await adminApi.createModel(modelProviderId, modelForm)
+        setModels(prev => ({
+          ...prev,
+          [modelProviderId]: [...(prev[modelProviderId] || []), created],
+        }))
+        toast.success('模型已创建')
+      }
+      setModelDialogOpen(false)
+    } catch (e: any) {
+      toast.error(e.message || '操作失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const toggleModelStatus = async (model: Model) => {
+    try {
+      await adminApi.toggleModel(model.provider_id, model.id, !model.is_active)
+      setModels(prev => ({
+        ...prev,
+        [model.provider_id]: (prev[model.provider_id] || []).map(m =>
+          m.id === model.id ? { ...m, is_active: !m.is_active } : m
+        ),
+      }))
+      toast.success(`模型已${model.is_active ? '禁用' : '启用'}`)
+    } catch {
+      toast.error('操作失败')
+    }
+  }
+
+  const deleteModel = async (model: Model) => {
+    if (!confirm(`确定删除模型 ${model.name} 吗？`)) return
+    try {
+      await adminApi.deleteModel(model.provider_id, model.id)
+      setModels(prev => ({
+        ...prev,
+        [model.provider_id]: (prev[model.provider_id] || []).filter(m => m.id !== model.id),
+      }))
+      toast.success('模型已删除')
+    } catch {
       toast.error('删除失败')
     }
   }
@@ -263,10 +320,16 @@ export default function ProvidersPage() {
         title="渠道商管理"
         subtitle="管理API渠道商、模型和密钥配置"
         action={
-          <Button size="sm" onClick={openAddProviderDialog}>
-            <Plus className="w-4 h-4 mr-2" />
-            添加渠道商
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={loadProviders}>
+              <RefreshCw className="w-4 h-4 mr-1" />
+              刷新
+            </Button>
+            <Button size="sm" onClick={openAddProviderDialog}>
+              <Plus className="w-4 h-4 mr-2" />
+              添加渠道商
+            </Button>
+          </div>
         }
       />
 
@@ -306,47 +369,38 @@ export default function ProvidersPage() {
                       </CardDescription>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={provider.is_active ? 'default' : 'secondary'}>
-                      {provider.is_active ? '启用' : '禁用'}
-                    </Badge>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openEditProviderDialog(provider)}
+                      onClick={() => toggleProvider(provider)}
+                      title={provider.is_active ? '禁用' : '启用'}
                     >
+                      {provider.is_active ? (
+                        <ToggleRight className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <ToggleLeft className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => openEditProviderDialog(provider)}>
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteProvider(provider.id)}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => deleteProvider(provider.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleProvider(provider.id)}
-                    >
-                      {isExpanded ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
+                    <Button variant="ghost" size="icon" onClick={() => expandProvider(provider.id)}>
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
 
-                {/* 统计信息 */}
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                   <span>模型: {provider.model_count || providerModels.length || 0}</span>
                   <span>活跃密钥: {provider.active_key_count || 0}</span>
-                  <span>{provider.website}</span>
+                  {provider.website && <span>{provider.website}</span>}
                 </div>
               </CardHeader>
 
-              {/* 展开的模型列表 */}
               {isExpanded && (
                 <CardContent className="border-t pt-4">
                   <div className="space-y-3">
@@ -355,13 +409,12 @@ export default function ProvidersPage() {
                         <Server className="w-4 h-4" />
                         模型配置
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => toast.info('添加模型功能开发中')}>
+                      <Button variant="outline" size="sm" onClick={() => openAddModelDialog(provider.id)}>
                         <Plus className="w-3 h-3 mr-1" />
                         添加模型
                       </Button>
                     </div>
 
-                    {/* 模型表格 */}
                     <div className="border rounded-lg">
                       <table className="w-full text-sm">
                         <thead>
@@ -375,23 +428,30 @@ export default function ProvidersPage() {
                           </tr>
                         </thead>
                         <tbody>
+                          {providerModels.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="p-4 text-center text-muted-foreground text-xs">
+                                暂无模型，点击"添加模型"创建
+                              </td>
+                            </tr>
+                          )}
                           {providerModels.map((model) => (
                             <tr key={model.id} className="border-b last:border-0">
                               <td className="p-3">{model.name}</td>
-                              <td className="p-3 text-muted-foreground font-mono text-xs">
-                                {model.code}
-                              </td>
+                              <td className="p-3 text-muted-foreground font-mono text-xs">{model.code}</td>
                               <td className="p-3">
                                 <Badge variant="outline" className="text-xs">
-                                  {model.model_type}
+                                  {modelTypeLabels[model.model_type] || model.model_type}
                                 </Badge>
                               </td>
                               <td className="p-3 text-muted-foreground">
                                 {model.model_type === 'image' || model.model_type === 'audio' || model.model_type === 'video' || model.model_type === 'music'
                                   ? `${model.points_per_call} 积分/次`
-                                  : model.model_type === 'text'
+                                  : model.points_per_call > 0
                                   ? `${model.points_per_call} 积分/请求`
-                                  : `${model.points_per_token} 积分/1M Token`}
+                                  : model.points_per_token > 0
+                                  ? `${model.points_per_token} 积分/1M Token`
+                                  : '免费'}
                               </td>
                               <td className="p-3">
                                 <Badge variant={model.is_active ? 'default' : 'secondary'}>
@@ -400,11 +460,18 @@ export default function ProvidersPage() {
                               </td>
                               <td className="p-3 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="icon-xs" onClick={() => toast.info('编辑模型功能开发中')}>
+                                  <Button variant="ghost" size="icon" onClick={() => toggleModelStatus(model)}>
+                                    {model.is_active ? (
+                                      <ToggleRight className="w-3 h-3 text-green-500" />
+                                    ) : (
+                                      <ToggleLeft className="w-3 h-3 text-muted-foreground" />
+                                    )}
+                                  </Button>
+                                  <Button variant="ghost" size="icon-xs" onClick={() => openEditModelDialog(model)}>
                                     <Edit className="w-3 h-3" />
                                   </Button>
-                                  <Button variant="ghost" size="icon-xs" onClick={() => toast.info('删除模型功能开发中')}>
-                                    <Trash2 className="w-3 h-3" />
+                                  <Button variant="ghost" size="icon-xs" onClick={() => deleteModel(model)}>
+                                    <Trash2 className="w-3 h-3 text-destructive" />
                                   </Button>
                                 </div>
                               </td>
@@ -414,7 +481,6 @@ export default function ProvidersPage() {
                       </table>
                     </div>
 
-                    {/* 密钥管理入口 */}
                     <div className="flex items-center justify-between pt-3 border-t">
                       <div className="flex items-center gap-2 text-sm">
                         <Key className="w-4 h-4" />
@@ -435,7 +501,6 @@ export default function ProvidersPage() {
         })}
       </div>
 
-      {/* 空状态 */}
       {filteredProviders.length === 0 && (
         <div className="flex flex-col items-center justify-center h-64 text-center">
           <Globe className="w-12 h-12 text-muted-foreground mb-4" />
@@ -447,94 +512,116 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      {/* 创建/编辑渠道商对话框 */}
+      {/* 渠道商对话框 */}
       <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editingProvider ? '编辑渠道商' : '添加渠道商'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* 模式切换 */}
             <div className="flex items-center gap-4 pb-2 border-b">
               <span className="text-sm font-medium">输入模式:</span>
               <div className="flex gap-2">
-                <Button
-                  variant={useJsonMode ? 'outline' : 'default'}
-                  size="sm"
-                  onClick={() => setUseJsonMode(false)}
-                >
-                  表单
-                </Button>
-                <Button
-                  variant={useJsonMode ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setUseJsonMode(true)}
-                >
-                  JSON
-                </Button>
+                <Button variant={useJsonMode ? 'outline' : 'default'} size="sm" onClick={() => setUseJsonMode(false)}>表单</Button>
+                <Button variant={useJsonMode ? 'default' : 'outline'} size="sm" onClick={() => setUseJsonMode(true)}>JSON</Button>
               </div>
             </div>
 
             {useJsonMode ? (
-              // JSON 模式
               <div className="space-y-2">
                 <Label htmlFor="configJson">JSON 配置 *</Label>
                 <textarea
                   id="configJson"
                   value={configJson}
                   onChange={(e) => setConfigJson(e.target.value)}
-                  placeholder={'{\n  "name": "渠道商名称",\n  "code": "code",\n  "description": "描述",\n  "website": "https://...",\n  "config": {}\n}'}
+                  placeholder={'{\n  "name": "渠道商名称",\n  "code": "code",\n  "api_base_url": "https://...",\n  "description": "描述",\n  "website": "https://..."\n}'}
                   className="w-full h-48 px-3 py-2 text-sm font-mono border rounded-md bg-background resize-none"
                 />
-                <p className="text-xs text-muted-foreground">
-                  输入 JSON 格式的渠道商配置，必须包含 name 和 code 字段
-                </p>
               </div>
             ) : (
-              // 表单模式
               <>
                 <div className="space-y-2">
                   <Label htmlFor="name">名称 *</Label>
-                  <Input
-                    id="name"
-                    value={providerForm.name}
-                    onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
-                    placeholder="渠道商名称"
-                  />
+                  <Input id="name" value={providerForm.name} onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })} placeholder="渠道商名称" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="code">代码 *</Label>
-                  <Input
-                    id="code"
-                    value={providerForm.code}
-                    onChange={(e) => setProviderForm({ ...providerForm, code: e.target.value })}
-                    placeholder="渠道商代码 (如 wuyin)"
-                  />
+                  <Input id="code" value={providerForm.code} onChange={(e) => setProviderForm({ ...providerForm, code: e.target.value })} placeholder="渠道商代码 (如 zhipu)" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">描述</Label>
-                  <Input
-                    id="description"
-                    value={providerForm.description}
-                    onChange={(e) => setProviderForm({ ...providerForm, description: e.target.value })}
-                    placeholder="渠道商描述"
-                  />
+                  <Input id="description" value={providerForm.description} onChange={(e) => setProviderForm({ ...providerForm, description: e.target.value })} placeholder="渠道商描述" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">网站</Label>
-                  <Input
-                    id="website"
-                    value={providerForm.website}
-                    onChange={(e) => setProviderForm({ ...providerForm, website: e.target.value })}
-                    placeholder="https://..."
-                  />
+                  <Input id="website" value={providerForm.website} onChange={(e) => setProviderForm({ ...providerForm, website: e.target.value })} placeholder="https://..." />
                 </div>
               </>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProviderDialogOpen(false)}>取消</Button>
-            <Button onClick={saveProvider}>{editingProvider ? '更新' : '创建'}</Button>
+            <Button onClick={saveProvider} disabled={submitting}>
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingProvider ? '更新' : '创建'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 模型对话框 */}
+      <Dialog open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingModel ? '编辑模型' : '添加模型'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>模型名称 *</Label>
+              <Input value={modelForm.name} onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })} placeholder="如 GLM-5" />
+            </div>
+            <div className="space-y-2">
+              <Label>模型代码 *</Label>
+              <Input value={modelForm.code} onChange={(e) => setModelForm({ ...modelForm, code: e.target.value })} placeholder="如 glm-5" />
+            </div>
+            <div className="space-y-2">
+              <Label>模型类型 *</Label>
+              <select
+                value={modelForm.model_type}
+                onChange={(e) => setModelForm({ ...modelForm, model_type: e.target.value })}
+                className="w-full px-3 py-2 border rounded-md bg-background text-sm"
+              >
+                <option value="text">文本</option>
+                <option value="image">图像</option>
+                <option value="video">视频</option>
+                <option value="audio">语音</option>
+                <option value="music">音乐</option>
+                <option value="multimodal">多模态</option>
+                <option value="tts">语音合成</option>
+                <option value="coding">编程</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>分类标签</Label>
+              <Input value={modelForm.category} onChange={(e) => setModelForm({ ...modelForm, category: e.target.value })} placeholder="如 skills_task, minimax_text" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>积分/次</Label>
+                <Input type="number" value={modelForm.points_per_call} onChange={(e) => setModelForm({ ...modelForm, points_per_call: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>积分/1M Token</Label>
+                <Input type="number" value={modelForm.points_per_token} onChange={(e) => setModelForm({ ...modelForm, points_per_token: Number(e.target.value) })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setModelDialogOpen(false)}>取消</Button>
+            <Button onClick={saveModel} disabled={submitting}>
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingModel ? '更新' : '创建'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

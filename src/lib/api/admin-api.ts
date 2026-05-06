@@ -172,6 +172,13 @@ export async function toggleModel(providerId: number, modelId: number, isActive:
   await client.post(`${PROVIDERS_BASE}/${providerId}/models/${modelId}/toggle`, { is_active: isActive })
 }
 
+/**
+ * 删除模型
+ */
+export async function deleteModel(providerId: number, modelId: number): Promise<void> {
+  await client.delete(`${PROVIDERS_BASE}/${providerId}/models/${modelId}`)
+}
+
 // ============ API密钥 API ============
 
 // 完整路径: /api/v2/admin/api-keys
@@ -434,6 +441,7 @@ export const adminApi = {
   createModel,
   updateModel,
   toggleModel,
+  deleteModel,
   // API密钥
   getAPIKeys,
   getAPIKey,

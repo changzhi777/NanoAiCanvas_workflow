@@ -16,6 +16,7 @@ import {
   Bell,
   TrendingUp,
   MessageSquare,
+  BarChart3,
 } from 'lucide-react'
 import { useRouter } from '@/lib/next-navigation-shim'
 
@@ -51,6 +52,14 @@ const menuItems = [
     href: '/nanoaicanvas/admin/models',
     color: 'text-purple-500',
     bgColor: 'bg-purple-500/10',
+  },
+  {
+    title: '用量统计',
+    description: '模型调用统计和健康监控',
+    icon: BarChart3,
+    href: '/nanoaicanvas/admin/models/usage',
+    color: 'text-teal-500',
+    bgColor: 'bg-teal-500/10',
   },
   {
     title: '积分管理',
