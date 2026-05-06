@@ -51,6 +51,12 @@ export { default as VideoPreviewNode } from './VideoPreviewNode';
 export { default as AudioPreviewNode } from './AudioPreviewNode';
 export { default as TextPreviewNode } from './TextPreviewNode';
 
+// Skills 相关节点
+export { default as SkillsDataNode } from './SkillsDataNode';
+export { default as SkillsTaskNode } from './SkillsTaskNode';
+export { SKILLS_CATEGORIES, SKILLS_TEMPLATES } from './SkillsDataNode';
+export { default as OutputNode } from './OutputNode';
+
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
 export type { StoryboardGeneratorData } from './StoryboardGeneratorNode';
@@ -114,4 +120,11 @@ export const nodeTypes = {
   video_preview: lazy(() => import('./VideoPreviewNode').then(m => ({ default: m.VideoPreviewNode }))),
   audio_preview: lazy(() => import('./AudioPreviewNode').then(m => ({ default: m.AudioPreviewNode }))),
   text_preview: lazy(() => import('./TextPreviewNode').then(m => ({ default: m.TextPreviewNode }))),
+
+  // Skills 相关节点
+  skills_data: lazy(() => import('./SkillsDataNode').then(m => ({ default: m.default }))),
+  skills_task: lazy(() => import('./SkillsTaskNode').then(m => ({ default: m.default }))),
+
+  // 输出节点（结束）
+  output_node: lazy(() => import('./OutputNode').then(m => ({ default: m.OutputNode }))),
 };

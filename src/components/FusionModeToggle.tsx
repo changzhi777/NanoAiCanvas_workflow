@@ -1,6 +1,6 @@
 'use client'
 
-import { Image, Sparkles, Eye } from 'lucide-react'
+import { Image, Sparkles, Eye, Wand2 } from 'lucide-react'
 import { useChatStore } from '@/stores/nanoImageChatStore'
 import type { GenerationMode } from '@/types'
 import { cn } from '@/lib/utils'
@@ -24,6 +24,12 @@ const MODE_OPTIONS: { value: GenerationMode; label: string; icon: typeof Image; 
     icon: Eye,
     description: '上传图片反推提示词',
   },
+  {
+    value: 'ai-skill',
+    label: 'AI作图',
+    icon: Wand2,
+    description: 'AI智能模板推荐生图',
+  },
 ]
 
 export function FusionModeToggle() {
@@ -40,6 +46,10 @@ export function FusionModeToggle() {
         clearFusionImages()
       }
       if (mode === 'fusion') {
+        clearReferenceImage()
+      }
+      if (mode === 'ai-skill') {
+        clearFusionImages()
         clearReferenceImage()
       }
     }

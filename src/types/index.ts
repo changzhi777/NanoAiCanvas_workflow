@@ -247,7 +247,7 @@ export interface MindmapData {
 }
 
 // Fusion types
-export type GenerationMode = 'text-to-image' | 'fusion' | 'reference'
+export type GenerationMode = 'text-to-image' | 'fusion' | 'reference' | 'ai-skill'
 
 export interface FusionImage {
   id: string

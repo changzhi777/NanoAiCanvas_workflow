@@ -52,22 +52,22 @@ const navigation = [
     items: [
       {
         title: '渠道商列表',
-        href: '/admin/providers',
+        href: '/nanoaicanvas/admin/providers',
         icon: Globe,
       },
       {
         title: 'API Key 池',
-        href: '/admin/api-key-pool',
+        href: '/nanoaicanvas/admin/api-key-pool',
         icon: Key,
       },
       {
         title: 'MCP 配置',
-        href: '/admin/mcp',
+        href: '/nanoaicanvas/admin/mcp',
         icon: Plug,
       },
       {
         title: '应用管理',
-        href: '/admin/apps',
+        href: '/nanoaicanvas/admin/apps',
         icon: LayoutGrid,
       },
     ],
@@ -77,12 +77,12 @@ const navigation = [
     items: [
       {
         title: '模型配置',
-        href: '/admin/models',
+        href: '/nanoaicanvas/admin/models',
         icon: Server,
       },
       {
         title: '积分管理',
-        href: '/admin/points',
+        href: '/nanoaicanvas/admin/points',
         icon: Zap,
       },
     ],
@@ -92,12 +92,12 @@ const navigation = [
     items: [
       {
         title: '发送消息',
-        href: '/admin/notifications/send',
+        href: '/nanoaicanvas/admin/notifications/send',
         icon: Bell,
       },
       {
         title: '消息记录',
-        href: '/admin/notifications/records',
+        href: '/nanoaicanvas/admin/notifications/records',
         icon: MessageSquare,
       },
     ],
@@ -107,12 +107,12 @@ const navigation = [
     items: [
       {
         title: '团队列表',
-        href: '/admin/teams',
+        href: '/nanoaicanvas/admin/teams',
         icon: Users,
       },
       {
         title: '创建团队',
-        href: '/admin/teams/create',
+        href: '/nanoaicanvas/admin/teams/create',
         icon: UserPlus,
       },
     ],
@@ -122,12 +122,12 @@ const navigation = [
     items: [
       {
         title: '用户申请',
-        href: '/admin/user-apply',
+        href: '/nanoaicanvas/admin/user-apply',
         icon: UserPlus,
       },
       {
         title: '统计分析',
-        href: '/admin/statistics',
+        href: '/nanoaicanvas/admin/statistics',
         icon: TrendingUp,
       },
     ],
@@ -137,7 +137,7 @@ const navigation = [
     items: [
       {
         title: 'MQTT 配置',
-        href: '/admin/mqtt',
+        href: '/nanoaicanvas/admin/mqtt',
         icon: Wifi,
       },
     ],
@@ -147,7 +147,7 @@ const navigation = [
     items: [
       {
         title: 'Kevin 算法',
-        href: '/admin/kevin',
+        href: '/nanoaicanvas/admin/kevin',
         icon: Activity,
       },
     ],
@@ -157,7 +157,7 @@ const navigation = [
     items: [
       {
         title: '系统配置',
-        href: '/admin/system',
+        href: '/nanoaicanvas/admin/system',
         icon: Settings,
       },
     ],

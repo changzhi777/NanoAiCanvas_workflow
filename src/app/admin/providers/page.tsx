@@ -423,7 +423,7 @@ export default function ProvidersPage() {
                           {provider.active_key_count || 0} 个活跃
                         </Badge>
                       </div>
-                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => window.location.href = '/admin/api-keys'}>
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => window.location.href = '/nanoaicanvas/admin/api-keys'}>
                         管理密钥
                       </Button>
                     </div>

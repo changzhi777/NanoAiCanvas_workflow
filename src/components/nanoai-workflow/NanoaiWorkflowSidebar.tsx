@@ -21,6 +21,7 @@ import {
   Code,
   MessageSquare,
   Music,
+  Save,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -348,6 +349,15 @@ const OUTPUT_NODES: NodeTypeConfig[] = [
     tags: ['预览', '混合', '输出'],
     isNew: true,
   },
+  {
+    type: WorkflowNodeType.OUTPUT_NODE,
+    label: '输出/保存',
+    icon: <Save className="w-5 h-5" />,
+    description: '保存到资产库 / 下载到本地',
+    category: 'output',
+    tags: ['输出', '保存', '下载', '资产'],
+    isNew: true,
+  },
 ];
 
 interface CategorySectionProps {
@@ -582,6 +592,8 @@ export function NanoaiWorkflowSidebar({
             { id: 'audio-in', name: '音频输入', type: 'audio', required: false },
             { id: 'text-in', name: '文本输入', type: 'text', required: false },
           ];
+        case WorkflowNodeType.OUTPUT_NODE:
+          return [{ id: 'data-in', name: '数据', type: 'image', required: true }];
         default:
           return [];
       }
