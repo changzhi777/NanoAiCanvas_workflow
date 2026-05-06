@@ -12,6 +12,7 @@ import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
 import { cn } from '@/lib/utils'
 import { IMEInput, IMETextarea } from '../ui/IMEInput'
+import { VoiceInput } from '../ui/VoiceInput'
 import {
   Select,
   SelectContent,
@@ -368,19 +369,33 @@ const DynamicParamsForm = ({ templateId, category, value, onChange }: { template
               </SelectContent>
             </Select>
           ) : field.type === 'textarea' ? (
-            <IMETextarea
-              value={value[field.name] || ''}
-              onChange={(e) => handleFieldChange(field.name, e.target.value)}
-              placeholder={field.label}
-              className="min-h-[60px] text-xs resize-none"
-            />
+            <div className="flex items-start gap-1.5">
+              <IMETextarea
+                value={value[field.name] || ''}
+                onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                placeholder={field.label}
+                className="min-h-[60px] text-xs resize-none flex-1"
+              />
+              <VoiceInput
+                onResult={(text) => handleFieldChange(field.name, text)}
+                currentValue={value[field.name] || ''}
+                size="sm"
+              />
+            </div>
           ) : (
-            <IMEInput
-              value={value[field.name] || ''}
-              onChange={(e) => handleFieldChange(field.name, e.target.value)}
-              placeholder={field.label}
-              className="h-8 text-xs"
-            />
+            <div className="flex items-center gap-1.5">
+              <IMEInput
+                value={value[field.name] || ''}
+                onChange={(e) => handleFieldChange(field.name, e.target.value)}
+                placeholder={field.label}
+                className="h-8 text-xs flex-1"
+              />
+              <VoiceInput
+                onResult={(text) => handleFieldChange(field.name, text)}
+                currentValue={value[field.name] || ''}
+                size="sm"
+              />
+            </div>
           )}
         </div>
       ))}

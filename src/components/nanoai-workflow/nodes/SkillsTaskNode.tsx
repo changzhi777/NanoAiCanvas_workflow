@@ -16,6 +16,7 @@ import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
 import { GLM_CONFIG } from '@/config/glm'
 import { IMERawTextarea } from '../ui/IMEInput'
+import { VoiceInput } from '../ui/VoiceInput'
 
 // ==================== 类型定义 ====================
 
@@ -413,16 +414,23 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
           {/* 优化后的提示词（可编辑） */}
           {hasOptimized && (
             <div className="space-y-1.5">
-              <IMERawTextarea
-                value={editablePrompt}
-                onChange={(v) => setEditablePrompt(v)}
-                rows={4}
-                className={cn(
-                  'w-full text-xs resize-none rounded-md border px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500',
-                  isDark ? 'bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500' : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
-                )}
-                placeholder="优化后的提示词（可编辑）"
-              />
+              <div className="flex items-start gap-1.5">
+                <IMERawTextarea
+                  value={editablePrompt}
+                  onChange={(v) => setEditablePrompt(v)}
+                  rows={4}
+                  className={cn(
+                    'flex-1 text-xs resize-none rounded-md border px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500',
+                    isDark ? 'bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500' : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
+                  )}
+                  placeholder="优化后的提示词（可编辑）"
+                />
+                <VoiceInput
+                  onResult={setEditablePrompt}
+                  currentValue={editablePrompt}
+                  size="sm"
+                />
+              </div>
               {editablePrompt !== optimizedPrompt && (
                 <p className="text-[10px] text-amber-500">提示词已手动修改</p>
               )}
