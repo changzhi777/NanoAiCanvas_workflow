@@ -4,8 +4,7 @@ import { Play, AlertCircle, CheckCircle2, Loader2, Clock, Zap } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { useNanoaiWorkflowStore, WorkflowNodeData, NodeStatus } from '@/stores/nanoaiWorkflowStore';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { IMEInput, IMETextarea } from '../ui/IMEInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ==================== 类型定义 ====================
@@ -133,7 +132,7 @@ const ParamEditor = memo(({ params, schema, onChange, disabled }: ParamEditorPro
               <label className="text-xs text-muted-foreground">
                 {field.label} {field.required && <span className="text-destructive">*</span>}
               </label>
-              <Input
+              <IMEInput
                 value={value || ''}
                 onChange={(e) => handleChange(field.key, e.target.value)}
                 placeholder={field.placeholder}
@@ -149,7 +148,7 @@ const ParamEditor = memo(({ params, schema, onChange, disabled }: ParamEditorPro
               <label className="text-xs text-muted-foreground">
                 {field.label} {field.required && <span className="text-destructive">*</span>}
               </label>
-              <Textarea
+              <IMETextarea
                 value={value || ''}
                 onChange={(e) => handleChange(field.key, e.target.value)}
                 placeholder={field.placeholder}
@@ -188,7 +187,7 @@ const ParamEditor = memo(({ params, schema, onChange, disabled }: ParamEditorPro
           return (
             <div key={field.key} className="space-y-1">
               <label className="text-xs text-muted-foreground">{field.label}</label>
-              <Input
+              <IMEInput
                 type="number"
                 value={value ?? field.defaultValue ?? ''}
                 onChange={(e) => handleChange(field.key, Number(e.target.value))}

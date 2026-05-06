@@ -10,6 +10,7 @@ import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/n
 import { BaseNode, ExecuteButton } from './BaseNode';
 import { useTheme } from '../ui/Theme';
 import { cn } from '@/lib/utils';
+import { useIMEValue } from '../ui/IMEInput';
 
 // ==================== 类型定义 ====================
 
@@ -42,6 +43,7 @@ export const TextPreviewNode = ({ id, data }: NodeProps<TextPreviewNodeData>) =>
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const searchIME = useIMEValue(searchQuery, setSearchQuery);
 
   // 从上游节点获取数据
   const upstreamData = useMemo(() => {
@@ -178,8 +180,7 @@ export const TextPreviewNode = ({ id, data }: NodeProps<TextPreviewNodeData>) =>
             <input
               type="text"
               placeholder="搜索内容..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              {...searchIME}
               className={cn(
                 'w-full pl-9 pr-3 py-2 rounded-lg text-sm border transition-colors',
                 isDark

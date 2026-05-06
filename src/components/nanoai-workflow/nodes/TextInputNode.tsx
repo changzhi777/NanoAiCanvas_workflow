@@ -5,6 +5,7 @@ import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/n
 import { BaseNode, ExecuteButton } from './BaseNode';
 import { useTheme } from '../ui/Theme';
 import { cn } from '@/lib/utils';
+import { IMERawTextarea } from '../ui/IMEInput';
 
 export interface TextInputNodeData extends WorkflowNodeData {
   params: {
@@ -109,11 +110,10 @@ export const TextInputNode = ({ id, data }: NodeProps<TextInputNodeData>) => {
         <label className="block text-sm font-medium mb-2" style={{ color: isDark ? '#fafafa' : '#374151' }}>
           角色描述内容
         </label>
-        <textarea
+        <IMERawTextarea
           value={inputValue}
-          onChange={(e) => handleInputChange(e.target.value)}
+          onChange={(v) => handleInputChange(v)}
           placeholder="请输入角色描述：三视图+脸部特写..."
-          maxLength={data.params.maxLength || 2000}
           rows={6}
           className={cn(
             'w-full px-4 py-3 rounded-xl border-2 transition-all duration-200 resize-none',

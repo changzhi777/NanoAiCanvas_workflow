@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { WorkflowNodeData, NodeStatus } from '@/stores/nanoaiWorkflowStore';
 import { useTheme } from '../ui/Theme';
 import { useToast } from '@/hooks/useToast';
+import { IMERawInput, IMERawTextarea } from '../ui/IMEInput';
 import { NODE_TYPE_TO_CATEGORY, NodeFunctionCategory } from './nodeColors';
 import '@/styles/button-3d.css';
 
@@ -353,9 +354,9 @@ export const BaseNode = memo(({
         )}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {/* 运行状态时的背景脉冲效果 */}
+        {/* 运行状态时的背景指示 */}
         {data.status === NodeStatus.RUNNING && (
-          <div className="absolute inset-0 bg-blue-500/10 animate-pulse" />
+          <div className="absolute inset-0 bg-blue-500/10" />
         )}
 
         <div className="relative flex items-center gap-3">
@@ -381,7 +382,7 @@ export const BaseNode = memo(({
           <StatusIndicator status={data.status} />
           {data.status === NodeStatus.RUNNING && (
             <div className="flex items-center gap-1 text-xs text-blue-400">
-              <Zap className="w-3 h-3 animate-pulse" />
+              <Zap className="w-3 h-3" />
               <span>运行中</span>
             </div>
           )}
@@ -601,10 +602,9 @@ export const ParamEditor = memo(({ params, onChange, schema }: ParamEditorProps)
             </label>
 
             {field.type === 'text' && (
-              <input
-                type="text"
-                value={value}
-                onChange={(e) => updateParam(field.key, e.target.value)}
+              <IMERawInput
+                value={value || ''}
+                onChange={(v) => updateParam(field.key, v)}
                 placeholder={field.placeholder}
                 className={cn(
                   'w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2',
@@ -622,9 +622,9 @@ export const ParamEditor = memo(({ params, onChange, schema }: ParamEditorProps)
             )}
 
             {field.type === 'textarea' && (
-              <textarea
-                value={value}
-                onChange={(e) => updateParam(field.key, e.target.value)}
+              <IMERawTextarea
+                value={value || ''}
+                onChange={(v) => updateParam(field.key, v)}
                 placeholder={field.placeholder}
                 rows={3}
                 className={cn(
