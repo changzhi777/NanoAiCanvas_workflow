@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { User } from 'lucide-react';
 import { AuthDialog } from './AuthDialog';
 import { UserSettingsDialog } from './UserSettingsDialog';
+import { NotificationPopover } from './NotificationPopover';
 
 interface LoginButtonProps {
   className?: string;
@@ -31,8 +32,10 @@ export function LoginButton({ className }: LoginButtonProps) {
   if (token && user) {
     return (
       <>
-        <Tooltip>
-          <TooltipTrigger asChild>
+        <div className="flex items-center gap-1">
+          <NotificationPopover />
+          <Tooltip>
+            <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
@@ -59,6 +62,7 @@ export function LoginButton({ className }: LoginButtonProps) {
             <p className="text-xs text-muted-foreground">点击设置</p>
           </TooltipContent>
         </Tooltip>
+        </div>
         <UserSettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       </>
     );

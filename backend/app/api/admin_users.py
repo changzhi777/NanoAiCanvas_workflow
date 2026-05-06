@@ -78,6 +78,18 @@ async def approve_user(
     await db.commit()
     await db.refresh(user)
 
+    # Create approval notification
+    try:
+        from app.api.notifications import create_notification
+        from app.models.notification import NotificationType
+        await create_notification(
+            db, user.id, NotificationType.APPROVAL,
+            "账号审核通过",
+            "恭喜！您的账号已通过审核，获得 500 积分奖励，欢迎开始使用。",
+        )
+    except Exception:
+        pass
+
     # Grant initial 500 points
     try:
         from app.api.points import get_or_create_user_account, execute_transaction
@@ -121,6 +133,18 @@ async def reject_user(
     user.status = UserStatus.REJECTED
     await db.commit()
     await db.refresh(user)
+
+    # Create rejection notification
+    try:
+        from app.api.notifications import create_notification
+        from app.models.notification import NotificationType
+        await create_notification(
+            db, user.id, NotificationType.REJECTION,
+            "注册申请被拒绝",
+            "很抱歉，您的注册申请未通过审核。如有疑问请联系管理员。",
+        )
+    except Exception:
+        pass
 
     return ApproveResponse(
         id=user.id,

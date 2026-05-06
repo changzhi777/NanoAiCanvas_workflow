@@ -40,3 +40,4 @@ class User(Base):
     owned_teams = relationship("Team", foreign_keys="Team.owner_id", back_populates="owner")
     team_memberships = relationship("TeamMember", back_populates="user")
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

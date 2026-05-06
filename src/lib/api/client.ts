@@ -546,5 +546,29 @@ export const workflows = {
     request<{ message: string }>(`/workflows/${id}`, { method: 'DELETE', token }),
 };
 
+// Notifications API
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export const notifications = {
+  list: (token: string, limit = 30) =>
+    request<NotificationItem[]>(`/notifications?limit=${limit}`, { token }),
+
+  unreadCount: (token: string) =>
+    request<{ count: number }>('/notifications/unread-count', { token }),
+
+  markRead: (id: string, token: string) =>
+    request<{ success: boolean }>(`/notifications/read/${id}`, { method: 'POST', token }),
+
+  markAllRead: (token: string) =>
+    request<{ success: boolean }>('/notifications/read-all', { method: 'POST', token }),
+};
+
 export { ApiError };
 export { API_BASE_URL };

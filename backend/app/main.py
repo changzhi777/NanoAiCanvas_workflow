@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.api import (
     auth, assets, workflows, sync, points, points_admin,
     prompt_restrictions, categories, teams, assets_export,
-    admin_users
+    admin_users, notifications
 )
 from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
@@ -64,6 +64,7 @@ app.include_router(categories.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(assets_export.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 # V2 Image generation routers (new unified routes)
 app.include_router(v2_image.router)
