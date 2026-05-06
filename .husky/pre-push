@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# 预推送钩子 - 推送前第2位+1（部署版本）
+# 预推送钩子 - 推送前第3位（patch）+1（部署版本）
 # 仅推送到 main 分支时触发
 
 BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
@@ -23,17 +23,17 @@ get_version() {
     grep '"version"' "$VERSION_FILE" | sed 's/.*"version": "\([^"]*\)".*/\1/'
 }
 
-update_minor_version() {
+bump_patch() {
     local version=$1
     local major=$(echo $version | cut -d'.' -f1)
     local minor=$(echo $version | cut -d'.' -f2)
     local patch=$(echo $version | cut -d'.' -f3)
-    local new_minor=$((minor + 1))
-    echo "${major}.${new_minor}.0"
+    local new_patch=$((patch + 1))
+    echo "${major}.${minor}.${new_patch}"
 }
 
 OLD_VERSION=$(get_version)
-NEW_VERSION=$(update_minor_version $OLD_VERSION)
+NEW_VERSION=$(bump_patch $OLD_VERSION)
 
 # 使用 Perl 进行替换（macOS 兼容）
 perl -i -pe "s/\"version\": \"$OLD_VERSION\"/\"version\": \"$NEW_VERSION\"/" "$VERSION_FILE"
@@ -42,8 +42,6 @@ echo "📦 部署版本更新: $OLD_VERSION -> $NEW_VERSION"
 
 # 提交版本更新
 git add "$VERSION_FILE"
-git commit -m "chore: 部署版本更新 $NEW_VERSION
-
-作者: 外星动物（常智）/ IoTchange/E-Mail:14455975@qq.com"
+git commit -m "chore: 部署版本更新 $NEW_VERSION"
 
 echo "✅ 版本更新完成，推送继续..."
