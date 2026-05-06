@@ -18,9 +18,11 @@ type RoutesMap = Record<string, RouteEntry>
 let cachedRoutes: RoutesMap = {}
 let loaded = false
 let loading: Promise<RoutesMap> | null = null
+let lastLoadTime = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 分钟
 
 export async function loadRoutes(): Promise<RoutesMap> {
-  if (loaded) return cachedRoutes
+  if (loaded && Date.now() - lastLoadTime < CACHE_TTL) return cachedRoutes
   if (loading) return loading
 
   loading = (async () => {
@@ -28,11 +30,10 @@ export async function loadRoutes(): Promise<RoutesMap> {
       const data = await client.get<RoutesMap>('/api/v2/admin/model-routes/map')
       cachedRoutes = data || {}
       loaded = true
+      lastLoadTime = Date.now()
       return cachedRoutes
     } catch {
-      // 后端不可用，使用本地配置降级
-      cachedRoutes = {}
-      loaded = true
+      // 后端不可用，使用本地配置降级，不标记 loaded 允许重试
       return cachedRoutes
     } finally {
       loading = null

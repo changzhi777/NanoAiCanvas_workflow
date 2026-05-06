@@ -5,7 +5,6 @@ Admin CRUD API — 渠道商/模型/密钥/用量统计/健康检查
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case, and_
-from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timedelta
@@ -200,17 +199,16 @@ def _apikey_to_out(k: APIKey) -> dict:
 
 @router.get("/providers", response_model=List[ProviderOut])
 async def list_providers(db: AsyncSession = Depends(get_db)):
-    stmt = select(Provider).options(
-        selectinload(Provider.models),
-        selectinload(Provider.api_keys),
-    ).order_by(Provider.id)
+    stmt = select(Provider).order_by(Provider.id)
     result = await db.execute(stmt)
     providers = result.scalars().all()
 
     out = []
     for p in providers:
-        mc = len([m for m in p.models if m.is_active])
-        kc = len([k for k in p.api_keys if k.status == "active"])
+        mc_stmt = select(func.count()).where(and_(Model.provider_id == p.id, Model.is_active == True))
+        kc_stmt = select(func.count()).where(and_(APIKey.provider_id == p.id, APIKey.status == "active"))
+        mc = (await db.execute(mc_stmt)).scalar() or 0
+        kc = (await db.execute(kc_stmt)).scalar() or 0
         out.append(_provider_to_out(p, mc, kc))
     return out
 
