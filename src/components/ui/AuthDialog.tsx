@@ -10,8 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/useToast';
-import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { User, Mail, Lock, Loader2, Eye, EyeOff, ArrowLeft, ChevronDown } from 'lucide-react';
 
 export const AUTH_ERROR_MESSAGES: Record<AuthErrorType | 'unknown' | 'rate_limited', { title: string; description: string }> = {
   invalid_credentials: {
@@ -238,7 +245,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
           {/* Email input: prefix + domain selector (login & register) */}
           {(mode === 'login' || mode === 'register') && (
-            <div className="relative flex gap-0">
+            <div className="group relative flex">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
               <Input
                 type="text"
@@ -246,18 +253,22 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
                 value={emailPrefix}
                 onChange={(e) => setEmailPrefix(e.target.value)}
                 required
-                className="pl-9 rounded-r-none border-r-0"
+                className="pl-9 rounded-r-none border-r-0 flex-1 min-w-0 focus-visible:z-[1] focus-visible:rounded-r-md"
               />
-              <span className="flex items-center px-2 bg-muted border-y text-muted-foreground text-sm">@</span>
-              <select
-                value={emailDomain}
-                onChange={(e) => setEmailDomain(e.target.value)}
-                className="rounded-l-none border bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                {EMAIL_DOMAINS.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
+              <div className="flex items-center border-y border-l bg-muted/40 text-muted-foreground text-sm px-1.5 select-none">
+                @
+              </div>
+              <Select value={emailDomain} onValueChange={setEmailDomain}>
+                <SelectTrigger className="w-[140px] rounded-l-none border-l-0 gap-0 focus:z-[1] focus:rounded-l-md [&>svg]:opacity-60">
+                  <SelectValue />
+                  <ChevronDown className="h-3.5 w-3.5 ml-auto shrink-0" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMAIL_DOMAINS.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
