@@ -97,6 +97,7 @@ const portTypeConfig = {
   audio: { color: 'bg-green-500', hover: 'hover:bg-green-100', label: '音频' },
   json: { color: 'bg-yellow-500', hover: 'hover:bg-yellow-100', label: 'JSON' },
   array: { color: 'bg-orange-500', hover: 'hover:bg-orange-100', label: '数组' },
+  object: { color: 'bg-purple-500', hover: 'hover:bg-purple-100', label: '数据' },
 };
 
 const InputPort = memo(({ id, name, type, required, description }: PortProps) => {
