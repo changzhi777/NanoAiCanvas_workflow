@@ -7,11 +7,13 @@ from contextlib import asynccontextmanager
 from app.config import get_settings
 from app.api import (
     auth, assets, workflows, sync, points, points_admin,
-    prompt_restrictions, categories, teams, assets_export
+    prompt_restrictions, categories, teams, assets_export,
+    admin_users
 )
 from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
 from app.api.websocket import websocket_routes
+from app.services.skills_worker import WorkerManager
 
 settings = get_settings()
 
@@ -20,8 +22,17 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     # Startup
     print("🚀 NanoAI Backend starting up...")
+
+    # 启动 Skills Worker
+    worker_mgr = WorkerManager()
+    await worker_mgr.start_all(["gpt_image_2"])
+    print("✅ Skills Workers started")
+
     yield
+
     # Shutdown
+    print("👋 Stopping Skills Workers...")
+    await worker_mgr.stop_all()
     print("👋 NanoAI Backend shutting down...")
 
 
@@ -52,6 +63,7 @@ app.include_router(prompt_restrictions.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(teams.router, prefix="/api")
 app.include_router(assets_export.router, prefix="/api")
+app.include_router(admin_users.router, prefix="/api")
 
 # V2 Image generation routers (new unified routes)
 app.include_router(v2_image.router)

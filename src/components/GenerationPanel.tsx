@@ -53,6 +53,7 @@ import { useArchitectureStore } from '@/stores/nanoImageArchitectureStore'
 import { FusionModeToggle } from '@/components/FusionModeToggle'
 import { FusionImageUploader } from '@/components/FusionImageUploader'
 import { ReferenceImageUploader } from '@/components/ReferenceImageUploader'
+import { AISkillTemplatePanel } from '@/components/AISkillTemplatePanel'
 import { PromptWizardDialog } from '@/components/PromptWizardDialog'
 import { KnowledgeCardDialog } from '@/components/KnowledgeCardDialog'
 import { CharacterDesignDialog } from '@/components/CharacterDesignDialog'
@@ -63,6 +64,8 @@ import { StoryboardDialog } from '@/components/StoryboardDialog'
 import { BatchTaskDialog } from '@/components/BatchTaskDialog'
 import { PromptTemplateDialog } from '@/components/PromptTemplateDialog'
 import { getAdapter } from '@/lib/api/adapters'
+import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
+import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { enhancePrompt } from '@/lib/api/text-enhance'
 import { createImageAssetApi } from '@/lib/api/image-assets'
 import { promptRestrictionsApi } from '@/lib/api/prompt-restrictions'
@@ -121,6 +124,8 @@ export function GenerationPanel() {
   const [showWizardDialog, setShowWizardDialog] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [generationStatus, setGenerationStatus] = useState('')
+  const [taskStep, setTaskStep] = useState('validating')
+  const [taskStepMessage, setTaskStepMessage] = useState('')
   const [voiceDialogOpen, setVoiceDialogOpen] = useState(false)
   const [storyboardDialogOpen, setStoryboardDialogOpen] = useState(false)
   const [batchDialogOpen, setBatchDialogOpen] = useState(false)
@@ -271,6 +276,8 @@ export function GenerationPanel() {
     setIsGenerating(true)
     setGenerationProgress(0)
     setGenerationStatus('准备中...')
+    setTaskStep('validating')
+    setTaskStepMessage('')
 
     // 切换到任务队列标签
     window.dispatchEvent(new CustomEvent('history:switchToTasks'))
@@ -327,21 +334,43 @@ export function GenerationPanel() {
         }
       }
 
+      // Register step callback for gpt-image-2 (per-call to avoid singleton override)
+      const stepCallback = (stepInfo: TaskStepInfo) => {
+        setTaskStep(stepInfo.step)
+        setTaskStepMessage(stepInfo.message)
+      }
+
       // 6. Call API based on mode & model
       if (generationMode === 'fusion') {
-        // Fusion: use adapter pattern for all models
-        const adapter = getAdapter(imageModel)
-        images = await adapter.generateImage(
-          { prompt: finalPrompt, size, aspectRatio, urls: fusionImageUrls, signal: abortController.signal },
-          onProgress,
-        )
+        if (imageModel === 'gpt-image-2') {
+          const skillAdapter = getSkillQueueAdapter()
+          images = await skillAdapter.generateImage(
+            { prompt: finalPrompt, size, aspectRatio, urls: fusionImageUrls, signal: abortController.signal },
+            onProgress,
+            stepCallback,
+          )
+        } else {
+          const adapter = getAdapter(imageModel)
+          images = await adapter.generateImage(
+            { prompt: finalPrompt, size, aspectRatio, urls: fusionImageUrls, signal: abortController.signal },
+            onProgress,
+          )
+        }
       } else {
-        // Text-to-image: use adapter pattern for all models
-        const adapter = getAdapter(imageModel)
-        images = await adapter.generateImage(
-          { prompt: finalPrompt, size, aspectRatio, signal: abortController.signal },
-          onProgress,
-        )
+        if (imageModel === 'gpt-image-2') {
+          const skillAdapter = getSkillQueueAdapter()
+          images = await skillAdapter.generateImage(
+            { prompt: finalPrompt, size, aspectRatio, signal: abortController.signal },
+            onProgress,
+            stepCallback,
+          )
+        } else {
+          const adapter = getAdapter(imageModel)
+          images = await adapter.generateImage(
+            { prompt: finalPrompt, size, aspectRatio, signal: abortController.signal },
+            onProgress,
+          )
+        }
       }
 
       // 7. Update message with results
@@ -501,7 +530,15 @@ export function GenerationPanel() {
               </div>
             )}
 
-            {/* Textarea is always shown */}
+            {/* AI Skill mode */}
+            {generationMode === 'ai-skill' && (
+              <div className="mb-3 min-h-[400px]">
+                <AISkillTemplatePanel />
+              </div>
+            )}
+
+            {/* Textarea is always shown except for ai-skill mode */}
+            {generationMode !== 'ai-skill' && (
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -515,8 +552,11 @@ export function GenerationPanel() {
               className={`${generationMode === 'fusion' ? 'min-h-[140px]' : generationMode === 'reference' ? 'min-h-[28px]' : 'min-h-[255px]'} resize-none text-sm leading-relaxed`}
               onKeyDown={handleTextareaKeyDown}
             />
+            )}
           </div>
 
+          {generationMode !== 'ai-skill' && (
+          <>
           {/* ---- Action Buttons Row ---- */}
           {/* 第一行：提示词优化相关 */}
           <div className="flex-shrink-0 flex items-center gap-1 flex-wrap">
@@ -1022,9 +1062,19 @@ export function GenerationPanel() {
               </div>
             )}
           </div>
+          </>
+          )}
 
           {/* ---- Progress Section ---- */}
           {isGenerating && (
+            imageModel === 'gpt-image-2' ? (
+              <TaskStepAnimation
+                currentStep={taskStep}
+                progress={generationProgress}
+                stepMessage={taskStepMessage}
+                className="flex-shrink-0"
+              />
+            ) : (
             <div className="flex-shrink-0 space-y-2">
               <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
                 <div
@@ -1037,6 +1087,7 @@ export function GenerationPanel() {
                 <span className="font-mono">{generationProgress}%</span>
               </div>
             </div>
+            )
           )}
         </div>
 

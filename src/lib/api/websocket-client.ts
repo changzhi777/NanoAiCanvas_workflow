@@ -22,8 +22,9 @@ class TaskWebSocketClient {
   private taskId: string | null = null;
   private callbacks: Set<TaskStatusCallback> = new Set();
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
-  private reconnectDelay = 1000;
+  private maxReconnectAttempts = 10;
+  private baseReconnectDelay = 1000;
+  private _resolved = false;
 
   /**
    * 连接到任务的 WebSocket 频道
@@ -32,6 +33,7 @@ class TaskWebSocketClient {
     return new Promise((resolve, reject) => {
       this.taskId = taskId;
       this.reconnectAttempts = 0;
+      this._resolved = false;
 
       const apiKey = getApiKey();
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -45,7 +47,10 @@ class TaskWebSocketClient {
           if (apiKey) {
             this.sendAuth(apiKey);
           }
-          resolve();
+          if (!this._resolved) {
+            this._resolved = true;
+            resolve();
+          }
         };
 
         this.ws.onmessage = (event) => {
@@ -68,24 +73,33 @@ class TaskWebSocketClient {
 
         this.ws.onerror = (error) => {
           console.error('[WS] WebSocket error:', error);
-          reject(error);
+          if (!this._resolved) {
+            this._resolved = true;
+            reject(error);
+          }
         };
 
         this.ws.onclose = (event) => {
           console.log(`[WS] Connection closed:`, event.code, event.reason);
           this.ws = null;
 
-          // 尝试重连
+          // 指数退避重连
           if (this.reconnectAttempts < this.maxReconnectAttempts && this.taskId) {
             this.reconnectAttempts++;
-            console.log(`[WS] Reconnecting... attempt ${this.reconnectAttempts}`);
+            const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+            const maxDelay = 30000;
+            const actualDelay = Math.min(delay, maxDelay);
+            console.log(`[WS] Reconnecting... attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${actualDelay}ms`);
             setTimeout(() => {
               this.connect(this.taskId!).catch(console.error);
-            }, this.reconnectDelay * this.reconnectAttempts);
+            }, actualDelay);
           }
         };
       } catch (error) {
-        reject(error);
+        if (!this._resolved) {
+          this._resolved = true;
+          reject(error);
+        }
       }
     });
   }

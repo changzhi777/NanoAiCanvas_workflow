@@ -1,10 +1,13 @@
 /**
  * NanoAI Workflow API服务
  * 速创API文档地址: https://api.wuyinkeji.com/doc/65
+ *
+ * 注意：NanoBanana2 仍通过此文件直连速创API。
+ * GPT-Image-2 已改为走后端 Skills Queue（SkillQueueAdapter）。
  */
 
 const API_BASE_URL = '/api/wuyinkeji';
-const API_KEY = 'BQQPSV2KBlJsUSfoBGByekjs2s';
+const API_KEY = import.meta.env.VITE_WUYINKEJI_API_KEY || 'BQQPSV2KBlJsUSfoBGByekjs2s';
 
 // ==================== 类型定义 ====================
 
