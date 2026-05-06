@@ -880,7 +880,19 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         edges: state.edges,
         templates: state.templates,
         versions: state.versions
-      })
+      }),
+      merge: (persistedState, currentState) => {
+        const stored = persistedState as Partial<typeof currentState>
+        const storedTemplates: WorkflowTemplate[] = (stored as any)?.templates || []
+        const userTemplates = storedTemplates.filter(
+          (t) => !BUILT_IN_TEMPLATES.some((bt) => bt.id === t.id)
+        )
+        return {
+          ...currentState,
+          ...(stored as any),
+          templates: [...BUILT_IN_TEMPLATES, ...userTemplates],
+        }
+      }
     }
   )
 );
