@@ -5,7 +5,8 @@ import { SkipLink } from './components/accessibility/SkipLink'
 import { CustomCursor } from './components/ui/CustomCursor'
 import { CursorProvider, useCursor } from './contexts/CursorContext'
 import { ThemeProvider } from './components/nanoai-workflow/ui/Theme'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
+import { setGlobalErrorHandler, type ErrorSeverity } from './lib/api/client'
 
 const CanvasPage = lazy(() => import('./pages/CanvasPage'))
 const NanoaiWorkflowPage = lazy(() => import('./pages/NanoaiWorkflowPage'))
@@ -44,10 +45,25 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
+const ERROR_MESSAGES: Record<ErrorSeverity, string> = {
+  network: '网络连接失败，请检查网络',
+  server: '服务器繁忙，请稍后重试',
+  client: '请求参数错误',
+  auth: '登录已过期，请重新登录',
+}
+
 function AppContent() {
   const { t } = useI18n()
   const { enabled: cursorEnabled } = useCursor()
   const [currentPage, setCurrentPage] = useState<AdminPageType>('workflow')
+
+  // 注册全局 API 错误处理
+  useEffect(() => {
+    setGlobalErrorHandler(({ severity, message }) => {
+      const display = severity === 'client' ? message : ERROR_MESSAGES[severity]
+      toast.error(display)
+    })
+  }, [])
 
   // 监听页面切换事件
   useEffect(() => {
@@ -65,39 +81,39 @@ function AppContent() {
       setCurrentPage('nano2')
     } else if (path === '/canvas') {
       setCurrentPage('canvas')
-    } else if (path.startsWith('/admin/mqtt')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/mqtt')) {
       setCurrentPage('admin-mqtt')
-    } else if (path.startsWith('/admin/teams')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/teams')) {
       setCurrentPage('admin-teams')
-    } else if (path.startsWith('/admin/user-apply')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/user-apply')) {
       setCurrentPage('admin-user-apply')
-    } else if (path.startsWith('/admin/statistics')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/statistics')) {
       setCurrentPage('admin-statistics')
-    } else if (path.startsWith('/admin/notifications/send')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/notifications/send')) {
       setCurrentPage('admin-notifications-send')
-    } else if (path.startsWith('/admin/notifications/records')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/notifications/records')) {
       setCurrentPage('admin-notifications-records')
-    } else if (path.startsWith('/admin/points/grant')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/points/grant')) {
       setCurrentPage('admin-points-grant')
-    } else if (path.startsWith('/admin/points')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/points')) {
       setCurrentPage('admin-points-grant')
-    } else if (path.startsWith('/admin/mcp')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/mcp')) {
       setCurrentPage('admin-mcp')
-    } else if (path.startsWith('/admin/kevin')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/kevin')) {
       setCurrentPage('admin-kevin')
-    } else if (path.startsWith('/admin/apps')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/apps')) {
       setCurrentPage('admin-apps')
-    } else if (path.startsWith('/admin/api-key-pool')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/api-key-pool')) {
       setCurrentPage('admin-api-key-pool')
-    } else if (path.startsWith('/admin/providers')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/providers')) {
       setCurrentPage('admin-providers')
-    } else if (path.startsWith('/admin/api-keys')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/api-keys')) {
       setCurrentPage('admin-api-keys')
-    } else if (path.startsWith('/admin/system')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/system')) {
       setCurrentPage('admin-system')
-    } else if (path.startsWith('/admin/models')) {
+    } else if (path.startsWith('/nanoaicanvas/admin/models')) {
       setCurrentPage('admin-models')
-    } else if (path.startsWith('/admin')) {
+    } else if (path.startsWith('/nanoaicanvas/admin')) {
       setCurrentPage('admin')
     }
   }, [])
@@ -110,35 +126,35 @@ function AppContent() {
         setCurrentPage('admin-mqtt')
       } else if (path === '/canvas') {
         setCurrentPage('canvas')
-      } else if (path.startsWith('/admin/mqtt')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/mqtt')) {
         setCurrentPage('admin-mqtt')
-      } else if (path.startsWith('/admin/teams')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/teams')) {
         setCurrentPage('admin-teams')
-      } else if (path.startsWith('/admin/user-apply')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/user-apply')) {
         setCurrentPage('admin-user-apply')
-      } else if (path.startsWith('/admin/statistics')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/statistics')) {
         setCurrentPage('admin-statistics')
-      } else if (path.startsWith('/admin/notifications')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/notifications')) {
         setCurrentPage('admin-notifications-send')
-      } else if (path.startsWith('/admin/points')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/points')) {
         setCurrentPage('admin-points-grant')
-      } else if (path.startsWith('/admin/mcp')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/mcp')) {
         setCurrentPage('admin-mcp')
-      } else if (path.startsWith('/admin/kevin')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/kevin')) {
         setCurrentPage('admin-kevin')
-      } else if (path.startsWith('/admin/apps')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/apps')) {
         setCurrentPage('admin-apps')
-      } else if (path.startsWith('/admin/api-key-pool')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/api-key-pool')) {
         setCurrentPage('admin-api-key-pool')
-      } else if (path.startsWith('/admin/providers')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/providers')) {
         setCurrentPage('admin-providers')
-      } else if (path.startsWith('/admin/api-keys')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/api-keys')) {
         setCurrentPage('admin-api-keys')
-      } else if (path.startsWith('/admin/system')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/system')) {
         setCurrentPage('admin-system')
-      } else if (path.startsWith('/admin/models')) {
+      } else if (path.startsWith('/nanoaicanvas/admin/models')) {
         setCurrentPage('admin-models')
-      } else if (path.startsWith('/admin')) {
+      } else if (path.startsWith('/nanoaicanvas/admin')) {
         setCurrentPage('admin')
       } else {
         setCurrentPage('workflow')

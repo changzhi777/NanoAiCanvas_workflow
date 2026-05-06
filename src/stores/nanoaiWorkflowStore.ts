@@ -6,6 +6,7 @@ import { characterWorkflowTemplate } from '@/components/nanoai-workflow/template
 import { sceneWorkflowTemplate } from '@/components/nanoai-workflow/templates/sceneWorkflow';
 import { quickStoryboardTemplate } from '@/components/nanoai-workflow/templates/quickStoryboard';
 import { textToImageWorkflowTemplate } from '@/components/nanoai-workflow/templates/textToImageWorkflow';
+import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/skillsWorkflowTemplates';
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
 import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
 import { buildPrompt } from '@/lib/prompt-builder';
@@ -16,6 +17,10 @@ export enum WorkflowNodeType {
   // 输入节点
   INPUT_TEXT = 'input_text',
   INPUT_IMAGE = 'input_image',
+
+  // Skills 节点
+  SKILLS_DATA = 'skills_data',
+  SKILLS_TASK = 'skills_task',
 
   // AI 生成节点
   SCRIPT_GENERATOR = 'script_generator',
@@ -89,7 +94,7 @@ export enum NodeStatus {
 export interface NodePort {
   id: string;
   name: string;
-  type: 'text' | 'image' | 'audio' | 'json' | 'array';
+  type: 'text' | 'image' | 'audio' | 'json' | 'array' | 'object';
   required: boolean;
   description?: string;
 }
@@ -130,7 +135,7 @@ export interface WorkflowTemplate {
   thumbnail?: string;
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
-  category: 'script' | 'character' | 'scene' | 'custom' | 'storyboard' | 'story' | 'image';
+  category: string;
   tags: string[];
   createdAt: string;
   updatedAt: string;
@@ -372,7 +377,9 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
     updatedAt: new Date().toISOString(),
     nodes: textToImageWorkflowTemplate.nodes,
     edges: textToImageWorkflowTemplate.edges,
-  }
+  },
+  // 18 个 Skills 工作流模板
+  ...skillsWorkflowTemplates,
 ];
 
 // ==================== Store 定义 ====================

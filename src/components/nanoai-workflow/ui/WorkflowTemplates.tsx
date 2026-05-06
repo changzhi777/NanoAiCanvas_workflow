@@ -49,6 +49,7 @@ export function WorkflowTemplates({ show, onClose, onLoadTemplate }: WorkflowTem
 
   const categories = [
     { value: 'all', label: '全部模板', icon: '📚' },
+    { value: 'custom', label: 'Skills', icon: '⚡' },
     { value: 'story', label: '故事', icon: '📖' },
     { value: 'character', label: '角色', icon: '👤' },
     { value: 'scene', label: '场景', icon: '🏞️' },

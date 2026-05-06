@@ -2,20 +2,86 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 interface RequestOptions extends RequestInit {
   token?: string;
+  apiKey?: string;  // API Key for image generation routes
+}
+
+// API Key storage for image generation
+const API_KEY_STORAGE_KEY = 'nanoai_api_key'
+
+export function setApiKey(key: string): void {
+  localStorage.setItem(API_KEY_STORAGE_KEY, key)
+}
+
+export function getApiKey(): string | null {
+  return localStorage.getItem(API_KEY_STORAGE_KEY)
+}
+
+export function removeApiKey(): void {
+  localStorage.removeItem(API_KEY_STORAGE_KEY)
+}
+
+// Auth error types for better error messaging
+export type AuthErrorType = 'invalid_credentials' | 'user_not_found' | 'account_disabled' | 'network_error' | 'server_error'
+
+function parseAuthError(status: number, detail: string): AuthErrorType {
+  if (status === 401) {
+    const lowerDetail = detail.toLowerCase()
+    if (lowerDetail.includes('invalid') || lowerDetail.includes('wrong') || lowerDetail.includes('密码')) return 'invalid_credentials'
+    if (lowerDetail.includes('not found') || lowerDetail.includes('不存在') || lowerDetail.includes('用户')) return 'user_not_found'
+    if (lowerDetail.includes('disabled') || lowerDetail.includes('禁用') || lowerDetail.includes('冻结')) return 'account_disabled'
+    return 'invalid_credentials'
+  }
+  if (status >= 500) return 'server_error'
+  return 'network_error'
+}
+
+export type ErrorSeverity = 'network' | 'server' | 'client' | 'auth'
+
+export interface ApiErrorDetail {
+  status: number
+  message: string
+  severity: ErrorSeverity
+  retryable: boolean
+  errorType?: AuthErrorType
+}
+
+type GlobalErrorHandler = (error: ApiErrorDetail) => void
+let globalErrorHandler: GlobalErrorHandler | null = null
+
+export function setGlobalErrorHandler(handler: GlobalErrorHandler) {
+  globalErrorHandler = handler
 }
 
 class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
+  public readonly severity: ErrorSeverity
+  public readonly retryable: boolean
+  public readonly errorType?: AuthErrorType
+
+  constructor(public status: number, message: string, errorType?: AuthErrorType) {
+    super(message)
+    this.name = 'ApiError'
+    this.errorType = errorType
+    this.severity = status === 0 ? 'network' : status === 401 || status === 403 ? 'auth' : status >= 500 ? 'server' : 'client'
+    this.retryable = status === 0 || status >= 500
   }
+
+  toDetail(): ApiErrorDetail {
+    return { status: this.status, message: this.message, severity: this.severity, retryable: this.retryable, errorType: this.errorType }
+  }
+}
+
+const MAX_RETRIES = 3
+const RETRY_BASE_DELAY = 500
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function request<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
+  const { token, apiKey, ...fetchOptions } = options;
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -26,17 +92,52 @@ async function request<T>(
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...fetchOptions,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new ApiError(response.status, error.detail || 'Request failed');
+  const effectiveApiKey = apiKey || getApiKey()
+  if (effectiveApiKey) {
+    (headers as Record<string, string>)['X-API-Key'] = effectiveApiKey;
   }
 
-  return response.json();
+  let lastError: ApiError | null = null
+  const method = fetchOptions.method?.toUpperCase() ?? 'GET'
+  const shouldRetry = method === 'GET' || method === 'HEAD'
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...fetchOptions,
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        const errorType = parseAuthError(response.status, error.detail || '');
+        const apiError = new ApiError(response.status, error.detail || 'Request failed', errorType);
+
+        if (!apiError.retryable || !shouldRetry || attempt === MAX_RETRIES) {
+          globalErrorHandler?.(apiError.toDetail())
+          throw apiError
+        }
+
+        lastError = apiError
+      } else {
+        return response.json();
+      }
+    } catch (err) {
+      if (err instanceof ApiError) throw err
+
+      const apiError = new ApiError(0, (err as Error).message || 'Network error')
+      if (attempt === MAX_RETRIES) {
+        globalErrorHandler?.(apiError.toDetail())
+        throw apiError
+      }
+      lastError = apiError
+    }
+
+    const delay = RETRY_BASE_DELAY * Math.pow(2, attempt)
+    await sleep(delay)
+  }
+
+  throw lastError!
 }
 
 // Generic request methods for API calls
@@ -100,6 +201,7 @@ export const auth = {
       created_at: string;
       imageApiKey?: string;
       textApiKey?: string;
+      api_key?: string;
     }>('/auth/me', { token }),
 
   updateMe: (token: string, data: { username?: string }) =>
