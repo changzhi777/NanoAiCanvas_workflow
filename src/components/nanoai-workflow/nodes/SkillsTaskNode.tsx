@@ -67,7 +67,7 @@ async function optimizePromptWithGLM(rawPrompt: string, templateName?: string): 
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'glm-4-air',
+      model: 'glm-4.5-air',
       messages: [
         { role: 'system', content: OPTIMIZE_SYSTEM_PROMPT },
         { role: 'user', content: `模板类型：${templateName || '通用'}\n原始提示词：${rawPrompt}\n\n请优化以上提示词，使其适合 GPT-Image 高质量图片生成。` },
@@ -380,7 +380,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
             <div className="flex items-center gap-1.5 text-xs font-medium">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span>提示词优化</span>
-              <span className="text-[10px] text-muted-foreground">GLM-4-Air</span>
+              <span className="text-[10px] text-muted-foreground">GLM-4.5-Air</span>
             </div>
             <div className="flex items-center gap-1">
               {hasOptimized && (
