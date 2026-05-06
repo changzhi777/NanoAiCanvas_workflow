@@ -21,9 +21,10 @@ export function removeApiKey(): void {
 }
 
 // Auth error types for better error messaging
-export type AuthErrorType = 'invalid_credentials' | 'user_not_found' | 'account_disabled' | 'network_error' | 'server_error'
+export type AuthErrorType = 'invalid_credentials' | 'user_not_found' | 'account_disabled' | 'rate_limited' | 'network_error' | 'server_error'
 
 function parseAuthError(status: number, detail: string): AuthErrorType {
+  if (status === 429) return 'rate_limited'
   if (status === 401) {
     const lowerDetail = detail.toLowerCase()
     if (lowerDetail.includes('invalid') || lowerDetail.includes('wrong') || lowerDetail.includes('密码')) return 'invalid_credentials'
@@ -77,6 +78,38 @@ async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+// Token auto-refresh
+let refreshPromise: Promise<boolean> | null = null
+
+async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise
+
+  refreshPromise = (async () => {
+    const storedRefreshToken = localStorage.getItem('nanoai_refresh_token')
+    if (!storedRefreshToken) return false
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: storedRefreshToken }),
+      })
+      if (!res.ok) return false
+
+      const data = await res.json()
+      localStorage.setItem('nanoai_token', data.access_token)
+      localStorage.setItem('nanoai_refresh_token', data.refresh_token)
+      return true
+    } catch {
+      return false
+    } finally {
+      refreshPromise = null
+    }
+  })()
+
+  return refreshPromise
+}
+
 async function request<T>(
   endpoint: string,
   options: RequestOptions = {}
@@ -112,6 +145,18 @@ async function request<T>(
         const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
         const errorType = parseAuthError(response.status, error.detail || '');
         const apiError = new ApiError(response.status, error.detail || 'Request failed', errorType);
+
+        // Auto-refresh on 401 for authenticated requests
+        if (response.status === 401 && token && !endpoint.startsWith('/auth/')) {
+          const refreshed = await tryRefreshToken()
+          if (refreshed) {
+            const newToken = localStorage.getItem('nanoai_token')
+            if (newToken) {
+              (headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`
+              continue
+            }
+          }
+        }
 
         if (!apiError.retryable || !shouldRetry || attempt === MAX_RETRIES) {
           globalErrorHandler?.(apiError.toDetail())
@@ -178,12 +223,7 @@ export const auth = {
   login: (email: string, password: string, remember_me: boolean = false) =>
     request<{ access_token: string; refresh_token: string; remember_me?: boolean }>('/auth/login', {
       method: 'POST',
-      body: new URLSearchParams({
-        username: email,
-        password,
-        remember_me: String(remember_me),
-      }).toString().replace(/\+/g, '%2B'),
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: JSON.stringify({ username: email, password, remember_me }),
     }),
 
   refresh: (refreshToken: string) =>
@@ -212,6 +252,21 @@ export const auth = {
       is_verified: boolean;
       created_at: string;
     }>('/auth/me', { method: 'PUT', token, body: JSON.stringify(data) }),
+
+  logout: (token: string) =>
+    request<{ message: string }>('/auth/logout', { method: 'POST', token }),
+
+  forgotPassword: (email: string) =>
+    request<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, new_password: string) =>
+    request<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, new_password }),
+    }),
 };
 
 // Assets API

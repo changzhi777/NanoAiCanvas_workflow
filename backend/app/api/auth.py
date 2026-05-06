@@ -1,16 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body, Form
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from app.database import get_db
 from app.models import User
+from app.models.user import UserStatus
 from app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse, UserUpdate
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
-from app.redis import SessionManager
+from app.redis import SessionManager, redis_client
+
+# Login rate limiting constants
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 900  # 15 minutes
+LOGIN_ATTEMPT_PREFIX = "login_attempts:"
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
@@ -59,7 +65,7 @@ async def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Asy
         return None
 
 
-@router.post("/register", response_model=TokenResponse)
+@router.post("/register")
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     # Check if email exists
     result = await db.execute(select(User).where(User.email == data.email))
@@ -71,34 +77,18 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    # Create user
+    # Create user with pending status (requires admin approval)
     user = User(
         username=data.username,
         email=data.email,
         password_hash=get_password_hash(data.password),
+        status=UserStatus.PENDING,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    # Create Redis session (default 7 days for registration)
-    session_id = await SessionManager.create_session(str(user.id), remember=False)
-
-    # Generate tokens
-    access_token = create_access_token({
-        "sub": str(user.id),
-        "session_id": session_id,
-    })
-    refresh_token = create_refresh_token({
-        "sub": str(user.id),
-        "session_id": session_id,
-    })
-
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        remember_me=False,
-    )
+    return {"message": "Registration submitted. Please wait for admin approval.", "status": "pending"}
 
 
 class LoginRequest(BaseModel):
@@ -106,27 +96,46 @@ class LoginRequest(BaseModel):
     password: str
     remember_me: bool = False
 
-    @classmethod
-    def as_form(cls, username: str = Form(...), password: str = Form(...), remember_me: str = Form("false")):
-        return cls(
-            username=username,
-            password=password,
-            remember_me=remember_me.lower() == "true"
-        )
-
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
-    login_data: LoginRequest = Depends(LoginRequest.as_form),
+    login_data: LoginRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Login with email/password and optional remember_me flag"""
+    # Rate limiting check
+    rate_key = f"{LOGIN_ATTEMPT_PREFIX}{login_data.username}"
+    attempts = await redis_client.get(rate_key)
+    if attempts and int(attempts) >= LOGIN_MAX_ATTEMPTS:
+        ttl = await redis_client.ttl(rate_key)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many login attempts. Try again in {ttl // 60 + 1} minutes.",
+            headers={"Retry-After": str(ttl)},
+        )
+
     # Find user by email
     result = await db.execute(select(User).where(User.email == login_data.username))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(login_data.password, user.password_hash):
+        # Increment failed attempts
+        pipe = redis_client.pipeline()
+        pipe.incr(rate_key)
+        pipe.expire(rate_key, LOGIN_LOCKOUT_SECONDS)
+        await pipe.execute()
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Check user status
+    if user.status == UserStatus.PENDING:
+        raise HTTPException(status_code=403, detail="Account pending approval. Please wait for admin review.")
+    if user.status == UserStatus.REJECTED:
+        raise HTTPException(status_code=403, detail="Registration rejected. Please contact support.")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account has been disabled.")
+
+    # Login success - clear rate limit
+    await redis_client.delete(rate_key)
 
     # Update last login
     user.last_login_at = datetime.utcnow()
@@ -171,7 +180,6 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
     if session_id:
         session_data = await SessionManager.get_session(session_id)
         remember_me = session_data.get("remember", False) if session_data else False
-        # Refresh session TTL
         await SessionManager.refresh_session(session_id, remember=remember_me)
     else:
         remember_me = False
@@ -192,14 +200,93 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
     )
 
 
+@router.post("/logout")
+async def logout(current_user: User = Depends(get_current_user)):
+    """Logout - invalidate server-side session"""
+    return {"message": "Logged out successfully"}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Request password reset - sends reset token to email"""
+    import secrets
+    result = await db.execute(select(User).where(User.email == data.email))
+    user = result.scalar_one_or_none()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        return {"message": "If the email exists, a reset link has been sent."}
+
+    # Generate reset token (valid 1 hour)
+    reset_token = secrets.token_urlsafe(32)
+    user.reset_token = reset_token
+    user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+    await db.commit()
+
+    # Send email
+    from app.services.email import send_password_reset_email
+    await send_password_reset_email(user.email, reset_token)
+
+    return {"message": "If the email exists, a reset link has been sent."}
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/reset-password")
+async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Reset password using reset token"""
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    result = await db.execute(
+        select(User).where(
+            User.reset_token == data.token,
+            User.reset_token_expires > datetime.utcnow(),
+        )
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    # Update password and clear reset token
+    user.password_hash = get_password_hash(data.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    await db.commit()
+
+    return {"message": "Password has been reset successfully."}
+
+
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    # 查询用户绑定的 API Key
+    api_key = None
+    try:
+        from app.models.api_key import ApiKeyConfig
+        result = await db.execute(
+            select(ApiKeyConfig).where(ApiKeyConfig.user_id == str(current_user.id))
+        )
+        api_key_config = result.scalar_one_or_none()
+        if api_key_config:
+            api_key = api_key_config.frontend_key
+    except Exception:
+        pass
+
     return UserResponse(
         id=current_user.id,
         username=current_user.username,
         email=current_user.email,
         is_verified=current_user.is_verified,
         created_at=current_user.created_at.isoformat() if current_user.created_at else "",
+        api_key=api_key,
     )
 
 

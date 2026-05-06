@@ -411,7 +411,7 @@ export async function createRechargeOrder(
   amount: number,
   paymentMethod: 'wechat' | 'alipay'
 ): Promise<{ order_id: string; qr_code_url: string; amount: number; payment_method: string }> {
-  const response = await client.post('/api/v2/admin/points/recharge/create', {
+  const response = await client.post<{ order_id: string; qr_code_url: string; amount: number; payment_method: string }>('/api/v2/admin/points/recharge/create', {
     user_id: userId,
     amount,
     payment_method: paymentMethod
@@ -453,6 +453,157 @@ export const adminApi = {
   deleteBillingRule,
   getRechargeRecords,
   createRechargeOrder,
+  // Key Mapper
+  getFrontendAPIKeys,
+  createFrontendAPIKey,
+  updateFrontendAPIKey,
+  deleteFrontendAPIKey,
+  getBackendKeyMappings,
+  addBackendKeyMapping,
+  updateBackendKeyMapping,
+  deleteBackendKeyMapping,
+  refreshKeyMapperCache,
+}
+
+// ============ 前端 API Key 管理 (Key Mapper) ============
+
+export interface FrontendAPIKey {
+  id: number
+  frontend_key: string
+  description: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  backend_key_count: number
+}
+
+export interface FrontendAPIKeyCreate {
+  frontend_key: string
+  description?: string
+}
+
+export interface BackendKeyMapping {
+  id: number
+  frontend_key_id: number
+  backend_key: string
+  provider_type: string
+  model_type: string
+  mcp_config: Record<string, unknown> | null
+  skills: Record<string, unknown> | null
+  priority: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface BackendKeyMappingCreate {
+  backend_key: string
+  provider_type: string
+  model_type: string
+  mcp_config?: Record<string, unknown>
+  skills?: Record<string, unknown>
+  priority?: number
+}
+
+const KEY_MAPPER_BASE = '/api/v2/admin/key-mapper'
+
+/**
+ * 获取所有前端 API Key 配置
+ */
+export async function getFrontendAPIKeys(): Promise<FrontendAPIKey[]> {
+  const response = await client.get<FrontendAPIKey[]>(KEY_MAPPER_BASE)
+  return response
+}
+
+/**
+ * 创建前端 API Key 配置
+ */
+export async function createFrontendAPIKey(data: FrontendAPIKeyCreate): Promise<FrontendAPIKey> {
+  const response = await client.post<FrontendAPIKey>(KEY_MAPPER_BASE, data)
+  return response
+}
+
+/**
+ * 更新前端 API Key 配置
+ */
+export async function updateFrontendAPIKey(id: number, data: Partial<FrontendAPIKeyCreate>): Promise<FrontendAPIKey> {
+  const response = await client.put<FrontendAPIKey>(`${KEY_MAPPER_BASE}/${id}`, data)
+  return response
+}
+
+/**
+ * 删除前端 API Key 配置
+ */
+export async function deleteFrontendAPIKey(id: number): Promise<void> {
+  await client.delete(`${KEY_MAPPER_BASE}/${id}`)
+}
+
+/**
+ * 获取前端 API Key 的所有 Backend Key 映射
+ */
+export async function getBackendKeyMappings(frontendKeyId: number): Promise<BackendKeyMapping[]> {
+  const response = await client.get<BackendKeyMapping[]>(`${KEY_MAPPER_BASE}/${frontendKeyId}/mappings`)
+  return response
+}
+
+/**
+ * 添加 Backend Key 映射
+ */
+export async function addBackendKeyMapping(frontendKeyId: number, data: BackendKeyMappingCreate): Promise<BackendKeyMapping> {
+  const response = await client.post<BackendKeyMapping>(`${KEY_MAPPER_BASE}/${frontendKeyId}/mappings`, data)
+  return response
+}
+
+/**
+ * 更新 Backend Key 映射
+ */
+export async function updateBackendKeyMapping(mappingId: number, data: Partial<BackendKeyMappingCreate>): Promise<BackendKeyMapping> {
+  const response = await client.put<BackendKeyMapping>(`${KEY_MAPPER_BASE}/mappings/${mappingId}`, data)
+  return response
+}
+
+/**
+ * 删除 Backend Key 映射
+ */
+export async function deleteBackendKeyMapping(mappingId: number): Promise<void> {
+  await client.delete(`${KEY_MAPPER_BASE}/mappings/${mappingId}`)
+}
+
+/**
+ * 手动刷新配置缓存
+ */
+export async function refreshKeyMapperCache(): Promise<void> {
+  await client.post(`${KEY_MAPPER_BASE}/refresh-cache`, {})
+}
+
+// ============ User Approval API ============
+
+export interface PendingUser {
+  id: string
+  username: string
+  email: string
+  created_at: string
+  status: string
+}
+
+export async function listPendingUsers(): Promise<PendingUser[]> {
+  const response = await client.get<PendingUser[]>('/admin/users/pending')
+  return response
+}
+
+export async function listAllUsers(statusFilter?: string): Promise<PendingUser[]> {
+  const url = statusFilter ? `/admin/users/all?status_filter=${statusFilter}` : '/admin/users/all'
+  const response = await client.get<PendingUser[]>(url)
+  return response
+}
+
+export async function approveUser(userId: string): Promise<PendingUser> {
+  const response = await client.post<PendingUser>(`/admin/users/${userId}/approve`, {})
+  return response
+}
+
+export async function rejectUser(userId: string): Promise<PendingUser> {
+  const response = await client.post<PendingUser>(`/admin/users/${userId}/reject`, {})
+  return response
 }
 
 export default adminApi

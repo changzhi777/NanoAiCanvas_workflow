@@ -40,7 +40,20 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <Toaster position="top-right" expand={false} richColors closeButton />
+      <Toaster
+        position="top-right"
+        expand={false}
+        richColors
+        closeButton
+        toastOptions={{
+          style: {
+            background: 'hsl(0 0% 14%)',
+            color: 'hsl(0 0% 95%)',
+            border: '1px solid hsl(0 0% 20%)',
+            backdropFilter: 'none',
+          },
+        }}
+      />
     </div>
   )
 }

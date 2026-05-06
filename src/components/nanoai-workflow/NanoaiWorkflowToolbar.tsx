@@ -43,7 +43,7 @@ import { CollaborationPanel } from './ui/CollaborationPanel';
 import { AutoLayoutButton } from './ui/AutoLayoutButton';
 import { useI18n } from '@/hooks/useI18n';
 import { AssetLibraryPanel, SyncStatusIndicator } from '@/components/ui/AssetLibrary';
-import { LoginButton } from '@/components/ui/AuthDialog';
+import { LoginButton } from '@/components/ui/LoginButton';
 
 export function NanoaiWorkflowToolbar() {
   const { isDark, toggleTheme } = useTheme();

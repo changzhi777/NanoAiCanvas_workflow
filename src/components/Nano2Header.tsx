@@ -1,7 +1,7 @@
 'use client'
 
 import { Images, Package, Workflow } from 'lucide-react'
-import { LoginButton } from '@/components/ui/AuthDialog'
+import { LoginButton } from '@/components/ui/LoginButton'
 
 interface Nano2HeaderProps {
   onSwitchToAssets?: () => void

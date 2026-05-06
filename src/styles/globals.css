@@ -199,6 +199,65 @@
   }
 }
 
+/* ==================== Sonner Toast 样式 ==================== */
+/* 确保 toast 不受毛玻璃影响，始终清晰可读 */
+
+[data-sonner-toaster] {
+  z-index: 99999 !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid hsl(var(--border)) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  font-size: 14px !important;
+}
+
+/* 暗色主题：toast 使用不透明深色背景 */
+.dark [data-sonner-toaster] [data-sonner-toast],
+[data-sonner-toaster] [data-sonner-toast] {
+  background: hsl(0 0% 14%) !important;
+  color: hsl(0 0% 95%) !important;
+}
+
+/* 成功 toast */
+[data-sonner-toaster] [data-type="success"] {
+  border-left: 3px solid hsl(142 71% 45%) !important;
+}
+
+/* 错误 toast */
+[data-sonner-toaster] [data-type="error"] {
+  border-left: 3px solid hsl(0 72% 51%) !important;
+}
+
+/* 信息 toast */
+[data-sonner-toaster] [data-type="info"] {
+  border-left: 3px solid hsl(200 80% 50%) !important;
+}
+
+/* toast 内文字和描述 */
+[data-sonner-toaster] [data-sonner-toast] [data-title] {
+  font-weight: 600 !important;
+  color: hsl(0 0% 98%) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  color: hsl(0 0% 70%) !important;
+}
+
+/* toast 关闭按钮 */
+[data-sonner-toaster] [data-sonner-toast] [data-close-button] {
+  background: hsl(0 0% 20%) !important;
+  border: 1px solid hsl(0 0% 30%) !important;
+  color: hsl(0 0% 70%) !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-close-button]:hover {
+  background: hsl(0 0% 25%) !important;
+  color: hsl(0 0% 90%) !important;
+}
+
 /* 响应式工具类 */
 @layer utilities {
   /* 移动端全宽，桌面端固定宽度 */

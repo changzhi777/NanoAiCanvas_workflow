@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/remoteStore'
 import { useRouter } from '@/lib/next-navigation-shim'
 import { useEffect } from 'react'
 import { AdminSidebar } from '@/components/admin/AdminSidebar'
@@ -42,6 +42,14 @@ export default function AdminLayout({
         expand={false}
         richColors
         closeButton
+        toastOptions={{
+          style: {
+            background: 'hsl(0 0% 14%)',
+            color: 'hsl(0 0% 95%)',
+            border: '1px solid hsl(0 0% 20%)',
+            backdropFilter: 'none',
+          },
+        }}
       />
     </div>
   )

@@ -5,6 +5,15 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
 
+import enum
+
+
+class UserStatus(str, enum.Enum):
+    """User account status"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
 
 class User(Base):
     __tablename__ = "users"
@@ -15,6 +24,9 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    status = Column(String(20), default=UserStatus.APPROVED, nullable=False)
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expires = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = Column(DateTime, nullable=True)
@@ -27,3 +39,4 @@ class User(Base):
     points_account = relationship("PointsAccount", back_populates="user", uselist=False)
     owned_teams = relationship("Team", back_populates="owner")
     team_memberships = relationship("TeamMember", back_populates="user")
+    categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")

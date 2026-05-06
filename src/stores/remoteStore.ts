@@ -110,7 +110,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user });
   },
 
-  logout: () => {
+  logout: async () => {
+    const token = localStorage.getItem('nanoai_token');
+    if (token) {
+      try {
+        const { auth } = await import('../lib/api/client');
+        await auth.logout(token);
+      } catch {
+        // Backend logout failure is non-critical, proceed with local cleanup
+      }
+    }
     localStorage.removeItem('nanoai_token');
     localStorage.removeItem('nanoai_refresh_token');
     localStorage.removeItem('nanoai_user');
