@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.12.15",
+  "version": "2.12.16",
   "private": false,
   "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
@@ -48,7 +48,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build --mode production",
+    "build": "vite build --mode production",
     "build:lib": "vite build --config vite.lib.config.ts",
     "preview": "vite preview",
     "test": "vitest",
