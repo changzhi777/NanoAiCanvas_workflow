@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useState, useMemo, useRef, useEffect } from 'react';
-import { Image as ImageIcon, Download, X, ChevronLeft, ChevronRight, Maximize2, ZoomIn, Copy, Clock, Calendar, FileImage, GripVertical } from 'lucide-react';
+import { Image as ImageIcon, Download, X, ChevronLeft, ChevronRight, Maximize2, ZoomIn, Copy, Clock, Calendar, FileImage, GripVertical, Sparkles } from 'lucide-react';
 import { NodeProps } from 'reactflow';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
 import { BaseNode, ExecuteButton } from './BaseNode';
@@ -110,45 +110,76 @@ const ImageGrid = ({ items, onItemClick }: { items: ImagePreviewItem[]; onItemCl
   );
 };
 
-/** 提示词展示组件 */
-const PromptDisplay = ({ prompt, isDark }: { prompt?: string; isDark: boolean }) => {
-  const [copied, setCopied] = useState(false);
-  if (!prompt || typeof prompt !== 'string') return null;
+/** 提示词展示组件 - 显示原始和优化后提示词 */
+const PromptDisplay = ({ prompt, rawPrompt, optimizedPrompt, isDark }: {
+  prompt?: string;
+  rawPrompt?: string;
+  optimizedPrompt?: string;
+  isDark: boolean;
+}) => {
+  const [copied, setCopied] = useState<'raw' | 'optimized' | null>(null);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(prompt).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (text: string, type: 'raw' | 'optimized') => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(type);
+      setTimeout(() => setCopied(null), 2000);
     });
   };
 
-  return (
-    <div className={cn(
-      'p-2.5 rounded-lg border text-xs space-y-1.5',
-      isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200'
-    )}>
-      <div className="flex items-center justify-between">
-        <span className={cn('font-medium', isDark ? 'text-blue-400' : 'text-blue-600')}>
-          提示词
-        </span>
-        <button
-          onClick={handleCopy}
-          className={cn(
-            'p-1 rounded transition-colors',
-            isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-          )}
-          title="复制提示词"
-        >
-          <Copy className="w-3 h-3" />
-          {copied && <span className="ml-1 text-[10px] text-green-500">已复制</span>}
-        </button>
+  const sectionCls = cn('p-2.5 rounded-lg border text-xs space-y-1.5');
+  const hasRaw = rawPrompt && typeof rawPrompt === 'string';
+  const hasOptimized = optimizedPrompt && typeof optimizedPrompt === 'string';
+  const hasSingle = prompt && typeof prompt === 'string' && !hasRaw && !hasOptimized;
+
+  // 单提示词模式（无优化）
+  if (hasSingle) {
+    return (
+      <div className={cn(sectionCls, isDark ? 'bg-blue-500/5 border-blue-500/20' : 'bg-blue-50 border-blue-200')}>
+        <div className="flex items-center justify-between">
+          <span className={cn('font-medium', isDark ? 'text-blue-400' : 'text-blue-600')}>提示词</span>
+          <button onClick={() => handleCopy(prompt!, 'optimized')} className={cn('p-1 rounded transition-colors', isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-200 text-gray-500')} title="复制">
+            <Copy className="w-3 h-3" />
+            {copied === 'optimized' && <span className="ml-1 text-[10px] text-green-500">已复制</span>}
+          </button>
+        </div>
+        <p className={cn('leading-relaxed break-all max-h-20 overflow-y-auto', isDark ? 'text-slate-300' : 'text-gray-700')}>{prompt}</p>
       </div>
-      <p className={cn(
-        'leading-relaxed break-all max-h-20 overflow-y-auto',
-        isDark ? 'text-slate-300' : 'text-gray-700'
-      )}>
-        {prompt}
-      </p>
+    );
+  }
+
+  if (!hasRaw && !hasOptimized) return null;
+
+  return (
+    <div className="space-y-2">
+      {/* 原始提示词 */}
+      {hasRaw && (
+        <div className={cn(sectionCls, isDark ? 'bg-gray-500/5 border-gray-500/20' : 'bg-gray-50 border-gray-200')}>
+          <div className="flex items-center justify-between">
+            <span className={cn('font-medium', isDark ? 'text-gray-400' : 'text-gray-600')}>原始提示词</span>
+            <button onClick={() => handleCopy(rawPrompt!, 'raw')} className={cn('p-1 rounded transition-colors', isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-200 text-gray-500')} title="复制">
+              <Copy className="w-3 h-3" />
+              {copied === 'raw' && <span className="ml-1 text-[10px] text-green-500">已复制</span>}
+            </button>
+          </div>
+          <p className={cn('leading-relaxed break-all max-h-16 overflow-y-auto text-[11px]', isDark ? 'text-slate-400' : 'text-gray-600')}>{rawPrompt}</p>
+        </div>
+      )}
+      {/* 优化后提示词 */}
+      {hasOptimized && (
+        <div className={cn(sectionCls, isDark ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50 border-amber-200')}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span className={cn('font-medium', isDark ? 'text-amber-400' : 'text-amber-600')}>优化后提示词</span>
+            </div>
+            <button onClick={() => handleCopy(optimizedPrompt!, 'optimized')} className={cn('p-1 rounded transition-colors', isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-200 text-gray-500')} title="复制">
+              <Copy className="w-3 h-3" />
+              {copied === 'optimized' && <span className="ml-1 text-[10px] text-green-500">已复制</span>}
+            </button>
+          </div>
+          <p className={cn('leading-relaxed break-all max-h-24 overflow-y-auto', isDark ? 'text-slate-300' : 'text-gray-700')}>{optimizedPrompt}</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -431,7 +462,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             <ImageGrid items={itemsWithMeta} onItemClick={handleItemClick} />
 
             {/* 提示词显示 */}
-            <PromptDisplay prompt={promptText} isDark={isDark} />
+            <PromptDisplay prompt={promptText} rawPrompt={resultData?.rawPrompt} optimizedPrompt={resultData?.optimizedPrompt} isDark={isDark} />
 
             {/* 生成信息 */}
             <GenInfoPanel items={itemsWithMeta} resultData={resultData} isDark={isDark} />

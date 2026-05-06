@@ -81,6 +81,9 @@ export enum WorkflowNodeType {
   VIDEO_PREVIEW = 'video_preview',
   AUDIO_PREVIEW = 'audio_preview',
   TEXT_PREVIEW = 'text_preview',
+
+  // 输出节点（结束）
+  OUTPUT_NODE = 'output_node',
 }
 
 export enum NodeStatus {
@@ -757,6 +760,97 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
                 duration: node.data.params?.duration || 500,
                 easing: node.data.params?.easing || 'ease-in-out',
               };
+              break;
+            }
+
+            case 'skills_data': {
+              // Skills 数据输入节点：收集模板和表单数据
+              const { templateCategory, templateId, templateName, dynamicParams } = node.data.params || {};
+              if (!templateId) throw new Error('请先选择模板');
+
+              result = {
+                templateCategory,
+                templateId,
+                templateName,
+                formData: dynamicParams || {},
+              };
+              break;
+            }
+
+            case 'skills_task': {
+              // Skills 生成节点：从上游获取数据 → 调 API 生成图片 → 轮询结果
+              const { edges: skillEdges } = get();
+              const incomingSkillEdge = skillEdges.find(e => e.target === nodeId);
+              if (!incomingSkillEdge) throw new Error('请连接数据输入节点');
+
+              const dataSourceNode = nodes.find(n => n.id === incomingSkillEdge.source);
+              const sourceData = dataSourceNode?.data?.result;
+              if (!sourceData?.templateId) throw new Error('上游数据节点未执行或未选择模板');
+
+              const rawPrompt = Object.entries(sourceData.formData || {})
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ');
+
+              const { generateImage, getTaskStatus } = await import('@/lib/api/ai-skill');
+
+              // 提交生成任务
+              const genResp = await generateImage({
+                template_id: sourceData.templateId,
+                form_data: sourceData.formData || {},
+                skill_id: 'gpt_image_2',
+                size: node.data.params?.size || '1024x1024',
+                quality: node.data.params?.quality || 'standard',
+              });
+
+              // 轮询任务状态（间隔 2s，超时 120s）
+              const maxAttempts = 60;
+              for (let i = 0; i < maxAttempts; i++) {
+                await new Promise(r => setTimeout(r, 2000));
+                const task = await getTaskStatus(genResp.task_id);
+
+                if (task.status === 'completed' && task.result?.url) {
+                  result = {
+                    imageUrl: task.result.url,
+                    images: [task.result.url],
+                    prompt: rawPrompt || sourceData.templateName || '',
+                    rawPrompt: rawPrompt || '',
+                  };
+                  break;
+                }
+                if (task.status === 'failed') {
+                  throw new Error(task.error || '图片生成失败');
+                }
+                // 更新节点进度
+                updateNode(nodeId, { status: NodeStatus.RUNNING, result: { progress: task.progress } });
+              }
+              if (!result?.imageUrl) throw new Error('生成超时，请重试');
+              break;
+            }
+
+            case 'image_preview': {
+              // 图片预览节点：从上游获取图片 URL
+              const { edges: previewEdges } = get();
+              const incomingPreviewEdge = previewEdges.find(e => e.target === nodeId);
+              if (incomingPreviewEdge) {
+                const srcNode = nodes.find(n => n.id === incomingPreviewEdge.source);
+                const srcResult = srcNode?.data?.result;
+                result = srcResult || { message: '暂无数据' };
+              } else {
+                result = { message: '暂无数据' };
+              }
+              break;
+            }
+
+            case 'output_node': {
+              // 输出节点：透传上游数据，不执行保存/下载（由组件手动触发）
+              const { edges: outputEdges } = get();
+              const incomingOutputEdge = outputEdges.find(e => e.target === nodeId);
+              if (incomingOutputEdge) {
+                const srcNode = nodes.find(n => n.id === incomingOutputEdge.source);
+                result = srcNode?.data?.result || { message: '暂无数据' };
+              } else {
+                result = { message: '暂无数据' };
+              }
               break;
             }
 
