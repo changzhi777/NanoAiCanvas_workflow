@@ -103,16 +103,22 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """Login with email/password and optional remember_me flag"""
-    # Rate limiting check
+    # Rate limiting check (graceful degradation if Redis unavailable)
     rate_key = f"{LOGIN_ATTEMPT_PREFIX}{login_data.username}"
-    attempts = await redis_client.get(rate_key)
-    if attempts and int(attempts) >= LOGIN_MAX_ATTEMPTS:
-        ttl = await redis_client.ttl(rate_key)
-        raise HTTPException(
-            status_code=429,
-            detail=f"Too many login attempts. Try again in {ttl // 60 + 1} minutes.",
-            headers={"Retry-After": str(ttl)},
-        )
+    redis_available = True
+    try:
+        attempts = await redis_client.get(rate_key)
+        if attempts and int(attempts) >= LOGIN_MAX_ATTEMPTS:
+            ttl = await redis_client.ttl(rate_key)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Too many login attempts. Try again in {ttl // 60 + 1} minutes.",
+                headers={"Retry-After": str(ttl)},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        redis_available = False
 
     # Find user by email
     result = await db.execute(select(User).where(User.email == login_data.username))
@@ -120,10 +126,13 @@ async def login(
 
     if not user or not verify_password(login_data.password, user.password_hash):
         # Increment failed attempts
-        pipe = redis_client.pipeline()
-        pipe.incr(rate_key)
-        pipe.expire(rate_key, LOGIN_LOCKOUT_SECONDS)
-        await pipe.execute()
+        try:
+            pipe = redis_client.pipeline()
+            pipe.incr(rate_key)
+            pipe.expire(rate_key, LOGIN_LOCKOUT_SECONDS)
+            await pipe.execute()
+        except Exception:
+            pass
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # Check user status
@@ -135,7 +144,11 @@ async def login(
         raise HTTPException(status_code=403, detail="Account has been disabled.")
 
     # Login success - clear rate limit
-    await redis_client.delete(rate_key)
+    if redis_available:
+        try:
+            await redis_client.delete(rate_key)
+        except Exception:
+            pass
 
     # Update last login
     user.last_login_at = datetime.utcnow()

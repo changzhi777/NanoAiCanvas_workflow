@@ -37,6 +37,6 @@ class User(Base):
     templates = relationship("Template", back_populates="user", cascade="all, delete-orphan")
     operations = relationship("Operation", back_populates="user", cascade="all, delete-orphan")
     points_account = relationship("PointsAccount", back_populates="user", uselist=False)
-    owned_teams = relationship("Team", back_populates="owner")
+    owned_teams = relationship("Team", foreign_keys="Team.owner_id", back_populates="owner")
     team_memberships = relationship("TeamMember", back_populates="user")
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
