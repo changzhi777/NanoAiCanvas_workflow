@@ -1,0 +1,16 @@
+{
+  "id": "ui-mockups-product-card",
+  "name": "产品卡片叠加",
+  "category": "ui-mockups",
+  "category_name": "UI 界面",
+  "description": "落地页 hero 或详情页主图，产品与卖点叠加设计",
+  "fields": [
+    {"name": "product_name", "type": "text", "label": "产品名称", "required": true},
+    {"name": "product_type", "type": "select", "label": "产品类型", "required": true, "options": [{"value": "electronics", "label": "电子产品"}, {"value": "cosmetics", "label": "美妆护肤"}, {"value": "clothing", "label": "服装"}, {"value": "food", "label": "食品"}, {"value": "furniture", "label": "家具"}]},
+    {"name": "headline", "type": "text", "label": "主标题", "required": true, "description": "主卖点文案"},
+    {"name": "subheadline", "type": "text", "label": "副标题", "required": false},
+    {"name": "price", "type": "text", "label": "价格", "required": false},
+    {"name": "cta_text", "type": "text", "label": "按钮文案", "required": false, "default": "立即购买"}
+  ],
+  "prompt_template": "Product hero card overlay, product: {product_name} ({product_type}). Headline: {headline}. Subheadline: {subheadline}. Price: {price}. CTA button: {cta_text}. Professional e-commerce product showcase, clean white or light background, product prominently displayed with key selling points overlaid. Marketing material style, high conversion design."
+}

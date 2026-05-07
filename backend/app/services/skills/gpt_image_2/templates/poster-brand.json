@@ -1,0 +1,15 @@
+{
+  "id": "brand-poster",
+  "name": "品牌主海报",
+  "category": "poster",
+  "category_name": "海报宣传",
+  "description": "品牌主海报，产品/人物/纯文字主张",
+  "fields": [
+    {"name": "brand_name", "type": "text", "label": "品牌名称", "required": true},
+    {"name": "campaign_theme", "type": "text", "label": "活动主题", "required": true},
+    {"name": "main_message", "type": "text", "label": "主标语", "required": true},
+    {"name": "visual_type", "type": "select", "label": "视觉类型", "required": true, "options": [{"value": "product", "label": "产品为主"}, {"value": "model", "label": "人物为主"}, {"value": "typography", "label": "文字为主"}, {"value": "abstract", "label": "抽象图形"}]},
+    {"name": "color_scheme", "type": "select", "label": "配色方案", "required": true, "options": [{"value": "bold", "label": "大胆撞色"}, {"value": "minimal", "label": "简约黑白"}, {"value": "warm", "label": "暖色调"}, {"value": "cool", "label": "冷色调"}, {"value": "luxury", "label": "高端金色"}]}
+  ],
+  "prompt_template": "Brand poster, {brand_name}. Campaign theme: {campaign_theme}. Main message: {main_message}. Visual type: {visual_type}. Color scheme: {color_scheme}. Bold graphic design, professional marketing material. High impact composition suitable for large format printing. Clean typography hierarchy."
+}

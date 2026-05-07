@@ -1,0 +1,6 @@
+{
+  "name": "gpt-image-2",
+  "version": "1.0.0",
+  "category": "Image Generation",
+  "description": "GPT Image 2 skill with 18 categories and 80+ structured prompt templates. Supports UI mockups, product visuals, maps, posters, portraits, storyboards, and more."
+}

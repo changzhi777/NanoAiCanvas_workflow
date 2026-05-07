@@ -1,0 +1,14 @@
+{
+  "id": "storyboards-four-panel",
+  "name": "四格漫画",
+  "category": "storyboards",
+  "category_name": "故事板分镜",
+  "description": "4 格漫画 / 讽刺漫画 / 段子漫画，起承转合+对话气泡",
+  "fields": [
+    {"name": "story_theme", "type": "text", "label": "故事主题", "required": true},
+    {"name": "genre", "type": "select", "label": "题材", "required": true, "options": [{"value": "comedy", "label": "喜剧"}, {"value": "romance", "label": "爱情"}, {"value": "action", "label": "动作"}, {"value": "horror", "label": "恐怖"}, {"value": "slice_of_life", "label": "日常"}]},
+    {"name": "has_dialogue", "type": "select", "label": "对话气泡", "required": false, "options": [{"value": "yes", "label": "有"}, {"value": "no", "label": "无"}], "default": "yes"},
+    {"name": "art_style", "type": "select", "label": "画风", "required": true, "options": [{"value": "manga", "label": "日漫"}, {"value": "manhwa", "label": "韩漫"}, {"value": "western", "label": "美式漫画"}, {"value": "chinese", "label": "国漫"}]}
+  ],
+  "prompt_template": "Four-panel comic strip, theme: {story_theme}. Genre: {genre}. Art style: {art_style}. Dialogue bubbles: {has_dialogue}. Clear narrative flow with beginning, development, twist, and conclusion. Comic panel layout with proper pacing. Expressive characters with dynamic poses."
+}

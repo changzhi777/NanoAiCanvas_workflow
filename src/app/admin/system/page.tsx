@@ -25,7 +25,9 @@ const NODE_CONFIG_STORAGE_KEY = 'nanoai_node_config'
 // 系统配置数据
 const systemConfig = {
   api: {
-    baseUrl: 'https://api.wuyinkeji.com',
+    baseUrl: typeof window !== 'undefined'
+      ? (import.meta.env.VITE_API_BASE_URL || window.location.origin + '/api')
+      : '/api',
     timeout: 30000,
     retryAttempts: 3,
   },

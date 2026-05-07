@@ -1,0 +1,14 @@
+{
+  "id": "product-visuals-white-background",
+  "name": "纯白底主图",
+  "category": "product-visuals",
+  "category_name": "产品视觉",
+  "description": "电商纯白底主图，单品或多角度极简营销叠层",
+  "fields": [
+    {"name": "product_name", "type": "text", "label": "产品名称", "required": true},
+    {"name": "product_color", "type": "text", "label": "产品颜色", "required": false},
+    {"name": "angle", "type": "select", "label": "视角", "required": true, "options": [{"value": "front", "label": "正面"}, {"value": "side", "label": "侧面"}, {"value": "3quarter", "label": "3/4 视角"}, {"value": "multi", "label": "多角度"}]},
+    {"name": "background_color", "type": "select", "label": "背景色", "required": false, "options": [{"value": "white", "label": "白色"}, {"value": "gray", "label": "灰色"}, {"value": "light_blue", "label": "浅蓝色"}], "default": "white"}
+  ],
+  "prompt_template": "E-commerce product shot on pure white background, {product_name}. Color: {product_color}. Angle: {angle}. Studio lighting, clean minimal product photography, professional commercial photography style. Multiple angles if selected. High detail, sharp focus, commercial e-commerce ready."
+}

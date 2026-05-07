@@ -1,0 +1,13 @@
+{
+  "id": "technical-flowchart",
+  "name": "流程图",
+  "category": "technical",
+  "category_name": "技术图表",
+  "description": "流程图/决策图，BPMN 形状语义+Yes/No 分支",
+  "fields": [
+    {"name": "process_name", "type": "text", "label": "流程名称", "required": true},
+    {"name": "steps", "type": "textarea", "label": "步骤", "required": true, "description": "用逗号分隔各步骤"},
+    {"name": "has_decision", "type": "select", "label": "决策节点", "required": false, "options": [{"value": "yes", "label": "有"}, {"value": "no", "label": "无"}], "default": "yes"}
+  ],
+  "prompt_template": "Flowchart diagram, process: {process_name}. Steps: {steps}. Decision nodes: {has_decision}. Clean technical diagram style with rounded rectangles for processes, diamonds for decisions, arrows for flow. Yes/No labels on decision branches. Professional documentation style."
+}

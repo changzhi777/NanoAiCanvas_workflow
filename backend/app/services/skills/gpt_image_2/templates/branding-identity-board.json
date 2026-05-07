@@ -1,0 +1,13 @@
+{
+  "id": "brand-identity-board",
+  "name": "品牌识别系统板",
+  "category": "branding",
+  "category_name": "品牌包装",
+  "description": "品牌识别系统板，logo+配色+字体+应用 mockup",
+  "fields": [
+    {"name": "brand_name", "type": "text", "label": "品牌名称", "required": true},
+    {"name": "industry", "type": "select", "label": "行业", "required": true, "options": [{"value": "tech", "label": "科技"}, {"value": "fashion", "label": "时尚"}, {"value": "food", "label": "食品"}, {"value": "health", "label": "健康"}, {"value": "finance", "label": "金融"}]},
+    {"name": "mood", "type": "select", "label": "品牌调性", "required": true, "options": [{"value": "professional", "label": "专业"}, {"value": "playful", "label": "活泼"}, {"value": "luxury", "label": "高端"}, {"value": "minimal", "label": "简约"}, {"value": "bold", "label": "大胆"}]}
+  ],
+  "prompt_template": "Brand identity board, {brand_name}. Industry: {industry}. Mood: {mood}. Logo design showcase, color palette with hex codes, typography samples, brand applications on business cards, letterhead, packaging mockups. Comprehensive brand guidelines presentation board."
+}

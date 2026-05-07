@@ -188,7 +188,7 @@ export function AdminSidebar() {
       {/* 返回按钮 */}
       <div className="p-3 border-b">
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => window.location.href = '/nanoaicanvas'}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />

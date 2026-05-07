@@ -47,7 +47,6 @@ export default defineConfig({
       '/api/v2/admin': {
         target: 'http://64.118.135.134:8002',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/v2\/admin/, '/v2/admin'),
         secure: false,
       },
       '/api': {

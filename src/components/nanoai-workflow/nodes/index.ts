@@ -57,6 +57,9 @@ export { default as SkillsTaskNode } from './SkillsTaskNode';
 export { SKILLS_CATEGORIES, SKILLS_TEMPLATES } from './SkillsDataNode';
 export { default as OutputNode } from './OutputNode';
 
+// 故事板分镜节点
+export { StoryboardShotANode } from './StoryboardShotANode';
+
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
 export type { StoryboardGeneratorData } from './StoryboardGeneratorNode';
@@ -127,4 +130,7 @@ export const nodeTypes = {
 
   // 输出节点（结束）
   output_node: lazy(() => import('./OutputNode').then(m => ({ default: m.OutputNode }))),
+
+  // 故事板分镜节点
+  storyboard_shot_a: lazy(() => import('./StoryboardShotANode').then(m => ({ default: m.StoryboardShotANode }))),
 };

@@ -1,7 +1,8 @@
 """
 积分账户和交易模型
 """
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, Enum as SQLEnum
+import uuid
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Text, Enum as SQLEnum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -69,31 +70,51 @@ class Team(Base):
     """团队表"""
     __tablename__ = "teams"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(128), nullable=False)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    admin_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # 管理员
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # 关系
-    owner = relationship("User", back_populates="owned_teams")
+    owner = relationship("User", foreign_keys=[owner_id], back_populates="owned_teams")
+    admin = relationship("User", foreign_keys=[admin_id])
     members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
     points_account = relationship("PointsAccount", back_populates="team", uselist=False)
+    categories = relationship("Category", back_populates="team")
+    assets = relationship("TeamAsset", back_populates="team")
 
 
 class TeamMember(Base):
     """团队成员表"""
     __tablename__ = "team_members"
 
-    id = Column(Integer, primary_key=True, index=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     role = Column(String(32), default="member")  # owner, admin, member
+    can_edit = Column(Boolean, default=False)  # 是否可编辑团队资产
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # 关系
     team = relationship("Team", back_populates="members")
     user = relationship("User", back_populates="team_memberships")
+
+
+class TeamAsset(Base):
+    """团队资产表"""
+    __tablename__ = "team_assets"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
+    asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
+    added_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # 关系
+    team = relationship("Team", back_populates="assets")
+    asset = relationship("Asset", back_populates="team_assets")
 
 
 class BillingRule(Base):

@@ -6,7 +6,7 @@ import { characterWorkflowTemplate } from '@/components/nanoai-workflow/template
 import { sceneWorkflowTemplate } from '@/components/nanoai-workflow/templates/sceneWorkflow';
 import { quickStoryboardTemplate } from '@/components/nanoai-workflow/templates/quickStoryboard';
 import { textToImageWorkflowTemplate } from '@/components/nanoai-workflow/templates/textToImageWorkflow';
-import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/skillsWorkflowTemplates';
+import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/skills';
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
 import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
 import { buildPrompt } from '@/lib/prompt-builder';
@@ -21,6 +21,9 @@ export enum WorkflowNodeType {
   // Skills 节点
   SKILLS_DATA = 'skills_data',
   SKILLS_TASK = 'skills_task',
+
+  // 故事板分镜节点
+  STORYBOARD_SHOT_A = 'storyboard_shot_a',
 
   // AI 生成节点
   SCRIPT_GENERATOR = 'script_generator',
@@ -822,6 +825,50 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
                 }
                 // 更新节点进度
                 updateNode(nodeId, { status: NodeStatus.RUNNING, result: { progress: task.progress } });
+              }
+              if (!result?.imageUrl) throw new Error('生成超时，请重试');
+              break;
+            }
+
+            case 'storyboard_shot_a': {
+              // 故事板分镜A节点：从上游或自身获取文本 → 直接生图
+              const { edges: shotEdges } = get();
+              const incomingShotEdge = shotEdges.find(e => e.target === nodeId);
+              let shotPrompt = node.data.params?.inputText || '';
+
+              if (incomingShotEdge) {
+                const shotSource = nodes.find(n => n.id === incomingShotEdge.source);
+                const shotSourceResult = shotSource?.data?.result;
+                if (shotSourceResult?.text) shotPrompt = shotSourceResult.text;
+                else if (shotSourceResult?.copywriteText) shotPrompt = shotSourceResult.copywriteText;
+              }
+
+              if (!shotPrompt) throw new Error('请输入故事描述');
+
+              const { generateImage: shotGenImage, getTaskStatus: shotGetStatus } = await import('@/lib/api/ai-skill');
+              const shotResp = await shotGenImage({
+                template_id: 'storyboard_shot',
+                form_data: { prompt: shotPrompt },
+                skill_id: 'gpt_image_2',
+                size: node.data.params?.size || '1024x1024',
+                quality: node.data.params?.quality || 'standard',
+              });
+
+              const shotMaxAttempts = 60;
+              for (let i = 0; i < shotMaxAttempts; i++) {
+                await new Promise(r => setTimeout(r, 2000));
+                const shotTask = await shotGetStatus(shotResp.task_id);
+                if (shotTask.status === 'completed' && shotTask.result?.url) {
+                  result = {
+                    imageUrl: shotTask.result.url,
+                    images: [shotTask.result.url],
+                    prompt: shotPrompt,
+                    rawPrompt: shotPrompt,
+                  };
+                  break;
+                }
+                if (shotTask.status === 'failed') throw new Error(shotTask.error || '分镜生成失败');
+                updateNode(nodeId, { status: NodeStatus.RUNNING, result: { progress: shotTask.progress } });
               }
               if (!result?.imageUrl) throw new Error('生成超时，请重试');
               break;

@@ -1,0 +1,13 @@
+{
+  "id": "maps-travel-route",
+  "name": "旅行路线图",
+  "category": "maps",
+  "category_name": "地图信息图",
+  "description": "旅行路线图，多日行程或单日 city walk",
+  "fields": [
+    {"name": "destination", "type": "text", "label": "目的地", "required": true},
+    {"name": "duration", "type": "select", "label": "行程天数", "required": true, "options": [{"value": "1day", "label": "一日游"}, {"value": "2day", "label": "两日游"}, {"value": "3day", "label": "三日游"}, {"value": "5day", "label": "五日游"}]},
+    {"name": "route_type", "type": "select", "label": "路线类型", "required": true, "options": [{"value": "city_walk", "label": "城市漫步"}, {"value": "nature", "label": "自然风光"}, {"value": "cultural", "label": "文化之旅"}, {"value": "food", "label": "美食之旅"}]}
+  ],
+  "prompt_template": "Travel route map, destination: {destination}. Duration: {duration}. Route type: {route_type}. Illustrated map with marked route, numbered stops with small icons. Clean modern design, tourist map style. Clear visual hierarchy showing the journey path."
+}

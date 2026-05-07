@@ -1,0 +1,13 @@
+{
+  "id": "storyboards-cinematic",
+  "name": "电影感分镜",
+  "category": "storyboards",
+  "category_name": "故事板分镜",
+  "description": "电影感叙事分镜 contact sheet，3x4 或 4x4 连续叙事",
+  "fields": [
+    {"name": "story_logline", "type": "textarea", "label": "故事梗概", "required": true, "description": "一句话描述故事"},
+    {"name": "grid_size", "type": "select", "label": "网格", "required": true, "options": [{"value": "3x4", "label": "3x4 (12格)"}, {"value": "4x4", "label": "4x4 (16格)"}, {"value": "4x3", "label": "4x3 (12格)"}]},
+    {"name": "cinematic_style", "type": "select", "label": "风格", "required": true, "options": [{"value": "noir", "label": "黑色电影"}, {"value": "scifi", "label": "科幻"}, {"value": "drama", "label": "剧情"}, {"value": "action", "label": "动作"}, {"value": "romance", "label": "爱情"}]}
+  ],
+  "prompt_template": "Cinematic storyboard grid, {grid_size}. Story: {story_logline}. Style: {cinematic_style}. Contact sheet format showing continuous narrative with varied shots (wide, medium, close-up). Cinematic lighting, film grain texture, professional cinematography feel. Scene transitions visible in sequence."
+}

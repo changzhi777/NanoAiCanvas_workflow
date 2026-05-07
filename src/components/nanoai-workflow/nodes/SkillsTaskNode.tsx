@@ -1,11 +1,11 @@
 /**
  * Skills 任务节点
- * 功能：接收数据节点输出 → 提示词优化（GLM-4.5-Air）→ 入队后台生成 → 输出结果
+ * 功能：接收数据节点输出 → 入队后台生成 → 输出结果
  */
 
 import { memo, useCallback, useState, useRef, useMemo } from 'react'
 import { Handle, Position } from 'reactflow'
-import { Wand2, Loader2, CheckCircle2, AlertCircle, Play, Sparkles, RotateCcw } from 'lucide-react'
+import { Wand2, Loader2, CheckCircle2, AlertCircle, Play } from 'lucide-react'
 import { BaseNode } from './BaseNode'
 import { useTheme } from '../ui/Theme'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
@@ -14,9 +14,6 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
-import { GLM_CONFIG } from '@/config/glm'
-import { IMERawTextarea } from '../ui/IMEInput'
-import { VoiceInput } from '../ui/VoiceInput'
 
 // ==================== 类型定义 ====================
 
@@ -35,56 +32,11 @@ export interface SkillsTaskNodeData extends WorkflowNodeData {
     images?: string[]
     imageUrl?: string
     rawPrompt?: string
-    optimizedPrompt?: string
     prompt?: string
     startedAt?: string
     completedAt?: string
   }
   error?: string
-}
-
-// ==================== 提示词优化 ====================
-
-const OPTIMIZE_SYSTEM_PROMPT = `你是一个专业的 AI 图片生成提示词优化专家。根据用户提供的主题、风格、构图等信息，生成高质量 GPT-Image 提示词。
-
-优化规则：
-1. 保留用户原始意图和核心内容
-2. 添加详细画面描述（主体细节、背景环境、氛围）
-3. 指定光影效果（光线方向、色温、明暗对比）
-4. 描述色彩风格和调色方案
-5. 添加构图信息（视角、景别、透视）
-6. 使用中文输出
-7. 只输出优化后的提示词，不要添加解释或前缀`
-
-async function optimizePromptWithGLM(rawPrompt: string, templateName?: string): Promise<string> {
-  const apiKey = GLM_CONFIG.API_KEY
-  if (!apiKey) throw new Error('GLM API Key 未配置（VITE_GLM_API_KEY）')
-
-  const response = await fetch(`${GLM_CONFIG.API_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'glm-4.5-air',
-      messages: [
-        { role: 'system', content: OPTIMIZE_SYSTEM_PROMPT },
-        { role: 'user', content: `模板类型：${templateName || '通用'}\n原始提示词：${rawPrompt}\n\n请优化以上提示词，使其适合 GPT-Image 高质量图片生成。` },
-      ],
-      temperature: 0.8,
-      max_tokens: 500,
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text().catch(() => '')
-    throw new Error(`GLM API 错误 ${response.status}: ${err}`)
-  }
-  const data = await response.json()
-  const optimized = data.choices?.[0]?.message?.content?.trim()
-  if (!optimized) throw new Error('GLM 返回为空')
-  return optimized
 }
 
 // ==================== 状态指示器 ====================
@@ -182,12 +134,6 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
   const [stepMessage, setStepMessage] = useState('')
   const abortRef = useRef<AbortController | null>(null)
 
-  // 提示词优化状态
-  const [rawPrompt, setRawPrompt] = useState('')
-  const [optimizedPrompt, setOptimizedPrompt] = useState('')
-  const [editablePrompt, setEditablePrompt] = useState('')
-  const [isOptimizing, setIsOptimizing] = useState(false)
-
   // 从上游获取 formData
   const upstreamFormData = useMemo(() => {
     const incomingEdge = edges.find(e => e.target === id)
@@ -200,54 +146,21 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
     return data.params?.formData || {}
   }, [edges, nodes, id, data.params?.formData])
 
-  // 构建原始提示词
-  const buildRawPrompt = useCallback(() => {
+  // 构建提示词
+  const buildPrompt = useCallback(() => {
     const fd = upstreamFormData || data.params?.formData || {}
     const entries = Object.entries(fd).filter(([, v]) => v)
     if (entries.length === 0) return ''
     return entries.map(([k, v]) => `${k}: ${v}`).join(', ')
   }, [upstreamFormData, data.params?.formData])
 
-  // 提示词优化
-  const handleOptimize = useCallback(async () => {
-    const raw = buildRawPrompt()
-    if (!raw) {
-      setLocalError('请先在数据输入节点填写模板参数')
-      return
-    }
-
-    setRawPrompt(raw)
-    setIsOptimizing(true)
-    setLocalError(null)
-
-    try {
-      const optimized = await optimizePromptWithGLM(raw, data.params.templateName)
-      setOptimizedPrompt(optimized)
-      setEditablePrompt(optimized)
-    } catch (err: any) {
-      setLocalError('提示词优化失败: ' + (err.message || '未知错误'))
-    } finally {
-      setIsOptimizing(false)
-    }
-  }, [buildRawPrompt, data.params.templateName])
-
-  // 重置优化提示词
-  const handleResetPrompt = useCallback(() => {
-    setOptimizedPrompt('')
-    setEditablePrompt('')
-    setRawPrompt('')
-  }, [])
-
   // 执行生成
   const handleExecute = useCallback(async () => {
-    const raw = buildRawPrompt()
+    const raw = buildPrompt()
     if (!raw) {
       setLocalError('请先填写模板参数')
       return
     }
-
-    // 使用编辑后的优化提示词，或原始提示词
-    const finalPrompt = editablePrompt || raw
 
     setLocalError(null)
     setCurrentStep('validating')
@@ -263,7 +176,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
 
       const images = await adapter.generateImage(
         {
-          prompt: finalPrompt,
+          prompt: raw,
           size: '1K',
           aspectRatio: 'auto',
           signal: abortController.signal,
@@ -284,8 +197,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
           images,
           imageUrl: images[0],
           rawPrompt: raw,
-          optimizedPrompt: optimizedPrompt || '',
-          prompt: finalPrompt,
+          prompt: raw,
           startedAt,
           completedAt: new Date().toISOString(),
         },
@@ -306,7 +218,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
         error: errorMsg,
       })
     }
-  }, [id, data.params, updateNode, editablePrompt, buildRawPrompt, optimizedPrompt])
+  }, [id, data.params, updateNode, buildPrompt])
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort()
@@ -316,12 +228,6 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
 
   const inputParams = data.params?.formData || {}
   const hasInputs = Object.keys(inputParams).length > 0
-  const hasOptimized = !!optimizedPrompt
-
-  const sectionCls = cn(
-    'p-2.5 rounded-lg border space-y-2',
-    isDark ? 'border-white/5 bg-white/[0.02]' : 'border-gray-100 bg-gray-50'
-  )
 
   return (
     <BaseNode
@@ -345,7 +251,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
         )}
 
         {/* 输入参数预览 */}
-        {hasInputs && !hasOptimized && (
+        {hasInputs && (
           <div className={cn(
             'p-2 rounded border text-xs',
             isDark ? 'bg-gray-800/50 border-white/5' : 'bg-gray-50 border-gray-100'
@@ -361,82 +267,6 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
             </div>
           </div>
         )}
-
-        {/* 原始提示词 */}
-        {rawPrompt && (
-          <div className={sectionCls}>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <span>原始提示词</span>
-            </div>
-            <p className={cn('text-xs break-all max-h-16 overflow-y-auto', isDark ? 'text-slate-400' : 'text-gray-600')}>
-              {rawPrompt}
-            </p>
-          </div>
-        )}
-
-        {/* 提示词优化区域 */}
-        <div className={sectionCls}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>提示词优化</span>
-              <span className="text-[10px] text-muted-foreground">GLM-4.5-Air</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {hasOptimized && (
-                <button
-                  onClick={handleResetPrompt}
-                  className={cn('p-1 rounded text-[10px] transition-colors', isDark ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-gray-200 text-gray-500')}
-                  title="重置"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
-              <button
-                onClick={handleOptimize}
-                disabled={isOptimizing || !buildRawPrompt()}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
-                  isOptimizing || !buildRawPrompt()
-                    ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
-                    : 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
-                )}
-              >
-                {isOptimizing ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" />优化中...</>
-                ) : (
-                  <><Sparkles className="w-3 h-3" />{hasOptimized ? '重新优化' : '优化提示词'}</>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* 优化后的提示词（可编辑） */}
-          {hasOptimized && (
-            <div className="space-y-1.5">
-              <div className="flex items-start gap-1.5">
-                <IMERawTextarea
-                  value={editablePrompt}
-                  onChange={(v) => setEditablePrompt(v)}
-                  rows={4}
-                  className={cn(
-                    'flex-1 text-xs resize-none rounded-md border px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500',
-                    isDark ? 'bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500' : 'bg-white border-gray-200 text-gray-900 placeholder:text-gray-400'
-                  )}
-                  placeholder="优化后的提示词（可编辑）"
-                />
-                <VoiceInput
-                  onResult={setEditablePrompt}
-                  currentValue={editablePrompt}
-                  size="sm"
-                />
-              </div>
-              {editablePrompt !== optimizedPrompt && (
-                <p className="text-[10px] text-amber-500">提示词已手动修改</p>
-              )}
-            </div>
-          )}
-        </div>
 
         {/* 错误信息 */}
         {(localError || data.error) && (
@@ -470,7 +300,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
             className="w-full mt-2"
           >
             <Play className="w-4 h-4 mr-2" />
-            {hasOptimized ? '使用优化提示词生成' : '执行生成'}
+            执行生成
           </Button>
         )}
 
@@ -480,7 +310,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
           isDark ? 'bg-gray-800/50 border-white/5 text-gray-500' : 'bg-gray-50 border-gray-100 text-gray-400'
         )}>
           <p>Skills 任务节点</p>
-          <p className="mt-0.5">填写参数 → 优化提示词 → 执行生成</p>
+          <p className="mt-0.5">填写参数 → 执行生成</p>
         </div>
       </div>
 

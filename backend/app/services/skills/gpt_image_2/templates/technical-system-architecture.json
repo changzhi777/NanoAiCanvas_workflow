@@ -1,0 +1,13 @@
+{
+  "id": "technical-system-architecture",
+  "name": "系统架构图",
+  "category": "technical",
+  "category_name": "技术图表",
+  "description": "系统架构图，前端+后端+DB+缓存+队列+外部服务",
+  "fields": [
+    {"name": "system_name", "type": "text", "label": "系统名称", "required": true},
+    {"name": "components", "type": "textarea", "label": "主要组件", "required": true, "description": "用逗号分隔，如: 前端, API, 数据库, 缓存"},
+    {"name": "has_external", "type": "select", "label": "外部服务", "required": false, "options": [{"value": "yes", "label": "有"}, {"value": "no", "label": "无"}], "default": "no"}
+  ],
+  "prompt_template": "System architecture diagram, {system_name}. Components: {components}. External services: {has_external}. Dark grid background, clean technical illustration style. Rectangular blocks for services, cylinders for databases, arrows showing data flow. Labeled connections with protocol indicators. Professional technical diagram, 16:9 aspect ratio."
+}

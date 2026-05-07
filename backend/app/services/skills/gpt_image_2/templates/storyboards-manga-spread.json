@@ -1,0 +1,14 @@
+{
+  "id": "storyboards-manga-spread",
+  "name": "漫画单页",
+  "category": "storyboards",
+  "category_name": "故事板分镜",
+  "description": "单页或跨页漫画分镜，不规则格子+对话+心声",
+  "fields": [
+    {"name": "title", "type": "text", "label": "漫画标题", "required": true},
+    {"name": "scene", "type": "textarea", "label": "场景描述", "required": true},
+    {"name": "panel_count", "type": "select", "label": "格数", "required": true, "options": [{"value": "4", "label": "4格"}, {"value": "6", "label": "6格"}, {"value": "8", "label": "8格"}]},
+    {"name": "mood", "type": "select", "label": "情绪基调", "required": true, "options": [{"value": "tense", "label": "紧张"}, {"value": "humorous", "label": "幽默"}, {"value": "emotional", "label": "情感"}, {"value": "action", "label": "动作"}]}
+  ],
+  "prompt_template": "Manga single page spread, title: {title}. Scene: {scene}. {panel_count} panels with irregular layouts. Mood: {mood}. Japanese manga art style, expressive characters, dynamic composition. Speed lines and effect marks for action scenes. Inner thoughts shown in smaller panels."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ui-mockups-live-commerce",
+  "name": "电商直播 UI",
+  "category": "ui-mockups",
+  "category_name": "UI 界面",
+  "description": "电商直播带货截图样机，包含主播画面、聊天区、礼物区、商品卡等区域",
+  "fields": [
+    {"name": "host_name", "type": "text", "label": "主播名称", "required": true, "description": "主播的名字或昵称"},
+    {"name": "host_type", "type": "select", "label": "主播来源", "required": true, "options": [{"value": "celebrity", "label": "名人明星"}, {"value": "influencer", "label": "网红达人"}, {"value": "merchant", "label": "商家自播"}, {"value": "random", "label": "随机生成"}]},
+    {"name": "product_name", "type": "text", "label": "商品名称", "required": true, "description": "直播售卖的商品名称"},
+    {"name": "product_price", "type": "text", "label": "商品价格", "required": false, "description": "如: 99.9元"},
+    {"name": "platform", "type": "select", "label": "平台风格", "required": true, "options": [{"value": "douyin", "label": "抖音"}, {"value": "kuaishou", "label": "快手"}, {"value": "taobao", "label": "淘宝直播"}, {"value": "xiaohongshu", "label": "小红书"}]},
+    {"name": "chat_count", "type": "select", "label": "评论数量", "required": false, "options": [{"value": "low", "label": "少量"}, {"value": "medium", "label": "中等"}, {"value": "high", "label": "刷屏"}], "default": "medium"},
+    {"name": "gift_enabled", "type": "select", "label": "礼物特效", "required": false, "options": [{"value": "yes", "label": "有"}, {"value": "no", "label": "无"}], "default": "yes"}
+  ],
+  "prompt_template": "E-commerce live streaming screenshot, {host_name} as the host, promoting {product_name} at {product_price}. Platform style: {platform}. Chat area shows active comments with multiple viewers. Gift area with animated effects. Product card prominently displayed. High energy sales atmosphere, professional streaming setup with ring lights, clean background. Screenshot mockup, 16:9 aspect ratio, realistic UI design."
+}

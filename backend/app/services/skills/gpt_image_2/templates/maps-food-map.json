@@ -1,0 +1,14 @@
+{
+  "id": "maps-food-map",
+  "name": "城市美食地图",
+  "category": "maps",
+  "category_name": "地图信息图",
+  "description": "城市美食手绘地图，编号点位 + 图例 + 中心吉祥物",
+  "fields": [
+    {"name": "city_name", "type": "text", "label": "城市名称", "required": true},
+    {"name": "map_style", "type": "select", "label": "地图风格", "required": true, "options": [{"value": "hand-drawn", "label": "手绘风格"}, {"value": "flat", "label": "扁平风格"}, {"value": "vintage", "label": "复古风格"}]},
+    {"name": "spot_count", "type": "select", "label": "推荐点位", "required": true, "options": [{"value": "5", "label": "5个"}, {"value": "8", "label": "8个"}, {"value": "10", "label": "10个"}]},
+    {"name": "include_mascot", "type": "select", "label": "吉祥物", "required": false, "options": [{"value": "yes", "label": "有"}, {"value": "no", "label": "无"}], "default": "yes"}
+  ],
+  "prompt_template": "Hand-drawn style city food map, {city_name}. Style: {map_style}. Include {spot_count} numbered food spots with icons. Legend showing food types. Center mascot character. Illustrated map style with warm colors, tourist map aesthetic. Clean layout with good hierarchy."
+}

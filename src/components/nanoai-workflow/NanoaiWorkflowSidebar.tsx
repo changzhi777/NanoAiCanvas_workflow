@@ -62,6 +62,15 @@ const BASE_AI_NODES: NodeTypeConfig[] = [
     popular: true,
   },
   {
+    type: WorkflowNodeType.STORYBOARD_SHOT_A,
+    label: '故事板分镜A',
+    icon: <Film className="w-5 h-5" />,
+    description: '输入描述→优化提示词→生成分镜图',
+    category: 'ai',
+    tags: ['图片', '分镜', '故事板'],
+    popular: true,
+  },
+  {
     type: WorkflowNodeType.DIALOGUE_GENERATOR,
     label: '对白生成',
     icon: <Mic className="w-5 h-5" />,

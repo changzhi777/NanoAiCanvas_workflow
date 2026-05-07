@@ -86,7 +86,7 @@ export interface APIKeyCreate {
 // ============ 渠道商 API ============
 
 // 完整路径: /api/v2/admin/providers
-const PROVIDERS_BASE = '/v2/admin/providers'
+const PROVIDERS_BASE = '/api/v2/admin/providers'
 
 /**
  * 获取渠道商列表
@@ -182,7 +182,7 @@ export async function deleteModel(providerId: number, modelId: number): Promise<
 // ============ API密钥 API ============
 
 // 完整路径: /api/v2/admin/api-keys
-const API_KEYS_BASE = '/v2/admin/api-keys'
+const API_KEYS_BASE = '/api/v2/admin/api-keys'
 
 /**
  * 获取API密钥列表
@@ -334,7 +334,7 @@ export async function getUsersWithPoints(page = 1, pageSize = 20, search?: strin
  * 为用户充值积分
  */
 export async function rechargeUserPoints(request: RechargeRequest): Promise<RechargeResponse> {
-  const response = await client.post<RechargeResponse>('/v2/admin/points/recharge', request, getToken() || undefined)
+  const response = await client.post<RechargeResponse>('/api/v2/admin/points/recharge', request, getToken() || undefined)
   return response
 }
 
@@ -360,7 +360,7 @@ export async function getTransactionRecords(
  * 获取扣费规则列表
  */
 export async function getBillingRules(): Promise<BillingRule[]> {
-  const response = await client.get<BillingRule[]>('/v2/admin/points/rules', getToken() || undefined)
+  const response = await client.get<BillingRule[]>('/api/v2/admin/points/rules', getToken() || undefined)
   return response
 }
 
@@ -373,7 +373,7 @@ export async function createBillingRule(data: {
   points_per_unit: number
   unit: string
 }): Promise<BillingRule> {
-  const response = await client.post<BillingRule>('/v2/admin/points/rules', data, getToken() || undefined)
+  const response = await client.post<BillingRule>('/api/v2/admin/points/rules', data, getToken() || undefined)
   return response
 }
 
@@ -381,7 +381,7 @@ export async function createBillingRule(data: {
  * 更新扣费规则
  */
 export async function updateBillingRule(ruleId: number, data: Partial<BillingRule>): Promise<BillingRule> {
-  const response = await client.put<BillingRule>(`/v2/admin/points/rules/${ruleId}`, data, getToken() || undefined)
+  const response = await client.put<BillingRule>(`/api/v2/admin/points/rules/${ruleId}`, data, getToken() || undefined)
   return response
 }
 
@@ -389,7 +389,7 @@ export async function updateBillingRule(ruleId: number, data: Partial<BillingRul
  * 删除扣费规则
  */
 export async function deleteBillingRule(ruleId: number): Promise<void> {
-  await client.delete(`/v2/admin/points/rules/${ruleId}`, getToken() || undefined)
+  await client.delete(`/api/v2/admin/points/rules/${ruleId}`, getToken() || undefined)
 }
 
 /**
@@ -418,7 +418,7 @@ export async function createRechargeOrder(
   amount: number,
   paymentMethod: 'wechat' | 'alipay'
 ): Promise<{ order_id: string; qr_code_url: string; amount: number; payment_method: string }> {
-  const response = await client.post<{ order_id: string; qr_code_url: string; amount: number; payment_method: string }>('/v2/admin/points/recharge/create', {
+  const response = await client.post<{ order_id: string; qr_code_url: string; amount: number; payment_method: string }>('/api/v2/admin/points/recharge/create', {
     user_id: userId,
     amount,
     payment_method: paymentMethod
@@ -512,7 +512,7 @@ export interface BackendKeyMappingCreate {
   priority?: number
 }
 
-const KEY_MAPPER_BASE = '/v2/admin/key-mapper'
+const KEY_MAPPER_BASE = '/api/v2/admin/key-mapper'
 
 /**
  * 获取所有前端 API Key 配置
@@ -594,23 +594,23 @@ export interface PendingUser {
 }
 
 export async function listPendingUsers(): Promise<PendingUser[]> {
-  const response = await client.get<PendingUser[]>('/v2/admin/users/pending')
+  const response = await client.get<PendingUser[]>('/api/admin/users/pending')
   return response
 }
 
 export async function listAllUsers(statusFilter?: string): Promise<PendingUser[]> {
-  const url = statusFilter ? `/v2/admin/users/all?status_filter=${statusFilter}` : '/v2/admin/users/all'
+  const url = statusFilter ? `/api/admin/users/all?status_filter=${statusFilter}` : '/api/admin/users/all'
   const response = await client.get<PendingUser[]>(url)
   return response
 }
 
 export async function approveUser(userId: string): Promise<PendingUser> {
-  const response = await client.post<PendingUser>(`/v2/admin/users/${userId}/approve`, {})
+  const response = await client.post<PendingUser>(`/api/admin/users/${userId}/approve`, {})
   return response
 }
 
 export async function rejectUser(userId: string): Promise<PendingUser> {
-  const response = await client.post<PendingUser>(`/v2/admin/users/${userId}/reject`, {})
+  const response = await client.post<PendingUser>(`/api/admin/users/${userId}/reject`, {})
   return response
 }
 

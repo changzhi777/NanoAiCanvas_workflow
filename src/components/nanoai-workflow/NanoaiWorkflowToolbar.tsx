@@ -289,6 +289,7 @@ export function NanoaiWorkflowToolbar() {
             <Button
               onClick={handleExecute}
               disabled={isExecuting}
+              data-tour="execute-btn"
               className={cn(
                 'bg-gradient-to-r from-green-500 to-emerald-500',
                 'hover:from-green-600 hover:to-emerald-600',

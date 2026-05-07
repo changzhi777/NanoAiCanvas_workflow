@@ -8,7 +8,7 @@ import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
 
-export function WorkflowPropertiesPanel() {
+export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElement>) {
   const { isDark } = useTheme();
   const { toast } = useToast();
   const { selectedNodeId, nodes, updateNode, removeNode } = useNanoaiWorkflowStore();
@@ -119,9 +119,11 @@ export function WorkflowPropertiesPanel() {
   // 展开状态
   return (
     <div
+      {...props}
       className={cn(
         'fixed right-0 top-16 bottom-0 z-40 flex',
-        'transition-transform duration-300'
+        'transition-transform duration-300',
+        props?.className
       )}
     >
       {/* 面板内容 */}

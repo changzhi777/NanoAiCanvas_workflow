@@ -22,6 +22,7 @@ import { useNanoaiWorkflowStore, WorkflowNode } from '@/stores/nanoaiWorkflowSto
 import { nodeTypes } from './nodes';
 import CustomEdge from './nodes/CustomEdge';
 import { NanoaiWorkflowToolbar } from './NanoaiWorkflowToolbar';
+import { OnboardingTour } from './OnboardingTour';
 import { NanoaiWorkflowSidebar } from './NanoaiWorkflowSidebar';
 import { EmptyState } from './ui/EmptyState';
 import { useTheme } from './ui/Theme';
@@ -49,7 +50,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   // 从 localStorage 恢复侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
-    return saved ? JSON.parse(saved) : false;
+    return saved ? JSON.parse(saved) : true;
   });
   const [showProgress, setShowProgress] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -528,10 +529,12 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   return (
     <div className={cn('h-screen w-screen flex overflow-hidden', className)}>
       {/* 左侧工具栏 */}
-      <NanoaiWorkflowSidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
+      <div data-tour="sidebar">
+        <NanoaiWorkflowSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+      </div>
 
       {/* 右侧进度面板 */}
       {showProgress && (
@@ -731,12 +734,12 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
         isDark ? 'bg-[#171717]' : 'bg-white'  /* #171717 - Supabase页面背景 */
       )}>
         {/* 顶部工具栏 */}
-        <div className="relative">
+        <div className="relative" data-tour="toolbar">
           <NanoaiWorkflowToolbar />
         </div>
 
         {/* React Flow 画布 */}
-        <div className="flex-1 relative canvas-wrapper nanoai-workflow">
+        <div className="flex-1 relative canvas-wrapper nanoai-workflow" data-tour="canvas">
           {/* 背景装饰光晕 */}
           <div className="bg-orb-top-right" />
           <div className="bg-orb-bottom-left" />
@@ -929,9 +932,12 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
           />
 
           {/* 属性面板 */}
-          <WorkflowPropertiesPanel />
+          <WorkflowPropertiesPanel data-tour="properties" />
         </div>
       </div>
+
+      {/* 新手引导 */}
+      <OnboardingTour />
     </div>
   );
 }

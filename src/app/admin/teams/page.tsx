@@ -23,7 +23,9 @@ export default function TeamsPage() {
     setLoading(true)
     try {
       const response = await getTeams()
-      setTeams(response?.teams || [])
+      // 后端返回 Team[] 或 { teams: Team[] }
+      const teamList = Array.isArray(response) ? response : (response?.teams || [])
+      setTeams(teamList)
     } catch (error: any) {
       toast.error(error.message || '获取团队列表失败')
     } finally {

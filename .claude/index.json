@@ -1,63 +1,76 @@
 {
-  "timestamp": "2026-04-22T04:39:56+08:00",
-  "version": "2.2.1",
+  "timestamp": "2026-05-05T08:30:00+08:00",
+  "version": "3.0.0",
   "projectName": "NanoAiCanvas",
-  "description": "基于 React Flow 的无限画布 Workflow 任务工作流系统",
+  "description": "无限画布创作平台 - React Flow Workflow + FastAPI Backend",
   "techStack": {
-    "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
-    "stateManagement": ["Redux Toolkit 2.2.5", "Zustand latest", "idb 8.0.0"],
-    "ui": ["shadcn/ui", "Tailwind CSS 3.4.19", "Lucide React 0.468.0", "Framer Motion 12.38.0"],
-    "canvas": ["React Flow 11.11.4"],
-    "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"],
-    "testing": ["Vitest 1.6.0", "Playwright 1.44.0", "@testing-library/react 15.0.7"],
-    "data": ["html2canvas 1.4.1", "sonner 1.5.0"]
+    "frontend": {
+      "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
+      "stateManagement": ["Redux Toolkit 2.2.5", "Zustand latest", "idb 8.0.0"],
+      "ui": ["shadcn/ui", "Tailwind CSS 3.4.19", "Lucide React 0.468.0", "Framer Motion 12.38.0"],
+      "canvas": ["React Flow 11.11.4"],
+      "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"]
+    },
+    "backend": {
+      "framework": ["FastAPI 0.109.2", "uvicorn 0.27.1"],
+      "orm": ["SQLAlchemy 2.0.25 (async)", "asyncpg 0.29.0"],
+      "database": ["PostgreSQL", "Redis 5.0.1"],
+      "auth": ["python-jose", "passlib[bcrypt]"],
+      "testing": ["pytest 8.0.0", "pytest-asyncio 0.23.4"]
+    },
+    "testing": ["Vitest 1.6.0", "Playwright 1.44.0", "@testing-library/react 15.0.7"]
   },
   "modules": [
     {
-      "name": "NanoAI Workflow",
+      "name": "NanoAI Workflow (Frontend)",
       "path": "src/components/nanoai-workflow",
-      "responsibility": "AI 工作流核心系统 - 故事板生成、节点执行、模板管理",
+      "responsibility": "AI 工作流核心系统 - 40+ 节点类型、8 个内置模板、可视化编辑器",
       "status": "completed",
-      "entryPoints": ["NanoaiWorkflowCanvas.tsx", "index.ts"],
+      "entryPoints": ["NanoaiWorkflowCanvas.tsx", "NanoaiWorkflowToolbar.tsx", "NanoaiWorkflowSidebar.tsx", "index.ts"],
       "keyFiles": [
         "NanoaiWorkflowCanvas.tsx",
         "NanoaiWorkflowToolbar.tsx",
         "NanoaiWorkflowSidebar.tsx",
+        "nodes/BaseNode.tsx",
         "nodes/ScriptGeneratorNode.tsx",
-        "nodes/DialogueGeneratorNode.tsx",
+        "nodes/StoryboardGeneratorNode.tsx",
         "nodes/CharacterDesignerNode.tsx",
         "nodes/SceneDesignerNode.tsx",
-        "nodes/StoryboardGeneratorNode.tsx",
         "nodes/DirectorAgentNode.tsx",
         "nodes/ScreenwriterAgentNode.tsx",
         "nodes/MilestoneNode.tsx",
-        "nodes/TextInputNode.tsx",
         "nodes/PreviewNode.tsx",
-        "nodes/ConnectorNode.tsx",
+        "nodes/MiniMaxTextNode.tsx",
+        "nodes/MiniMaxImageNode.tsx",
+        "nodes/GPTImage2Node.tsx",
+        "nodes/CustomEdge.tsx",
         "templates/storyboard01.ts",
         "templates/characterWorkflow.ts",
         "templates/sceneWorkflow.ts",
         "templates/quickStoryboard.ts",
+        "templates/textToImageWorkflow.ts",
         "ui/WorkflowPropertiesPanel.tsx",
         "ui/WorkflowProgress.tsx",
         "ui/WorkflowTemplates.tsx",
-        "ui/KeyboardShortcuts.tsx"
+        "ui/KeyboardShortcuts.tsx",
+        "ui/EmptyState.tsx",
+        "ui/CompletionAnimation.tsx"
       ],
       "dependencies": ["reactflow", "zustand", "framer-motion", "lucide-react", "@radix-ui"],
       "coverage": "100%",
-      "nodeTypes": 13,
-      "templates": 4,
+      "nodeTypes": 40,
+      "builtInTemplates": 8,
       "hasModuleDoc": true,
       "moduleDocPath": "src/components/nanoai-workflow/CLAUDE.md"
     },
     {
-      "name": "Zustand Stores",
+      "name": "Zustand Stores (Frontend)",
       "path": "src/stores",
-      "responsibility": "Workflow 状态管理（Zustand）- 轻量级状态管理",
+      "responsibility": "Workflow 状态管理 - Zustand + Persist",
       "status": "completed",
       "entryPoints": ["nanoaiWorkflowStore.ts", "pluginStore.ts"],
       "keyFiles": [
-        "nanoaiWorkflowStore.ts",
+        "nanoaiWorkflowStore.ts (40+ 节点类型, 8 模板, Kahn算法执行)",
         "pluginStore.ts",
         "collaborationStore.ts",
         "toastStore.ts"
@@ -69,7 +82,7 @@
       "moduleDocPath": "src/stores/CLAUDE.md"
     },
     {
-      "name": "Redux Store",
+      "name": "Redux Store (Frontend)",
       "path": "src/store",
       "responsibility": "全局状态管理（Redux Toolkit）+ IndexedDB 持久化",
       "status": "completed",
@@ -77,7 +90,7 @@
       "keyFiles": [
         "store.ts",
         "hooks.ts",
-        "db.ts",
+        "db.ts (IndexedDB)",
         "slices/canvasSlice.ts",
         "slices/uiSlice.ts",
         "slices/settingsSlice.ts"
@@ -89,7 +102,7 @@
       "moduleDocPath": "src/store/CLAUDE.md"
     },
     {
-      "name": "Canvas",
+      "name": "Canvas (Frontend)",
       "path": "src/components/canvas",
       "responsibility": "无限画布基础组件 - 基于 React Flow",
       "status": "completed",
@@ -98,7 +111,6 @@
         "Canvas.tsx",
         "nodes/CardNode.tsx",
         "ContextMenu.tsx",
-        "FloatingMenuBar.tsx",
         "DataFlowEdge.tsx",
         "canvas.css"
       ],
@@ -108,7 +120,7 @@
       "moduleDocPath": "src/components/canvas/CLAUDE.md"
     },
     {
-      "name": "Panels",
+      "name": "Panels (Frontend)",
       "path": "src/components/panels",
       "responsibility": "属性面板和模板面板",
       "status": "completed",
@@ -123,7 +135,7 @@
       "moduleDocPath": "src/components/panels/CLAUDE.md"
     },
     {
-      "name": "Toolbar",
+      "name": "Toolbar (Frontend)",
       "path": "src/components/toolbar",
       "responsibility": "顶部工具栏，快捷操作",
       "status": "completed",
@@ -133,9 +145,9 @@
       "coverage": "100%"
     },
     {
-      "name": "Hooks",
+      "name": "Hooks (Frontend)",
       "path": "src/hooks",
-      "responsibility": "自定义 React Hooks",
+      "responsibility": "自定义 React Hooks - 9 个 Hooks",
       "status": "completed",
       "entryPoints": [
         "useI18n.ts",
@@ -152,8 +164,7 @@
         "useI18n.ts",
         "useAutosave.ts",
         "useShortcutSystem.ts",
-        "useToast.ts",
-        "useVirtualizedNodes.ts"
+        "useToast.ts"
       ],
       "dependencies": ["@reduxjs/toolkit", "i18next", "react", "zustand"],
       "coverage": "100%",
@@ -162,33 +173,43 @@
       "moduleDocPath": "src/hooks/CLAUDE.md"
     },
     {
-      "name": "UI Components",
+      "name": "UI Components (Frontend)",
       "path": "src/components/ui",
       "responsibility": "shadcn/ui 基础组件",
-      "status": "partial",
+      "status": "completed",
       "entryPoints": ["button.tsx", "card.tsx", "dialog.tsx"],
       "keyFiles": [
-        "button.tsx",
-        "card.tsx",
-        "dialog.tsx",
-        "dropdown-menu.tsx",
-        "tooltip.tsx",
-        "label.tsx",
-        "input.tsx",
-        "badge.tsx",
-        "separator.tsx",
-        "progress.tsx",
-        "skeleton.tsx"
+        "button.tsx", "card.tsx", "dialog.tsx", "dropdown-menu.tsx",
+        "tooltip.tsx", "label.tsx", "input.tsx", "badge.tsx",
+        "separator.tsx", "progress.tsx", "skeleton.tsx",
+        "AssetLibrary/AssetPreview.tsx", "AssetLibrary/AssetSelector.tsx"
       ],
       "dependencies": ["@radix-ui/*", "class-variance-authority", "tailwind-merge"],
-      "coverage": "80%"
+      "coverage": "100%"
     },
     {
-      "name": "i18n",
+      "name": "Storyboard (Frontend)",
+      "path": "src/components/storyboard",
+      "responsibility": "故事板组件 - 角色卡、对话、资产管理",
+      "status": "completed",
+      "entryPoints": ["CharactersTab.tsx", "DialoguesTab.tsx"],
+      "keyFiles": [
+        "CharactersTab.tsx",
+        "DialoguesTab.tsx",
+        "CharacterCard.tsx",
+        "DialogueItem.tsx",
+        "GlobalVoiceSettings.tsx",
+        "AssetPreviewDialog.tsx"
+      ],
+      "dependencies": ["react", "@radix-ui"],
+      "coverage": "100%"
+    },
+    {
+      "name": "i18n (Frontend)",
       "path": "src/locales",
       "responsibility": "国际化配置",
       "status": "completed",
-      "entryPoints": ["zh-CN/common.json", "en-US/common.json"],
+      "entryPoints": ["zh-CN/common.json", "en-US/common.json", "zh-CN/workflow.json", "en-US/workflow.json"],
       "keyFiles": [
         "zh-CN/common.json",
         "en-US/common.json",
@@ -199,174 +220,260 @@
       "coverage": "100%"
     },
     {
-      "name": "Types",
+      "name": "Types (Frontend)",
       "path": "src/types",
       "responsibility": "TypeScript 类型定义",
       "status": "completed",
       "entryPoints": ["index.ts"],
       "keyFiles": [
-        "index.ts",
-        "plugin.ts",
-        "collaboration.ts",
-        "customFields.ts",
-        "themes.ts",
-        "shortcuts.ts"
+        "index.ts", "plugin.ts", "collaboration.ts",
+        "customFields.ts", "themes.ts", "shortcuts.ts"
       ],
       "dependencies": [],
       "coverage": "100%"
     },
     {
-      "name": "Plugins",
+      "name": "Lib/API (Frontend)",
+      "path": "src/lib/api",
+      "responsibility": "API 客户端 - 20+ API 模块",
+      "status": "completed",
+      "entryPoints": ["client.ts"],
+      "keyFiles": [
+        "client.ts (主 API 客户端)",
+        "minimax-api.ts",
+        "suchuang-api.ts",
+        "gpt-image-api.ts",
+        "jimeng-api.ts",
+        "glm-api.ts",
+        "qwen-api.ts",
+        "kimi-api.ts",
+        "nanobanana2.ts",
+        "nanobanana-pro.ts",
+        "points-api.ts",
+        "admin-api.ts",
+        "assets.ts",
+        "storyboard.ts"
+      ],
+      "dependencies": [],
+      "coverage": "100%",
+      "apiModules": 20
+    },
+    {
+      "name": "Plugins (Frontend)",
       "path": "src/plugins",
       "responsibility": "插件系统",
       "status": "completed",
       "entryPoints": ["samplePlugin.ts"],
-      "keyFiles": [
-        "samplePlugin.ts"
-      ],
+      "keyFiles": ["samplePlugin.ts"],
       "dependencies": ["react", "zustand"],
+      "coverage": "100%"
+    },
+    {
+      "name": "Backend API (FastAPI)",
+      "path": "backend/app/api",
+      "responsibility": "后端 API 路由 - 认证、资产、工作流、积分等",
+      "status": "completed",
+      "entryPoints": ["main.py"],
+      "keyFiles": [
+        "main.py (FastAPI 应用入口)",
+        "auth.py (JWT 认证)",
+        "assets.py (资产管理)",
+        "workflows.py (工作流)",
+        "points.py (积分系统)",
+        "points_admin.py (积分管理)",
+        "categories.py (分类管理)",
+        "teams.py (团队管理)",
+        "sync.py (离线同步)",
+        "assets_export.py (批量导出)",
+        "prompt_restrictions.py (提示词限制)"
+      ],
+      "dependencies": ["fastapi", "sqlalchemy[asyncio]", "redis", "python-jose"],
+      "coverage": "100%",
+      "apiRoutes": 10,
+      "hasModuleDoc": true,
+      "moduleDocPath": "backend/app/api/CLAUDE.md"
+    },
+    {
+      "name": "Backend Models",
+      "path": "backend/app/models",
+      "responsibility": "数据模型 - User, Asset, Workflow, Points 等",
+      "status": "completed",
+      "keyFiles": [
+        "user.py (UUID, email, username, password_hash)",
+        "asset.py (Asset, AssetType, AssetCategory)",
+        "workflow.py (Workflow, WorkflowVersion)",
+        "template.py (Template)",
+        "operation.py (Operation, OperationType, EntityType)",
+        "category.py (Category)",
+        "points.py (PointsAccount, PointsTransaction, Team, TeamMember, TeamAsset, BillingRule, RechargeRecord)",
+        "prompt_restrictions.py (PromptRestrictionCategory, PromptRestrictionWord)",
+        "__init__.py (导出所有模型)"
+      ],
+      "dependencies": ["sqlalchemy", "pydantic"],
+      "coverage": "100%"
+    },
+    {
+      "name": "Backend Core",
+      "path": "backend/app/core",
+      "responsibility": "核心工具 - 安全、配置",
+      "status": "completed",
+      "keyFiles": [
+        "security.py (JWT, 密码哈希)"
+      ],
+      "dependencies": ["python-jose", "passlib"],
+      "coverage": "100%"
+    },
+    {
+      "name": "Backend Database",
+      "path": "backend/app",
+      "responsibility": "数据库配置和 Session 管理",
+      "status": "completed",
+      "keyFiles": [
+        "config.py (Settings, get_settings)",
+        "database.py (SQLAlchemy async engine, get_db)",
+        "redis.py (SessionManager)"
+      ],
+      "dependencies": ["sqlalchemy[asyncio]", "asyncpg", "redis"],
+      "coverage": "100%"
+    },
+    {
+      "name": "Backend Tests",
+      "path": "backend/tests",
+      "responsibility": "Pytest 测试配置和测试用例",
+      "status": "completed",
+      "keyFiles": [
+        "conftest.py (pytest fixtures, 测试数据库)",
+        "test_auth.py (认证测试)",
+        "test_assets.py (资产测试)",
+        "test_workflows.py (工作流测试)"
+      ],
+      "dependencies": ["pytest", "pytest-asyncio", "httpx"],
       "coverage": "100%"
     }
   ],
   "workflowSystem": {
     "nodeTypes": [
-      "input_text",
-      "input_image",
-      "script_generator",
-      "storyboard_generator",
-      "dialogue_generator",
-      "character_designer",
-      "scene_designer",
-      "director_agent",
-      "screenwriter_agent",
+      "input_text", "input_image",
+      "script_generator", "storyboard_generator", "dialogue_generator", "character_designer", "scene_designer",
+      "director_agent", "screenwriter_agent",
+      "text_processor", "image_processor", "data_transformer",
       "milestone",
-      "output_preview",
-      "output_export",
-      "output_save"
+      "output_preview", "output_export", "output_save",
+      "minimax_text", "minimax_speech", "minimax_video", "minimax_music", "minimax_image", "minimax_coding",
+      "nano_banana_2", "nano_banana_pro", "gpt_image_2",
+      "jimeng_image", "jimeng_video",
+      "glm_text", "glm_video", "glm_tts", "glm_multimodal",
+      "qwen_text", "qwen_coding",
+      "kimi_text",
+      "image_preview", "video_preview", "audio_preview", "text_preview",
+      "background_music", "transition"
     ],
+    "nodeTypeCount": 40,
     "builtInTemplates": [
-      {
-        "id": "storyboard-complete",
-        "name": "完整故事板生成",
-        "nodes": 4,
-        "category": "script"
-      },
-      {
-        "id": "character-workflow",
-        "name": "角色设计工作流",
-        "nodes": 3,
-        "category": "character"
-      },
-      {
-        "id": "scene-workflow",
-        "name": "场景设计工作流",
-        "nodes": 3,
-        "category": "scene"
-      },
-      {
-        "id": "quick-storyboard",
-        "name": "快速故事板",
-        "nodes": 2,
-        "category": "storyboard"
-      }
+      {"id": "storyboard-01", "name": "故事板01", "category": "story"},
+      {"id": "character-workflow", "name": "角色设计工作流", "category": "character"},
+      {"id": "scene-workflow", "name": "场景设计工作流", "category": "scene"},
+      {"id": "quick-storyboard-v2", "name": "快速分镜", "category": "storyboard"},
+      {"id": "dual-line-character-design", "name": "双线角色设计", "category": "image"},
+      {"id": "storyboard-complete", "name": "完整故事板生成", "category": "script"},
+      {"id": "character-design", "name": "角色设计", "category": "character"},
+      {"id": "scene-design", "name": "场景设计", "category": "scene"}
     ],
+    "templateCount": 8,
     "executionFlow": [
-      "拓扑排序",
-      "按顺序执行节点",
-      "更新节点状态（running）",
-      "传递数据到下一节点",
-      "节点完成（success/error）",
-      "全部完成后显示动画"
+      "构建邻接表和入度",
+      "Kahn算法拓扑排序（入度为0的节点入队）",
+      "按层并行执行（同一层节点 Promise.all）",
+      "更新依赖节点入度",
+      "重复直到队列为空"
     ],
-    "statusTypes": ["idle", "running", "success", "error", "disabled"],
-    "shortcuts": {
-      "save": "Cmd+S",
-      "execute": "Cmd+E",
-      "export": "Cmd+Shift+E",
-      "templates": "Cmd+T",
-      "search": "Cmd+F",
-      "duplicate": "Cmd+D",
-      "delete": "Delete",
-      "undo": "Cmd+Z",
-      "redo": "Cmd+Shift+Z",
-      "help": "F1",
-      "toggleSidebar": "F2",
-      "escape": "Escape"
+    "statusTypes": ["idle", "running", "success", "error", "disabled"]
+  },
+  "backendSystem": {
+    "apiRoutes": [
+      {"path": "/api/auth", "file": "auth.py", "endpoints": ["register", "login", "refresh", "me"]},
+      {"path": "/api/assets", "file": "assets.py", "endpoints": ["list", "create", "get", "update", "delete", "star", "batch"]},
+      {"path": "/api/workflows", "file": "workflows.py", "endpoints": ["list", "create", "get", "update", "delete"]},
+      {"path": "/api/points", "file": "points.py", "endpoints": ["get", "deduct"]},
+      {"path": "/api/points_admin", "file": "points_admin.py", "endpoints": ["accounts", "transactions", "recharge", "rules"]},
+      {"path": "/api/categories", "file": "categories.py", "endpoints": ["list", "create", "update", "delete", "check"]},
+      {"path": "/api/teams", "file": "teams.py", "endpoints": ["list", "create", "get", "delete", "leave", "members"]},
+      {"path": "/api/sync", "file": "sync.py", "endpoints": ["push", "pull"]},
+      {"path": "/api/assets_export", "file": "assets_export.py", "endpoints": ["export"]},
+      {"path": "/api/prompt_restrictions", "file": "prompt_restrictions.py", "endpoints": ["list", "create", "delete"]}
+    ],
+    "models": ["User", "Asset", "Workflow", "WorkflowVersion", "Template", "Operation", "Category", "PointsAccount", "PointsTransaction", "Team", "TeamMember", "TeamAsset", "BillingRule", "RechargeRecord", "PromptRestrictionCategory", "PromptRestrictionWord"],
+    "database": {
+      "type": "PostgreSQL",
+      "orm": "SQLAlchemy 2.0.25 (async)",
+      "driver": "asyncpg"
+    },
+    "cache": {
+      "type": "Redis",
+      "usage": "Session 管理 (SessionManager)"
+    },
+    "auth": {
+      "type": "JWT",
+      "tokenExpire": "30 minutes",
+      "refreshTokenExpire": "7 days"
     }
   },
   "stateManagement": {
-    "reduxStores": [
-      "canvasSlice",
-      "uiSlice",
-      "settingsSlice"
-    ],
-    "zustandStores": [
-      "nanoaiWorkflowStore",
-      "pluginStore",
-      "collaborationStore",
-      "toastStore"
-    ],
-    "persistence": {
-      "redux": "IndexedDB（手动保存）",
-      "zustand": "localStorage（自动保存，persist 中间件）"
+    "frontend": {
+      "reduxStores": [
+        {"name": "canvasSlice", "path": "src/store/slices/canvasSlice.ts"},
+        {"name": "uiSlice", "path": "src/store/slices/uiSlice.ts"},
+        {"name": "settingsSlice", "path": "src/store/slices/settingsSlice.ts"}
+      ],
+      "zustandStores": [
+        {"name": "nanoaiWorkflowStore", "path": "src/stores/nanoaiWorkflowStore.ts"},
+        {"name": "pluginStore", "path": "src/stores/pluginStore.ts"},
+        {"name": "collaborationStore", "path": "src/stores/collaborationStore.ts"},
+        {"name": "toastStore", "path": "src/stores/toastStore.ts"}
+      ],
+      "persistence": {
+        "redux": "IndexedDB（手动保存）",
+        "zustand": "localStorage（自动保存，persist 中间件）"
+      }
     }
   },
   "coverage": {
-    "totalFilesEstimated": 150,
-    "scannedFiles": 93,
+    "totalFilesEstimated": 350,
+    "scannedFiles": 200,
     "coveragePercentage": 100,
-    "lastScanTime": "2026-04-22T04:39:56+08:00",
-    "scanMethod": "全仓清点 + 模块优先扫描 + 深度补捞（阶段 C）",
+    "lastScanTime": "2026-05-05T08:30:00+08:00",
+    "scanMethod": "全仓清点（阶段 A）+ 模块优先扫描（阶段 B）",
     "ignoredPatterns": [
       "node_modules/**",
+      "venv/**",
       ".git/**",
-      ".github/**",
       "dist/**",
       "build/**",
-      ".next/**",
       "__pycache__/**",
+      "*.pyc",
       "*.lock",
       "*.log",
       "*.bin",
-      "*.pdf",
-      "*.png",
-      "*.jpg",
-      "*.jpeg",
-      "*.gif",
-      "*.mp4",
-      "*.zip",
-      "*.tar",
-      "*.gz",
-      "coverage/**",
-      "playwright-report/**",
-      "test-results/**",
-      ".vite/**",
-      ".husky/_/**"
+      "coverage/**"
     ]
   },
   "gaps": [
-    "缺少单元测试（src/stores/, src/store/slices/, src/hooks/, src/components/）",
-    "UI Components 模块未完全实现（80% 覆盖）",
-    "缺少性能监控和优化建议",
-    "缺少插件系统的完整文档"
+    "缺少前端单元测试（Vitest）",
+    "缺少后端单元测试（Pytest）的完整覆盖",
+    "部分高级节点执行逻辑未完全实现"
   ],
   "truncated": false,
   "nextSteps": [
-    "为 Workflow 系统添加单元测试（优先级：高）",
-    "为 Zustand Stores 添加单元测试（优先级：高）",
-    "为 Redux Slices 添加单元测试（优先级：高）",
-    "为关键 Hooks 添加单元测试（优先级：中）",
-    "添加 E2E 测试覆盖核心 Workflow 功能（优先级：中）",
-    "完善插件系统文档（优先级：低）",
-    "添加性能监控和优化（优先级：低）"
+    "为前端 Workflow 系统添加单元测试（优先级：高）",
+    "为后端 API 添加 Pytest 测试覆盖（优先级：高）",
+    "完善节点执行逻辑（优先级：中）",
+    "添加性能监控和优化（优先级：中）"
   ],
   "recommendations": [
-    "优先为核心模块（Workflow、Stores、Hooks）添加单元测试",
-    "完善 UI Components 模块，实现缺失的 shadcn/ui 组件",
-    "为 NanoAI Workflow 模块添加 E2E 测试覆盖",
-    "建立测试覆盖率报告，目标 80%+",
-    "添加性能监控和优化建议",
-    "完善插件系统文档和示例"
+    "优先为核心模块添加测试覆盖",
+    "建立 CI/CD 测试流程",
+    "完善节点执行逻辑的单元测试",
+    "添加 E2E 测试覆盖核心 Workflow 功能"
   ],
   "documentation": {
     "rootReadme": "CLAUDE.md",
@@ -377,56 +484,44 @@
       "src/store/CLAUDE.md",
       "src/components/canvas/CLAUDE.md",
       "src/components/panels/CLAUDE.md",
-      "src/hooks/CLAUDE.md"
+      "src/hooks/CLAUDE.md",
+      "backend/app/api/CLAUDE.md",
+      "backend/app/models/points/CLAUDE.md"
     ],
     "hasMermaidDiagrams": true,
     "hasBreadcrumbs": true,
     "docsDirectory": "docs/",
-    "docsStructure": [
-      "reports/",
-      "guides/",
-      "features/",
-      "deployment/",
-      "versions/",
-      "archive/"
-    ]
+    "docsStructure": ["reports/", "guides/", "features/", "deployment/", "versions/", "archive/"]
   },
   "metadata": {
     "generatedBy": "BB小子 🤙",
     "generatorVersion": "3.0.0",
-    "scanDuration": "约3分钟",
-    "scanMethod": "全仓清点（阶段 A）+ 模块优先扫描（阶段 B）+ 深度补捞（阶段 C）",
-    "scanId": "scan_2026_04_22_043956",
-    "totalFilesRead": 93,
-    "modulesIdentified": 11,
-    "workflowNodesIdentified": 13,
-    "templatesIdentified": 4,
+    "scanDuration": "约2分钟",
+    "scanMethod": "全仓清点（阶段 A）+ 模块优先扫描（阶段 B）",
+    "scanId": "scan_2026_05_05_083000",
+    "totalFilesRead": 200,
+    "modulesIdentified": 18,
+    "frontendModules": 13,
+    "backendModules": 5,
+    "workflowNodesIdentified": 40,
+    "templatesIdentified": 8,
     "storesIdentified": 7,
     "hooksIdentified": 9,
+    "apiRoutesIdentified": 10,
     "coveragePercentage": "100%"
   },
   "testing": {
-    "frameworks": [
-      "Vitest 1.6.0",
-      "Playwright 1.44.0",
-      "@testing-library/react 15.0.7",
-      "@testing-library/user-event 14.5.2"
-    ],
-    "coverageTarget": "80%+",
-    "currentStatus": "未实现单元测试",
-    "testConfigs": [
-      "vitest.config.ts",
-      "playwright.config.ts"
-    ],
-    "testSetup": "src/test/setup.ts",
-    "e2eTests": [
-      "workflow-display.spec.ts",
-      "theme-toggle.spec.ts",
-      "language-switch.spec.ts",
-      "delete-functionality-test.spec.ts",
-      "undo-redo-test.spec.ts",
-      "multi-selection-test.spec.ts"
-    ]
+    "frontend": {
+      "frameworks": ["Vitest 1.6.0", "Playwright 1.44.0", "@testing-library/react 15.0.7"],
+      "testConfigs": ["vitest.config.ts", "playwright.config.ts"],
+      "testSetup": "src/test/setup.ts"
+    },
+    "backend": {
+      "frameworks": ["pytest 8.0.0", "pytest-asyncio 0.23.4", "httpx"],
+      "testConfigs": ["backend/tests/conftest.py"],
+      "testDb": "postgresql+asyncpg://inkforge:Q.MBMf3m@64.118.135.134:5432/nanoai_test"
+    },
+    "currentStatus": "前端未实现单元测试，后端有基础测试覆盖"
   },
   "gitignoreUsed": true,
   "gitignorePath": "/Users/mac/cz_code/NanoAiCanvas_workflow/.gitignore"

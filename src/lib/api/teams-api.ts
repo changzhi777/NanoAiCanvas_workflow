@@ -1,12 +1,14 @@
 /**
  * 团队管理 API
+ * 后端路由: /api/teams (teams.py)
  */
 import { client } from './client'
 
 export interface Team {
-  id: number
+  id: string
   name: string
   owner_id: string
+  admin_id?: string
   created_at: string
   updated_at?: string
   balance?: number
@@ -15,10 +17,11 @@ export interface Team {
 }
 
 export interface TeamMember {
-  id: number
-  team_id: number
+  id: string
+  team_id: string
   user_id: string
   role: 'owner' | 'admin' | 'member'
+  can_edit: boolean
   joined_at: string
   user?: {
     id: string
@@ -47,28 +50,28 @@ function getToken(): string | null {
  * 创建团队
  */
 export async function createTeam(name: string): Promise<any> {
-  return client.post('/api/points/team/create', { name }, getToken() || undefined)
+  return client.post('/api/teams', { name }, getToken() || undefined)
 }
 
 /**
  * 获取团队详情
  */
-export async function getTeam(teamId: number): Promise<any> {
-  return client.get(`/api/points/team/${teamId}`, getToken() || undefined)
+export async function getTeam(teamId: string): Promise<any> {
+  return client.get(`/api/teams/${teamId}`, getToken() || undefined)
 }
 
 /**
  * 获取团队列表
  */
-export async function getTeams(): Promise<any> {
-  return client.get('/api/points/teams', getToken() || undefined)
+export async function getTeams(): Promise<Team[]> {
+  return client.get('/api/teams', getToken() || undefined)
 }
 
 /**
  * 给团队积分池发放积分
  */
 export async function grantTeamPoints(
-  teamId: number,
+  teamId: string,
   amount: number,
   description?: string
 ): Promise<{ balance: number; transaction_id: string }> {
@@ -83,7 +86,7 @@ export async function grantTeamPoints(
  * 使用团队积分
  */
 export async function useTeamPoints(
-  teamId: number,
+  teamId: string,
   amount: number,
   description?: string
 ): Promise<{ balance: number; transaction_id: string }> {
@@ -97,20 +100,20 @@ export async function useTeamPoints(
 /**
  * 获取团队成员列表
  */
-export async function getTeamMembers(teamId: number): Promise<any[]> {
-  return client.get(`/api/points/team/${teamId}/members`, getToken() || undefined)
+export async function getTeamMembers(teamId: string): Promise<TeamMember[]> {
+  return client.get(`/api/teams/${teamId}/members`, getToken() || undefined)
 }
 
 /**
  * 添加团队成员
  */
 export async function addTeamMember(
-  teamId: number,
+  teamId: string,
   userId: string,
   role: 'admin' | 'member' = 'member'
 ): Promise<{ success: boolean; message: string }> {
   return client.post(
-    `/api/points/team/${teamId}/member/add`,
+    `/api/teams/${teamId}/members`,
     { user_id: userId, role },
     getToken() || undefined
   )

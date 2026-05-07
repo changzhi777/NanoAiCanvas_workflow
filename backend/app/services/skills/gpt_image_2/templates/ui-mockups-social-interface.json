@@ -1,0 +1,17 @@
+{
+  "id": "ui-mockups-social-interface",
+  "name": "社交平台动态",
+  "category": "ui-mockups",
+  "category_name": "UI 界面",
+  "description": "社交平台动态详情页样机，支持 Twitter/X、小红书、微博、Threads 等风格",
+  "fields": [
+    {"name": "platform", "type": "select", "label": "平台", "required": true, "options": [{"value": "twitter", "label": "Twitter/X"}, {"value": "xiaohongshu", "label": "小红书"}, {"value": "weibo", "label": "微博"}, {"value": "threads", "label": "Threads"}, {"value": "instagram", "label": "Instagram"}]},
+    {"name": "username", "type": "text", "label": "用户名", "required": true},
+    {"name": "content_type", "type": "select", "label": "内容类型", "required": true, "options": [{"value": "text", "label": "纯文字"}, {"value": "image", "label": "单图"}, {"value": "multi_image", "label": "多图"}, {"value": "video", "label": "视频"}]},
+    {"name": "post_text", "type": "textarea", "label": "帖子内容", "required": false, "description": "动态的文字内容"},
+    {"name": "likes", "type": "text", "label": "点赞数", "required": false, "description": "如: 1.2万"},
+    {"name": "comments", "type": "text", "label": "评论数", "required": false},
+    {"name": "shares", "type": "text", "label": "转发数", "required": false}
+  ],
+  "prompt_template": "Social media feed post mockup, platform style: {platform}. User: {username}. Post content: {post_text}. Content type: {content_type}. Engagement stats: {likes} likes, {comments} comments, {shares} shares. Clean UI design with proper spacing, modern social platform aesthetic. Screenshot style, high fidelity mockup."
+}

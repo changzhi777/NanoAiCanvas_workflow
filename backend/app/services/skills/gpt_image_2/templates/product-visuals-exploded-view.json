@@ -1,0 +1,14 @@
+{
+  "id": "product-visuals-exploded-view",
+  "name": "产品爆炸视图",
+  "category": "product-visuals",
+  "category_name": "产品视觉",
+  "description": "产品爆炸视图海报，主体垂直堆叠 + callout 标注 + 顶部 logo + 底部品牌区",
+  "fields": [
+    {"name": "product_name", "type": "text", "label": "产品名称", "required": true},
+    {"name": "product_type", "type": "select", "label": "产品类型", "required": true, "options": [{"value": "electronics", "label": "电子产品"}, {"value": "watch", "label": "手表/配饰"}, {"value": "headphones", "label": "耳机/音响"}, {"value": "camera", "label": "相机"}, {"value": "other", "label": "其他"}]},
+    {"name": "brand_name", "type": "text", "label": "品牌名称", "required": false},
+    {"name": "features", "type": "textarea", "label": "产品特点", "required": false, "description": "用逗号分隔多个特点"}
+  ],
+  "prompt_template": "Product exploded view poster, {product_name}. Brand: {brand_name}. Features: {features}. Vertical stacked composition with floating components, callout labels pointing to each part. Clean dark background with tech aesthetic, professional product photography style. Top logo area, bottom brand zone. Commercial product marketing material, 3D render style."
+}

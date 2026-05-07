@@ -1,0 +1,15 @@
+{
+  "id": "character-sheet",
+  "name": "角色设定稿",
+  "category": "portraits",
+  "category_name": "人物肖像",
+  "description": "角色综合设定稿，三视图+表情+服装+配色板",
+  "fields": [
+    {"name": "character_name", "type": "text", "label": "角色名称", "required": true},
+    {"name": "gender", "type": "select", "label": "性别", "required": true, "options": [{"value": "male", "label": "男性"}, {"value": "female", "label": "女性"}, {"value": "other", "label": "其他"}]},
+    {"name": "age_group", "type": "select", "label": "年龄段", "required": true, "options": [{"value": "child", "label": "儿童"}, {"value": "teen", "label": "青少年"}, {"value": "adult", "label": "成年"}, {"value": "elderly", "label": "老年"}]},
+    {"name": "character_type", "type": "select", "label": "角色类型", "required": true, "options": [{"value": "warrior", "label": "战士"}, {"value": "mage", "label": "法师"}, {"value": "rogue", "label": "盗贼"}, {"value": "knight", "label": "骑士"}, {"value": "archer", "label": "弓箭手"}]},
+    {"name": "outfit_style", "type": "select", "label": "服装风格", "required": true, "options": [{"value": "fantasy", "label": "奇幻"}, {"value": "scifi", "label": "科幻"}, {"value": "medieval", "label": "中世纪"}, {"value": "modern", "label": "现代"}, {"value": "cyberpunk", "label": "赛博朋克"}]}
+  ],
+  "prompt_template": "Character design sheet, {character_name}. Gender: {gender}, Age: {age_group}, Type: {character_type}. Outfit style: {outfit_style}. Front view, side view, back view poses. Expression sheet showing happy, angry, sad, neutral expressions. Color palette swatch. Clean character design document style."
+}
