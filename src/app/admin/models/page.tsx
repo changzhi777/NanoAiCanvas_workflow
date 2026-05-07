@@ -90,7 +90,7 @@ export default function ModelsPage() {
           failed_calls: number
           avg_response_ms: number | null
           last_used_at: string | null
-        }>>('/api/v2/admin/models/usage?days=7')
+        }>>('/v2/admin/models/usage?days=7')
         const usageMap = new Map(usageData.map(u => [u.model_id, u]))
         setModels(prev => prev.map(m => ({
           ...m,

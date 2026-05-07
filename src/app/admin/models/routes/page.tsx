@@ -79,8 +79,8 @@ export default function ModelRoutesPage() {
     setLoading(true)
     try {
       const [routesData, providersData] = await Promise.all([
-        client.get<RouteEntry[]>('/api/v2/admin/model-routes'),
-        client.get<Array<{ id: number; name: string }>>('/api/v2/admin/providers'),
+        client.get<RouteEntry[]>('/v2/admin/model-routes'),
+        client.get<Array<{ id: number; name: string }>>('/v2/admin/providers'),
       ])
       setRoutes(routesData)
 
@@ -96,7 +96,7 @@ export default function ModelRoutesPage() {
       for (const p of providersData) {
         try {
           const pModels = await client.get<Array<{ id: number; name: string; code: string }>>(
-            `/api/v2/admin/providers/${p.id}/models`
+            `/v2/admin/providers/${p.id}/models`
           )
           models.push(...pModels.map(m => ({ ...m, provider_name: p.name })))
         } catch { /* skip */ }
@@ -116,10 +116,10 @@ export default function ModelRoutesPage() {
     }
     setSaving(category)
     try {
-      await client.post('/api/v2/admin/model-routes', { category, model_id: modelId })
+      await client.post('/v2/admin/model-routes', { category, model_id: modelId })
       toast.success(`路由 "${category}" 已保存`)
       // 刷新
-      const routesData = await client.get<RouteEntry[]>('/api/v2/admin/model-routes')
+      const routesData = await client.get<RouteEntry[]>('/v2/admin/model-routes')
       setRoutes(routesData)
     } catch (e: any) {
       toast.error(e.message || '保存失败')
@@ -130,7 +130,7 @@ export default function ModelRoutesPage() {
   const handleDelete = async (routeId: number, category: string) => {
     if (!confirm(`确定删除路由 "${category}" 吗？删除后将使用默认模型。`)) return
     try {
-      await client.delete(`/api/v2/admin/model-routes/${routeId}`)
+      await client.delete(`/v2/admin/model-routes/${routeId}`)
       setRoutes(prev => prev.filter(r => r.id !== routeId))
       setEditMap(prev => {
         const n = { ...prev }

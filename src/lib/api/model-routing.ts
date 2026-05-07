@@ -27,7 +27,7 @@ export async function loadRoutes(): Promise<RoutesMap> {
 
   loading = (async () => {
     try {
-      const data = await client.get<RoutesMap>('/api/v2/admin/model-routes/map')
+      const data = await client.get<RoutesMap>('/v2/admin/model-routes/map')
       cachedRoutes = data || {}
       loaded = true
       lastLoadTime = Date.now()
