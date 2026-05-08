@@ -68,6 +68,11 @@ const defaultData = {
     inputText: '',
     size: '1024x1024',
     quality: 'standard',
+    style: 'realistic',
+    batchCount: 1,
+    temperature: 0.8,
+    systemPromptTemplate: 'storyboard',
+    model: 'glm-4.5-air',
   },
   inputs: [
     { id: 'text-in', name: '文本', type: 'text', required: true },
@@ -93,7 +98,7 @@ describe('StoryboardShotANode', () => {
 
   it('renders with idle status', () => {
     renderWithTheme(<StoryboardShotANode id="test-node" data={defaultData} />)
-    expect(screen.getByText('空闲')).toBeInTheDocument()
+    expect(screen.getByText('未开始')).toBeInTheDocument()
     expect(screen.getAllByText('故事板分镜A').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('输入描述 → 优化提示词 → 生成分镜')).toBeInTheDocument()
   })

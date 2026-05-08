@@ -100,18 +100,17 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       const result = await auth.login(fullEmail, password, rememberMe);
       setToken(result.access_token, result.refresh_token);
 
-      const userInfo = await auth.me(result.access_token);
+      const u = result.user;
       setUser({
-        id: userInfo.id,
-        username: userInfo.username,
-        email: userInfo.email,
-        role: userInfo.role as 'admin' | 'user' | undefined,
-        imageApiKey: userInfo.imageApiKey,
-        textApiKey: userInfo.textApiKey,
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        role: u.role as 'admin' | 'user' | undefined,
+        avatarUrl: u.avatar_url,
       });
 
-      if (userInfo.api_key) {
-        setApiKey(userInfo.api_key);
+      if (u.api_key) {
+        setApiKey(u.api_key);
       }
 
       toast.success('登录成功');

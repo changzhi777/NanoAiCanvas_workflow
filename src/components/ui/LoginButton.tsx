@@ -30,9 +30,7 @@ export function LoginButton({ className }: LoginButtonProps) {
     return () => window.removeEventListener('open-auth-dialog', handler);
   });
 
-  const customAvatar = typeof window !== 'undefined'
-    ? localStorage.getItem('nanoai_avatar')
-    : null;
+  const customAvatar = user?.avatarUrl || null;
   const avatarUrl = customAvatar || `https://ui-avatars.com/api/?name=${user?.username}&background=168,70%,45%&color=fff&size=128`;
   const initial = user?.username?.charAt(0).toUpperCase() || 'U';
 

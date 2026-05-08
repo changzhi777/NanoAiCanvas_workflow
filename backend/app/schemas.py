@@ -30,6 +30,15 @@ class UserResponse(BaseModel):
     api_key: str | None = None
     status: str = "approved"
     role: str = "user"
+    avatar_url: str | None = None
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    remember_me: bool = False
+    token_type: str = "bearer"
+    user: UserResponse
 
 
 class UserUpdate(BaseModel):

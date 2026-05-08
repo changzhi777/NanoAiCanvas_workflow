@@ -367,7 +367,84 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 </div>
               </div>
 
-              {/* 节点参数 */}
+              {/* 故事板分镜A 专属配置 — 直接可编辑 */}
+              {selectedNode.type === 'storyboard_shot_a' && (() => {
+                const p = editData.params || {};
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>生成参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">图片尺寸</Label>
+                        <select value={p.size || '1024x1024'} onChange={e => setP({ size: e.target.value })} className={selectCls}>
+                          <option value="512x512">512×512</option>
+                          <option value="1024x1024">1024×1024</option>
+                          <option value="1536x1536">1536×1536</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">画质</Label>
+                        <select value={p.quality || 'standard'} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                          <option value="standard">标准</option>
+                          <option value="hd">高清</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">风格预设</Label>
+                        <select value={p.style || 'realistic'} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实</option>
+                          <option value="anime">动画</option>
+                          <option value="comic">漫画</option>
+                          <option value="watercolor">水彩</option>
+                          <option value="oil_painting">油画</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">批量生成数量</Label>
+                        <input type="number" min={1} max={8} value={p.batchCount || 1} onChange={e => setP({ batchCount: Math.max(1, Math.min(8, Number(e.target.value) || 1)) })} className={selectCls} />
+                      </div>
+                    </div>
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>优化参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">提示词模板</Label>
+                        <select value={p.systemPromptTemplate || 'storyboard'} onChange={e => setP({ systemPromptTemplate: e.target.value })} className={selectCls}>
+                          <option value="storyboard">故事板分镜</option>
+                          <option value="character">角色设计</option>
+                          <option value="scene">场景设计</option>
+                          <option value="custom">通用自定义</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">Temperature: {p.temperature ?? 0.8}</Label>
+                        <input type="range" min={0.1} max={1} step={0.1} value={p.temperature ?? 0.8} onChange={e => setP({ temperature: Number(e.target.value) })} className="w-full" />
+                      </div>
+                    </div>
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>高级设置</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">优化模型</Label>
+                        <select value={p.model || 'glm-4.5-air'} onChange={e => setP({ model: e.target.value })} className={selectCls}>
+                          <option value="glm-4.5-air">GLM-4.5-Air（快速）</option>
+                          <option value="glm-4-flash">GLM-4-Flash</option>
+                          <option value="glm-4">GLM-4</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 节点参数（storyboard_shot_a 已有专属配置，跳过通用区域） */}
+              {selectedNode.type !== 'storyboard_shot_a' && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',
@@ -434,6 +511,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   )}
                 </div>
               </div>
+              )}
 
               {/* 节点结果 */}
               {selectedNode.data.result && (

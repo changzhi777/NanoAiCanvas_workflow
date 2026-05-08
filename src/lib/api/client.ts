@@ -222,7 +222,22 @@ export const auth = {
     }),
 
   login: (email: string, password: string, remember_me: boolean = false) =>
-    request<{ access_token: string; refresh_token: string; remember_me?: boolean }>('/auth/login', {
+    request<{
+      access_token: string;
+      refresh_token: string;
+      remember_me?: boolean;
+      user: {
+        id: string;
+        username: string;
+        email: string;
+        is_verified: boolean;
+        created_at: string;
+        status: string;
+        role: string;
+        api_key?: string;
+        avatar_url?: string;
+      };
+    }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username: email, password, remember_me }),
     }),

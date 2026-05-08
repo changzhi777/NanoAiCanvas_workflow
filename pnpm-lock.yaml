@@ -44,6 +44,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.0.7
         version: 1.2.8(@types/react-dom@18.3.7(@types/react@18.3.28))(@types/react@18.3.28)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@reactflow/node-resizer':
+        specifier: ^2.2.14
+        version: 2.2.14(@types/react@18.3.28)(immer@11.1.4)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@reduxjs/toolkit':
         specifier: ^2.2.5
         version: 2.11.2(react-redux@9.2.0(@types/react@18.3.28)(react@19.2.5)(redux@5.0.1))(react@19.2.5)

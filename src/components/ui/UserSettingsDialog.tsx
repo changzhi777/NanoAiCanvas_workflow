@@ -27,14 +27,14 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const [collaborationDialogOpen, setCollaborationDialogOpen] = useState(false);
   const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
-  const [customAvatar, setCustomAvatar] = useState<string | null>(
-    typeof window !== 'undefined' ? localStorage.getItem('nanoai_avatar') : null
-  );
+  const [customAvatar, setCustomAvatar] = useState<string | null>(null);
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const setUser = useAuthStore((s) => s.setUser);
   const logout = useAuthStore((s) => s.logout);
   const { toast } = useToast();
   const { locale, changeLanguage } = useI18n();
@@ -72,19 +72,31 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
   const avatarUrl = customAvatar || `https://ui-avatars.com/api/?name=${user?.username}&background=168,70%,45%&color=fff&size=128`;
   const initial = user?.username?.charAt(0).toUpperCase() || 'U';
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('头像图片不能超过 2MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setCustomAvatar(event.target?.result as string);
-        toast.success('头像已更新');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('头像图片不能超过 2MB');
+      return;
+    }
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/auth/avatar`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('上传失败');
+      const data = await res.json();
+      setCustomAvatar(data.avatar_url);
+      setUser({ ...user!, avatarUrl: data.avatar_url });
+      toast.success('头像已保存');
+    } catch {
+      toast.error('头像上传失败');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -184,6 +196,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
 
             {/* 快捷操作 */}
             <div className="space-y-2">
+              {user?.role === 'admin' && (
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"
@@ -195,6 +208,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                 <Settings className="h-4 w-4" />
                 管理后台
               </Button>
+              )}
               <Button
                 variant="outline"
                 className="w-full justify-start gap-2"

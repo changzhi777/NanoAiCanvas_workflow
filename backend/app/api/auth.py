@@ -1,17 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
 from typing import Optional
+import base64
+import uuid
 
 from app.database import get_db
 from app.models import User
 from app.models.user import UserStatus, UserRole
-from app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse, UserUpdate
+from app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse, UserUpdate, LoginResponse
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.redis import SessionManager, redis_client
+from app.config import get_settings
 
 # Login rate limiting constants
 LOGIN_MAX_ATTEMPTS = 5
@@ -21,7 +24,14 @@ LOGIN_ATTEMPT_PREFIX = "login_attempts:"
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
-ALLOWED_EMAIL_DOMAINS = {"caohua.com", "nanoai.fun", "qq.com"}
+ALLOWED_EMAIL_DOMAINS = None  # Loaded from config at runtime
+
+
+def _get_allowed_domains() -> set:
+    global ALLOWED_EMAIL_DOMAINS
+    if ALLOWED_EMAIL_DOMAINS is None:
+        ALLOWED_EMAIL_DOMAINS = set(get_settings().ALLOWED_EMAIL_DOMAINS)
+    return ALLOWED_EMAIL_DOMAINS
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
@@ -42,6 +52,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="Account has been disabled")
 
     return user
 
@@ -78,11 +91,16 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     # Validate email domain
     email_domain = data.email.split("@")[-1].lower()
-    if email_domain not in ALLOWED_EMAIL_DOMAINS:
+    allowed = _get_allowed_domains()
+    if email_domain not in allowed:
         raise HTTPException(
             status_code=400,
-            detail=f"Email domain not allowed. Allowed domains: {', '.join(sorted(ALLOWED_EMAIL_DOMAINS))}",
+            detail=f"Email domain not allowed. Allowed domains: {', '.join(sorted(allowed))}",
         )
+
+    # Validate password strength
+    if len(data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
     # Check if email exists
     result = await db.execute(select(User).where(User.email == data.email))
@@ -114,7 +132,7 @@ class LoginRequest(BaseModel):
     remember_me: bool = False
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(
     login_data: LoginRequest,
     db: AsyncSession = Depends(get_db)
@@ -184,10 +202,34 @@ async def login(
         "session_id": session_id,
     })
 
-    return TokenResponse(
+    # Query API key
+    api_key = None
+    try:
+        from app.models.api_key import ApiKeyConfig
+        ak_result = await db.execute(
+            select(ApiKeyConfig).where(ApiKeyConfig.user_id == str(user.id))
+        )
+        ak_config = ak_result.scalar_one_or_none()
+        if ak_config:
+            api_key = ak_config.frontend_key
+    except Exception:
+        pass
+
+    return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         remember_me=login_data.remember_me,
+        user=UserResponse(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            is_verified=user.is_verified,
+            created_at=user.created_at.isoformat() if user.created_at else "",
+            api_key=api_key,
+            status=user.status,
+            role=user.role,
+            avatar_url=user.avatar_url,
+        ),
     )
 
 
@@ -205,6 +247,9 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+
+    if user.status != UserStatus.APPROVED or not user.is_active:
+        raise HTTPException(status_code=401, detail="Account is not active")
 
     # Validate session in Redis
     if session_id:
@@ -233,6 +278,7 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
 @router.post("/logout")
 async def logout(current_user: User = Depends(get_current_user)):
     """Logout - invalidate server-side session"""
+    # TODO: decode token to get session_id and delete from Redis
     return {"message": "Logged out successfully"}
 
 
@@ -295,6 +341,35 @@ async def reset_password(data: ResetPasswordRequest, db: AsyncSession = Depends(
     return {"message": "Password has been reset successfully."}
 
 
+@router.post("/avatar", response_model=UserResponse)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload avatar image and save as base64 data URL"""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Image must be smaller than 2MB")
+    b64 = base64.b64encode(content).decode()
+    data_url = f"data:{file.content_type};base64,{b64}"
+    current_user.avatar_url = data_url
+    await db.commit()
+    await db.refresh(current_user)
+    return UserResponse(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        is_verified=current_user.is_verified,
+        created_at=current_user.created_at.isoformat() if current_user.created_at else "",
+        status=current_user.status,
+        role=current_user.role,
+        avatar_url=current_user.avatar_url,
+    )
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     # 查询用户绑定的 API Key
@@ -319,6 +394,7 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
         api_key=api_key,
         status=current_user.status,
         role=current_user.role,
+        avatar_url=current_user.avatar_url,
     )
 
 

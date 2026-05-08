@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # Frontend URL (for email links)
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Allowed email domains for registration
+    ALLOWED_EMAIL_DOMAINS: list[str] = ["caohua.com", "nanoai.fun", "qq.com"]
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
