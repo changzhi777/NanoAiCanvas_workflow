@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import ReactFlow, {
+  ReactFlowProvider,
   Background,
   BackgroundVariant,
   Controls,
@@ -112,6 +113,14 @@ interface NanoaiWorkflowCanvasProps {
 }
 
 export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
+  return (
+    <ReactFlowProvider>
+      <NanoaiWorkflowCanvasInner className={className} />
+    </ReactFlowProvider>
+  );
+}
+
+function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   const { isDark } = useTheme();
   const { fitView } = useReactFlow();
   // 从 localStorage 恢复侧边栏折叠状态
