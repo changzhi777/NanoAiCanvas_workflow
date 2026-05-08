@@ -76,13 +76,12 @@ function PageSwitcher() {
     }
   }, [active])
 
+  if (panelOpen) return null
+
   return (
     <div
       ref={containerRef}
-      className={cn(
-        'fixed bottom-16 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg transition-all duration-300',
-        panelOpen ? 'right-[336px]' : 'right-4'
-      )}
+      className="fixed bottom-16 right-4 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
     >
       <div
         className="absolute top-1 bottom-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"
