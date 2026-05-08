@@ -83,7 +83,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
     emitStep('validating', 5, '参数校验中...')
     onProgress(5)
 
-    const response = await fetch(`${API_BASE}/api/v2/skills/generate`, {
+    const response = await fetch(`${API_BASE}/v2/skills/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -180,7 +180,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
         if (pollAttempts < 3) return // 前 3 次跳过，给 WebSocket 机会
 
         try {
-          const statusResp = await fetch(`${API_BASE}/api/v2/skills/tasks/${taskId}`)
+          const statusResp = await fetch(`${API_BASE}/v2/skills/tasks/${taskId}`)
           if (!statusResp.ok) return
 
           const status: TaskStatusApiResponse = await statusResp.json()
@@ -214,7 +214,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
   }
 
   async cancelTask(taskId: string): Promise<void> {
-    await fetch(`${API_BASE}/api/v2/skills/tasks/${taskId}/cancel`, { method: 'POST' })
+    await fetch(`${API_BASE}/v2/skills/tasks/${taskId}/cancel`, { method: 'POST' })
   }
 }
 

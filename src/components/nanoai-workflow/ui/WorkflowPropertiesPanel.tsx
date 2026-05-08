@@ -320,6 +320,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           <option value="comic">漫画</option>
                           <option value="watercolor">水彩</option>
                           <option value="oil_painting">油画</option>
+                          <option value="chinese">中国风</option>
                         </select>
                       </div>
                       <div>
