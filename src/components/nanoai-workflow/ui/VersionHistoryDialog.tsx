@@ -47,6 +47,7 @@ export function VersionHistoryDialog({ open, onOpenChange }: VersionHistoryDialo
 
   const handleRestore = (v: WorkflowVersion) => {
     restoreVersion(v.id);
+    onOpenChange(false);
   };
 
   const handleDelete = (v: WorkflowVersion) => {
