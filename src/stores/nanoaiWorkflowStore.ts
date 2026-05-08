@@ -386,6 +386,74 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
   },
   // 18 个 Skills 工作流模板
   ...skillsWorkflowTemplates,
+  // ==================== 故事板分镜A 工作流（2节点双面） ====================
+  {
+    id: 'storyboard-shot-a-workflow',
+    name: '故事板分镜A',
+    description: '输入描述→提示词优化→生成分镜图→预览/保存',
+    category: 'storyboard',
+    tags: ['分镜', '故事板', '提示词优化', '推荐'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    nodes: [
+      {
+        id: 'node-shot-a-input',
+        type: 'storyboard_shot_a',
+        position: { x: 100, y: 300 },
+        data: {
+          label: '故事板分镜A',
+          params: {
+            inputText: '',
+            size: '1024x1024',
+            quality: 'standard',
+          },
+          inputs: [
+            { id: 'text-in', name: '文本', type: 'text', required: true },
+          ],
+          outputs: [
+            { id: 'result-out', name: '结果', type: 'image', required: false },
+          ],
+          status: NodeStatus.IDLE,
+        },
+      },
+      {
+        id: 'node-shot-a-preview',
+        type: 'image_preview',
+        position: { x: 600, y: 250 },
+        data: {
+          label: '图片预览+输出',
+          params: {
+            autoConnectSource: true,
+            sourceNodeId: 'node-shot-a-input',
+            thumbnailSize: 'medium' as const,
+            gridColumns: 2 as const,
+            enableAssetSave: true,
+            enableDownload: true,
+          },
+          inputs: [
+            { id: 'image-in', name: '图片', type: 'image', required: true },
+          ],
+          outputs: [
+            { id: 'data-out', name: '数据', type: 'image', required: false },
+          ],
+          status: NodeStatus.IDLE,
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'edge-shot-a-to-preview',
+        source: 'node-shot-a-input',
+        target: 'node-shot-a-preview',
+        sourceHandle: 'result-out',
+        targetHandle: 'image-in',
+        type: 'smoothstep',
+        animated: true,
+        style: { stroke: '#3ecf8e', strokeWidth: 2 },
+        data: { type: 'auto' },
+      },
+    ],
+  },
 ];
 
 // ==================== Store 定义 ====================
@@ -847,8 +915,8 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
               const { generateImage: shotGenImage, getTaskStatus: shotGetStatus } = await import('@/lib/api/ai-skill');
               const shotResp = await shotGenImage({
-                template_id: 'storyboard_shot',
-                form_data: { prompt: shotPrompt },
+                template_id: 'storyboards-cinematic',
+                form_data: { story_logline: shotPrompt, grid_size: '3x4', cinematic_style: 'drama' },
                 skill_id: 'gpt_image_2',
                 size: node.data.params?.size || '1024x1024',
                 quality: node.data.params?.quality || 'standard',
@@ -858,10 +926,11 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
               for (let i = 0; i < shotMaxAttempts; i++) {
                 await new Promise(r => setTimeout(r, 2000));
                 const shotTask = await shotGetStatus(shotResp.task_id);
-                if (shotTask.status === 'completed' && shotTask.result?.url) {
+                if (shotTask.status === 'completed' && (shotTask.result?.url || shotTask.result?.images?.length)) {
+                  const images = shotTask.result?.images || (shotTask.result?.url ? [shotTask.result.url] : []);
                   result = {
-                    imageUrl: shotTask.result.url,
-                    images: [shotTask.result.url],
+                    imageUrl: images[0],
+                    images,
                     prompt: shotPrompt,
                     rawPrompt: shotPrompt,
                   };
@@ -875,16 +944,17 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
             }
 
             case 'image_preview': {
-              // 图片预览节点：从上游获取图片 URL
+              // 图片预览+输出节点（融合 output_node）：透传上游数据
               const { edges: previewEdges } = get();
               const incomingPreviewEdge = previewEdges.find(e => e.target === nodeId);
+              const startedAt = new Date().toISOString();
               if (incomingPreviewEdge) {
                 const srcNode = nodes.find(n => n.id === incomingPreviewEdge.source);
-                const srcResult = srcNode?.data?.result;
-                result = srcResult || { message: '暂无数据' };
+                result = srcNode?.data?.result || { message: '暂无数据' };
               } else {
                 result = { message: '暂无数据' };
               }
+              result = { ...result, startedAt, completedAt: new Date().toISOString() };
               break;
             }
 

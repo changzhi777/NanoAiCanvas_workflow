@@ -118,7 +118,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
 
     // 如果没有节点，加载默认模板
     if (storeNodes.length === 0 && templates.length > 0) {
-      const defaultTemplate = templates.find(t => t.id === 'storyboard-complete') || templates[0];
+      const defaultTemplate = templates.find(t => t.id === 'storyboard-shot-a-workflow') || templates[0];
       if (defaultTemplate) {
         console.log('🚀 自动加载默认模板:', defaultTemplate.name);
 

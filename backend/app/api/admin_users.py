@@ -7,7 +7,7 @@ from typing import List, Optional
 from uuid import UUID
 from app.database import get_db
 from app.models import User
-from app.models.user import UserStatus
+from app.models.user import UserStatus, UserRole
 from app.api.auth import get_current_user
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
@@ -29,8 +29,9 @@ class ApproveResponse(BaseModel):
 
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Require admin user - currently all authenticated users are admin"""
-    # TODO: Add proper admin role check
+    """Require admin user"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
 
 

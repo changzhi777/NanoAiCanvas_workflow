@@ -23,6 +23,13 @@ export function LoginButton({ className }: LoginButtonProps) {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
 
+  // 监听全局打开登录弹窗事件
+  useState(() => {
+    const handler = () => setAuthDialogOpen(true);
+    window.addEventListener('open-auth-dialog', handler);
+    return () => window.removeEventListener('open-auth-dialog', handler);
+  });
+
   const customAvatar = typeof window !== 'undefined'
     ? localStorage.getItem('nanoai_avatar')
     : null;

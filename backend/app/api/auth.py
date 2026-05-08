@@ -21,6 +21,8 @@ LOGIN_ATTEMPT_PREFIX = "login_attempts:"
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
+ALLOWED_EMAIL_DOMAINS = {"caohua.com", "nanoai.fun", "qq.com"}
+
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     """Get current user from JWT token (stateless validation)"""
@@ -67,6 +69,14 @@ async def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Asy
 
 @router.post("/register")
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
+    # Validate email domain
+    email_domain = data.email.split("@")[-1].lower()
+    if email_domain not in ALLOWED_EMAIL_DOMAINS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Email domain not allowed. Allowed domains: {', '.join(sorted(ALLOWED_EMAIL_DOMAINS))}",
+        )
+
     # Check if email exists
     result = await db.execute(select(User).where(User.email == data.email))
     if result.scalar_one_or_none():
@@ -300,6 +310,8 @@ async def get_me(current_user: User = Depends(get_current_user), db: AsyncSessio
         is_verified=current_user.is_verified,
         created_at=current_user.created_at.isoformat() if current_user.created_at else "",
         api_key=api_key,
+        status=current_user.status,
+        role=current_user.role,
     )
 
 
@@ -321,4 +333,6 @@ async def update_me(data: UserUpdate, current_user: User = Depends(get_current_u
         email=current_user.email,
         is_verified=current_user.is_verified,
         created_at=current_user.created_at.isoformat() if current_user.created_at else "",
+        status=current_user.status,
+        role=current_user.role,
     )

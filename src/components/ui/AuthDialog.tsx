@@ -51,14 +51,25 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorType | 'unknown' | 'rate_limit
   },
 };
 
-const EMAIL_DOMAINS = ['nanoai.fun', 'qq.com'];
+const EMAIL_DOMAINS = ['caohua.com', 'nanoai.fun', 'qq.com'];
+
+const STATUS_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  pending: {
+    title: '账号待审核',
+    description: '您的注册申请已提交，请等待管理员审核通过后再登录',
+  },
+  rejected: {
+    title: '注册申请被拒绝',
+    description: '您的注册申请未通过审核，请联系管理员了解详情',
+  },
+};
 
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type DialogMode = 'login' | 'register' | 'forgot-password' | 'reset-password';
+type DialogMode = 'login' | 'register' | 'register-success' | 'forgot-password' | 'reset-password';
 
 export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const [mode, setMode] = useState<DialogMode>('login');
@@ -94,6 +105,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
         id: userInfo.id,
         username: userInfo.username,
         email: userInfo.email,
+        role: userInfo.role as 'admin' | 'user' | undefined,
         imageApiKey: userInfo.imageApiKey,
         textApiKey: userInfo.textApiKey,
       });
@@ -116,9 +128,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     setLoading(true);
     try {
       await auth.register({ username, email: fullEmail, password });
-      toast.success('注册申请已提交，请等待管理员审核');
-      setMode('login');
-      resetForm();
+      setMode('register-success');
     } catch (err: any) {
       handleAuthError(err, 'register');
     } finally {
@@ -173,7 +183,11 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     } else if (err.status === 429) {
       toast.error('登录尝试过多，账号已被临时锁定，请稍后再试');
     } else if (err.status === 403) {
-      toast.error(err.message || '账号状态异常，请联系管理员');
+      const detail = err.message || '';
+      let statusKey = 'pending';
+      if (detail.includes('reject') || detail.includes('拒绝')) statusKey = 'rejected';
+      const statusMsg = STATUS_ERROR_MESSAGES[statusKey];
+      toast.error(`${statusMsg.title}：${statusMsg.description}`);
     } else if (err.status === 401) {
       const msg = AUTH_ERROR_MESSAGES.invalid_credentials;
       toast.error(`${msg.title}：${msg.description}`);
@@ -187,6 +201,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
 
   const resetForm = () => {
     setEmailPrefix('');
+    setEmailDomain(EMAIL_DOMAINS[0]);
     setPassword('');
     setUsername('');
     setForgotEmail('');
@@ -205,6 +220,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     switch (mode) {
       case 'login': return '登录';
       case 'register': return '注册';
+      case 'register-success': return '注册成功';
       case 'forgot-password': return '忘记密码';
       case 'reset-password': return '重置密码';
     }
@@ -214,6 +230,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     switch (mode) {
       case 'login': return '登录以同步您的数据和资产到云端';
       case 'register': return '创建账号开始使用云同步功能';
+      case 'register-success': return '请等待管理员审核';
       case 'forgot-password': return '输入注册邮箱，我们将发送重置链接';
       case 'reset-password': return '输入新密码完成重置';
     }
@@ -227,6 +244,28 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           <DialogDescription>{getDescription()}</DialogDescription>
         </DialogHeader>
 
+        {/* Register success */}
+        {mode === 'register-success' && (
+          <div className="py-6 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+              <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium">注册申请已提交</p>
+              <p className="text-xs text-muted-foreground">
+                您的账号 <span className="font-medium text-foreground">{fullEmail}</span> 正在等待管理员审核
+              </p>
+              <p className="text-xs text-muted-foreground">审核通过后即可登录使用</p>
+            </div>
+            <Button variant="outline" onClick={() => { resetForm(); setMode('login'); }} className="w-full">
+              我知道了，去登录
+            </Button>
+          </div>
+        )}
+
+        {mode !== 'register-success' && (
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Register: Username */}
           {mode === 'register' && (
@@ -384,6 +423,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             </Button>
           )}
         </form>
+        )}
 
         {/* Mode switch */}
         {(mode === 'login' || mode === 'register') && (

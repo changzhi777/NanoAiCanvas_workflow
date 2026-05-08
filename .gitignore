@@ -56,3 +56,4 @@ lerna-debug.log*
 # Playwright CLI
 .playwright-cli/
 .playwright-mcp/
+garden-skills/

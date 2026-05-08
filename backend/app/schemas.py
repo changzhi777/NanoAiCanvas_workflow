@@ -27,7 +27,9 @@ class UserResponse(BaseModel):
     email: str
     is_verified: bool
     created_at: str
-    api_key: str | None = None  # 用户的专属 API Key
+    api_key: str | None = None
+    status: str = "approved"
+    role: str = "user"
 
 
 class UserUpdate(BaseModel):

@@ -148,6 +148,11 @@ export function NanoaiWorkflowToolbar() {
   };
 
   const handleExecute = async () => {
+    if (!token) {
+      toast.error('请先登录后再执行工作流');
+      window.dispatchEvent(new CustomEvent('open-auth-dialog'));
+      return;
+    }
     setIsExecuting(true);
     try {
       await executeWorkflow();

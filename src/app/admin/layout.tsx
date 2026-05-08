@@ -14,14 +14,11 @@ export default function AdminLayout({
   const { user } = useAuthStore()
   const router = useRouter()
 
-  // 权限检查 - 简单实现，实际应该检查admin角色
+  // 权限检查 - 仅 admin 角色可访问
   useEffect(() => {
-    if (!user) {
-      // 未登录用户可以访问登录页
-      return
+    if (user && user.role !== 'admin') {
+      router.replace('/')
     }
-    // TODO: 验证用户是否有admin权限
-    // 暂时允许所有登录用户访问
   }, [user, router])
 
   return (

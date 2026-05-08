@@ -239,6 +239,8 @@ export const auth = {
       email: string;
       is_verified: boolean;
       created_at: string;
+      status: string;
+      role: string;
       imageApiKey?: string;
       textApiKey?: string;
       api_key?: string;
