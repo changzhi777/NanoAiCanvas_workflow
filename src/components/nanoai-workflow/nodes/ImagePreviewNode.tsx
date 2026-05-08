@@ -100,6 +100,8 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
     if (data.status !== NodeStatus.SUCCESS) return
     if (resultData?.savedToAsset) return
     if (autoSaveRef.current) return
+    const token = localStorage.getItem('nanoai_token')
+    if (!token) return
 
     autoSaveRef.current = true
 
