@@ -323,41 +323,34 @@ export function NanoaiWorkflowToolbar() {
             </span>
           </Button>
 
-          {/* 2. 主要操作：执行（智能显示） */}
+          {/* 2. 主要操作：执行/终止 */}
           {hasNodes && (
             <Button
               onClick={handleExecute}
-              disabled={isExecuting}
               data-tour="execute-btn"
               className={cn(
-                'bg-gradient-to-r from-green-500 to-emerald-500',
-                'hover:from-green-600 hover:to-emerald-600',
-                'shadow-lg hover:shadow-xl transition-all duration-200',
-                'hover:scale-105 active:scale-95',
-                'button-click-feedback',
-                isExecuting && 'animate-pulse',
-                // 执行中时显示进度
-                isWorkflowActive && 'relative overflow-hidden'
+                'shadow-lg transition-all duration-200',
+                'active:scale-95',
+                'button-click-feedback relative overflow-hidden',
+                isExecuting
+                  ? 'bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-700 hover:to-orange-600'
+                  : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600',
               )}
             >
               {isExecuting ? (
-                <span className="flex items-center gap-2">
-                  <Square className="w-3.5 h-3.5 fill-current" />
-                  终止工作流
-                </span>
+                <>
+                  {/* 流动光效 */}
+                  <span className="absolute inset-0 animate-flow-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent bg-[length:200%_100%]" />
+                  <span className="relative flex items-center gap-2 text-white">
+                    <Square className="w-3.5 h-3.5 fill-current" />
+                    终止工作流
+                  </span>
+                </>
               ) : (
                 <span className="flex items-center gap-2">
                   <Play className="w-4 h-4" />
                   执行工作流
                 </span>
-              )}
-
-              {/* 进度条背景 */}
-              {isWorkflowActive && (
-                <div
-                  className="absolute bottom-0 left-0 h-1 bg-white/30 transition-all duration-300"
-                  style={{ width: `${progress}%` }}
-                />
               )}
             </Button>
           )}

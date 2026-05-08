@@ -77,6 +77,7 @@ const statusConfig = {
 
 export const StoryboardShotANode = memo(({ id, data }: { id: string; data: StoryboardShotAData }) => {
   const { updateNode, nodes, edges } = useNanoaiWorkflowStore()
+  const stopExecution = useNanoaiWorkflowStore(s => s.stopExecution)
   const [localError, setLocalError] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState('idle')
   const [stepProgress, setStepProgress] = useState(0)
@@ -350,20 +351,20 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
               progress={stepProgress}
               stepMessage={stepMessage}
               startedAt={data.result?.startedAt}
-              onCancel={handleCancel}
+              onCancel={stopExecution}
             />
           )}
 
-          {/* 运行时终止按钮（醒目独立按钮） */}
+          {/* 运行时终止按钮 — 全局终止所有任务 */}
           {data.status === NodeStatus.RUNNING && (
             <Button
-              onClick={handleCancel}
+              onClick={stopExecution}
               size="sm"
               variant="destructive"
               className="w-full h-7 text-xs"
             >
               <Square className="w-3 h-3 mr-1 fill-current" />
-              终止任务
+              终止所有任务
             </Button>
           )}
 

@@ -890,3 +890,12 @@
     }
   }
 }
+
+/* 流动光效动画 - 执行按钮用 */
+@keyframes flow-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.animate-flow-shimmer {
+  animation: flow-shimmer 2s linear infinite;
+}
