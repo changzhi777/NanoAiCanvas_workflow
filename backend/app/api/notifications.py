@@ -1,14 +1,14 @@
 """用户通知 API + 管理端通知接口"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func, desc
+from sqlalchemy import select, update, func, desc, or_
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
 from app.database import get_db
 from app.models import User, Notification
-from app.models.notification import NotificationType
+from app.models.notification import NotificationType, NotificationStatus
 from app.api.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -17,11 +17,12 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 # ============ Pydantic Schemas ============
 
 class NotificationResponse(BaseModel):
-    id: UUID
-    type: str
+    id: str
     title: str
-    message: Optional[str]
-    is_read: bool
+    content: Optional[str] = None
+    notification_type: str
+    status: str
+    sender_name: Optional[str] = None
     created_at: str
 
 
@@ -38,72 +39,64 @@ class AdminNotificationSend(BaseModel):
 
 
 class AdminNotificationRecord(BaseModel):
-    id: UUID
-    user_id: UUID
-    type: str
+    id: str
+    receiver_id: str
     title: str
-    message: Optional[str]
-    is_read: bool
-    created_at: str
+    content: Optional[str] = None
+    notification_type: str
+    status: str
     sender_name: Optional[str] = None
-
-
-# ============ Helper ============
-
-async def create_notification(
-    db: AsyncSession,
-    user_id,
-    ntype: NotificationType,
-    title: str,
-    message: str = None,
-) -> Notification:
-    n = Notification(user_id=user_id, type=ntype, title=title, message=message)
-    db.add(n)
-    await db.commit()
-    await db.refresh(n)
-    return n
-
-
-def _notification_type_from_str(ntype: str) -> NotificationType:
-    mapping = {
-        "system": NotificationType.SYSTEM,
-        "approval": NotificationType.APPROVAL,
-        "rejection": NotificationType.REJECTION,
-        "points_grant": NotificationType.POINTS_GRANT,
-        "points_deduct": NotificationType.POINTS_DEDUCT,
-        "team_invite": NotificationType.TEAM_INVITE,
-    }
-    return mapping.get(ntype, NotificationType.SYSTEM)
+    created_at: str
 
 
 # ============ 用户端接口 ============
 
-@router.get("", response_model=List[NotificationResponse])
+@router.get("")
 async def list_notifications(
     limit: int = 30,
     offset: int = 0,
+    page: int = Query(1, ge=1),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if offset == 0 and page > 1:
+        offset = (page - 1) * limit
     result = await db.execute(
-        select(Notification)
-        .where(Notification.user_id == current_user.id)
+        select(Notification, User)
+        .outerjoin(User, Notification.sender_id == User.id)
+        .where(Notification.receiver_id == current_user.id)
         .order_by(desc(Notification.created_at))
         .offset(offset)
         .limit(limit)
     )
-    items = result.scalars().all()
-    return [
-        NotificationResponse(
-            id=n.id,
-            type=n.type.value,
-            title=n.title,
-            message=n.message,
-            is_read=n.is_read,
-            created_at=n.created_at.isoformat() if n.created_at else "",
-        )
-        for n in items
-    ]
+    rows = result.all()
+
+    items = []
+    for n, sender in rows:
+        items.append({
+            "id": str(n.id),
+            "title": n.title,
+            "content": n.content,
+            "notification_type": n.notification_type if isinstance(n.notification_type, str) else (n.notification_type.value if n.notification_type else "system"),
+            "status": n.status if isinstance(n.status, str) else (n.status.value if n.status else "pending"),
+            "sender_name": sender.username if sender else None,
+            "created_at": n.created_at.isoformat() if n.created_at else "",
+        })
+
+    # 统计总数和未读数
+    total_result = await db.execute(
+        select(func.count()).select_from(Notification)
+        .where(Notification.receiver_id == current_user.id)
+    )
+    unread_result = await db.execute(
+        select(func.count()).select_from(Notification)
+        .where(Notification.receiver_id == current_user.id, Notification.status != "read")
+    )
+    return {
+        "notifications": items,
+        "total": total_result.scalar() or 0,
+        "unread_count": unread_result.scalar() or 0,
+    }
 
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
@@ -112,9 +105,9 @@ async def unread_count(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(func.count()).where(
-            Notification.user_id == current_user.id,
-            Notification.is_read == False,
+        select(func.count()).select_from(Notification).where(
+            Notification.receiver_id == current_user.id,
+            Notification.status != "read",
         )
     )
     return UnreadCountResponse(count=result.scalar() or 0)
@@ -129,13 +122,14 @@ async def mark_read(
     result = await db.execute(
         select(Notification).where(
             Notification.id == notification_id,
-            Notification.user_id == current_user.id,
+            Notification.receiver_id == current_user.id,
         )
     )
     n = result.scalar_one_or_none()
     if not n:
         raise HTTPException(status_code=404, detail="Notification not found")
-    n.is_read = True
+    n.status = "read"
+    n.read_at = datetime.utcnow()
     await db.commit()
     return {"success": True}
 
@@ -147,8 +141,8 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.user_id == current_user.id, Notification.is_read == False)
-        .values(is_read=True)
+        .where(Notification.receiver_id == current_user.id, Notification.status != "read")
+        .values(status="read", read_at=datetime.utcnow())
     )
     await db.commit()
     return {"success": True}
@@ -166,15 +160,11 @@ async def list_notification_records(
 ):
     """管理端：获取所有通知记录"""
     query = select(Notification, User).join(
-        User, Notification.user_id == User.id, isouter=True
+        User, Notification.receiver_id == User.id, isouter=True
     )
 
     if notification_type:
-        try:
-            nt = _notification_type_from_str(notification_type)
-            query = query.where(Notification.type == nt)
-        except ValueError:
-            pass
+        query = query.where(Notification.notification_type == notification_type)
 
     offset = (page - 1) * page_size
     query = query.order_by(desc(Notification.created_at)).offset(offset).limit(page_size)
@@ -184,14 +174,14 @@ async def list_notification_records(
 
     return [
         AdminNotificationRecord(
-            id=n.id,
-            user_id=n.user_id,
-            type=n.type.value if hasattr(n.type, 'value') else str(n.type),
+            id=str(n.id),
+            receiver_id=str(n.receiver_id),
             title=n.title,
-            message=n.message,
-            is_read=n.is_read,
+            content=n.content,
+            notification_type=n.notification_type if isinstance(n.notification_type, str) else str(n.notification_type),
+            status=n.status if isinstance(n.status, str) else str(n.status),
+            sender_name="系统",
             created_at=n.created_at.isoformat() if n.created_at else "",
-            sender_name=u.username if u else "系统",
         )
         for n, u in rows
     ]
@@ -204,47 +194,52 @@ async def admin_send_notification(
     admin: User = Depends(require_admin),
 ):
     """管理端：发送通知"""
-    ntype = _notification_type_from_str(data.notification_type)
     recipients_count = 0
 
     if data.notification_type == "broadcast":
-        # 全站广播：给所有用户发送
         users_result = await db.execute(select(User))
         users = users_result.scalars().all()
         for user in users:
-            await _create_notification_silent(db, user.id, ntype, data.title, data.content)
+            n = Notification(
+                sender_id=admin.id,
+                receiver_id=user.id,
+                notification_type=data.notification_type,
+                title=data.title,
+                content=data.content,
+            )
+            db.add(n)
             recipients_count += 1
     elif data.receiver_id:
-        # 指定用户
-        await _create_notification_silent(db, UUID(data.receiver_id), ntype, data.title, data.content)
+        n = Notification(
+            sender_id=admin.id,
+            receiver_id=UUID(data.receiver_id),
+            notification_type=data.notification_type,
+            title=data.title,
+            content=data.content,
+        )
+        db.add(n)
         recipients_count = 1
     elif data.team_id:
-        # 团队消息
         from app.models import TeamMember
         members_result = await db.execute(
-            select(TeamMember).where(TeamMember.team_id == UUID(data.team_id))
+            select(TeamMember).where(TeamMember.team_id == int(data.team_id))
         )
         members = members_result.scalars().all()
         for member in members:
-            await _create_notification_silent(db, member.user_id, ntype, data.title, data.content)
+            n = Notification(
+                sender_id=admin.id,
+                receiver_id=member.user_id,
+                notification_type=data.notification_type,
+                title=data.title,
+                content=data.content,
+            )
+            db.add(n)
             recipients_count += 1
     else:
         raise HTTPException(status_code=400, detail="请指定接收者（receiver_id/team_id）或使用 broadcast 类型")
 
+    await db.commit()
     return {
         "success": True,
-        "notification_id": "",
         "recipients_count": recipients_count,
     }
-
-
-async def _create_notification_silent(
-    db: AsyncSession,
-    user_id: UUID,
-    ntype: NotificationType,
-    title: str,
-    message: str = None,
-) -> Notification:
-    n = Notification(user_id=user_id, type=ntype, title=title, message=message)
-    db.add(n)
-    return n

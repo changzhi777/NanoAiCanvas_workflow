@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Plus,
   Image,
+  Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,6 +84,7 @@ export function NanoaiWorkflowToolbar() {
 
   const {
     executeWorkflow,
+    stopExecution,
     saveTemplate,
     exportWorkflow,
     importWorkflow,
@@ -156,6 +158,11 @@ export function NanoaiWorkflowToolbar() {
   };
 
   const handleExecute = async () => {
+    if (isExecuting) {
+      stopExecution();
+      toast.info('工作流已终止');
+      return;
+    }
     if (!token) {
       toast.error('请先登录后再执行工作流');
       window.dispatchEvent(new CustomEvent('open-auth-dialog'));
@@ -335,8 +342,8 @@ export function NanoaiWorkflowToolbar() {
             >
               {isExecuting ? (
                 <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {progress > 0 ? `${progress}%` : '执行中...'}
+                  <Square className="w-3.5 h-3.5 fill-current" />
+                  终止工作流
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

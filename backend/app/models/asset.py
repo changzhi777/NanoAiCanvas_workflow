@@ -28,13 +28,13 @@ class Asset(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    type = Column(SQLEnum(AssetType), nullable=False, index=True)
+    type = Column(String(20), nullable=False, index=True)
     name = Column(String(255), nullable=False)
     url = Column(Text, nullable=False)
     thumbnail_url = Column(Text, nullable=True)
 
     meta_data = Column("meta", JSONB, default=dict)  # DB column: meta
-    category = Column(SQLEnum(AssetCategory), nullable=True, index=True)
+    category = Column(String(20), nullable=True, index=True)
     tags = Column(ARRAY(String), default=list)
 
     workflow_snapshot = Column(JSONB, nullable=True)  # Snapshot of workflow at creation time
@@ -46,7 +46,7 @@ class Asset(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)
 
-    category_ref = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    category_ref = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     user = relationship("User", back_populates="assets")
     team_assets = relationship("TeamAsset", back_populates="asset")

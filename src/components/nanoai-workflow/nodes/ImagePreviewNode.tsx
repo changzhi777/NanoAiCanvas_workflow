@@ -88,10 +88,10 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
   return (
     <>
       <div
-        className="card-node node-appear node-end"
+        className="card-node node-appear node-end !overflow-visible"
         style={{
           width: previewWidth,
-          minHeight: layoutDir === 'vertical' ? 200 : 120,
+          minHeight: 160,
           willChange: 'auto',
           boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -130,9 +130,9 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
           {/* 加载中 */}
           {data.status === NodeStatus.RUNNING && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm font-medium text-primary">加载图片...</span>
+            <div className="flex flex-col items-center gap-2 py-4">
+              <Clock className="w-5 h-5 text-primary" />
+              <span className="text-xs font-medium text-primary">加载图片...</span>
             </div>
           )}
 
@@ -147,7 +147,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
                 return (
                   <button
                     key={idx}
-                    onClick={() => { setCurrentIndex(idx); setIsFullscreen(true); setZoomLevel(1) }}
+                    onClick={(e) => { e.stopPropagation(); setCurrentIndex(idx); setIsFullscreen(true); setZoomLevel(1) }}
                     className={cn(
                       'relative group rounded-lg overflow-hidden border-2 transition-all duration-200',
                       'hover:border-primary hover:scale-[1.02]',
@@ -178,8 +178,8 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
           {/* 无数据 */}
           {data.status !== NodeStatus.RUNNING && displayImages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground" style={{ aspectRatio: '16/9' }}>
-              <FileImage className="w-8 h-8 mb-1 opacity-30" />
+            <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
+              <FileImage className="w-6 h-6 mb-1 opacity-30" />
               <p className="text-[10px]">暂无图片</p>
             </div>
           )}

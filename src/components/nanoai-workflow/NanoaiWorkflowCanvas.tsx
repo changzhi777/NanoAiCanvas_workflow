@@ -145,6 +145,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
     updateNodePosition,
     selectNode,
     executeWorkflow,
+    stopExecution,
     exportWorkflow,
     saveTemplate,
     loadTemplate,
@@ -431,14 +432,12 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
       // Cmd + E: 执行工作流
       if (e.metaKey && e.key === 'e') {
         e.preventDefault();
-        setIsExecuting(true);
-        setShowProgress(true);
-        executeWorkflow();
-        // 模拟执行完成（实际应该从store监听）
-        setTimeout(() => {
-          setIsExecuting(false);
-          setShowCompletion(true);
-        }, 3000);
+        if (isExecuting) {
+          stopExecution();
+        } else {
+          setShowProgress(true);
+          executeWorkflow();
+        }
       }
 
       // Cmd + Shift + E: 导出工作流

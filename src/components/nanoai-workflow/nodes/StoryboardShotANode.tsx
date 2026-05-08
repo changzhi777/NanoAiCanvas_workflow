@@ -6,7 +6,7 @@
 import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { Handle, Position } from 'reactflow'
 import {
-  ClipboardList, Play, Circle, Timer, CheckCircle2, Ban,
+  ClipboardList, Play, Circle, Timer, CheckCircle2, Ban, Square,
 } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
@@ -115,10 +115,27 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
   useEffect(() => { autoResize(textareaRef.current) }, [editablePrompt, inputText, autoResize])
 
+  // 监听全局终止事件
+  useEffect(() => {
+    const handler = () => { abortRef.current?.abort() }
+    window.addEventListener('workflow:abort-all', handler)
+    return () => window.removeEventListener('workflow:abort-all', handler)
+  }, [])
+
+  const lastSyncedProgRef = useRef(0)
+
+  const syncStepToStore = useCallback((step: string, progress: number, message: string) => {
+    // 节流：进度变化 < 2% 时跳过 store 更新
+    if (Math.abs(progress - lastSyncedProgRef.current) < 2) return
+    lastSyncedProgRef.current = progress
+    updateNode(id, { _stepInfo: { step, progress, message } })
+  }, [id, updateNode])
+
   const emitStep = useCallback((step: string, progress: number, message: string) => {
     setCurrentStep(step)
     setStepProgress(progress)
     setStepMessage(message)
+    lastSyncedProgRef.current = progress
     updateNode(id, { _stepInfo: { step, progress, message } })
   }, [id, updateNode])
 
@@ -189,11 +206,14 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
             (progress) => {
               const overall = startProg + Math.floor((progress / 100) * (85 / totalShots))
               setStepProgress(overall)
+              syncStepToStore('shot_generating', overall, `P${idx + 1}/${totalShots} 生成中 ${progress}%`)
             },
             (stepInfo: TaskStepInfo) => {
               const overall = startProg + Math.floor((stepInfo.progress / 100) * (85 / totalShots))
+              const msg = `P${idx + 1}/${totalShots} ${stepInfo.message}`
               setStepProgress(overall)
-              setStepMessage(`P${idx + 1} ${stepInfo.message}`)
+              setStepMessage(msg)
+              syncStepToStore('shot_generating', overall, msg)
             },
           )
 
@@ -332,6 +352,19 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
               startedAt={data.result?.startedAt}
               onCancel={handleCancel}
             />
+          )}
+
+          {/* 运行时终止按钮（醒目独立按钮） */}
+          {data.status === NodeStatus.RUNNING && (
+            <Button
+              onClick={handleCancel}
+              size="sm"
+              variant="destructive"
+              className="w-full h-7 text-xs"
+            >
+              <Square className="w-3 h-3 mr-1 fill-current" />
+              终止任务
+            </Button>
           )}
 
           {/* 执行按钮（非运行状态显示） */}

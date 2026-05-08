@@ -474,6 +474,7 @@ interface WorkflowState {
   selectedNodeId: string | null;
   isExecuting: boolean;
   executionLog: string[];
+  _globalAbortController: AbortController | null;
 
   // Actions - 节点管理
   addNode: (node: WorkflowNode) => void;
@@ -527,6 +528,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
       selectedNodeId: null,
       isExecuting: false,
       executionLog: [],
+      _globalAbortController: null as AbortController | null,
 
       // ==================== 节点管理 ====================
 
@@ -994,19 +996,18 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
       executeWorkflow: async () => {
         const { nodes, edges } = get();
-        set({ isExecuting: true, executionLog: [] });
+        const abortController = new AbortController();
+        set({ isExecuting: true, executionLog: [], _globalAbortController: abortController });
 
         // 构建邻接表和入度
         const adjacency = new Map<string, string[]>();
         const inDegree = new Map<string, number>();
 
-        // 初始化
         nodes.forEach(node => {
           adjacency.set(node.id, []);
           inDegree.set(node.id, 0);
         });
 
-        // 构建图
         edges.forEach(edge => {
           if (adjacency.has(edge.source)) {
             adjacency.get(edge.source)!.push(edge.target);
@@ -1014,12 +1015,10 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
           inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1);
         });
 
-        // 并行执行函数
         const executeInParallel = async (nodeIds: string[]) => {
-          await Promise.all(nodeIds.map(nodeId => get().executeNode(nodeId)));
+          await Promise.allSettled(nodeIds.map(nodeId => get().executeNode(nodeId)));
         };
 
-        // Kahn算法并行版本
         const queue: string[] = [];
         nodes.forEach(node => {
           if (inDegree.get(node.id) === 0) {
@@ -1028,14 +1027,15 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         });
 
         while (queue.length > 0) {
-          // 取出当前层的所有节点（可并行）
+          if (abortController.signal.aborted) break;
+
           const currentBatch = [...queue];
           queue.length = 0;
 
-          // 并行执行当前批次的节点
           await executeInParallel(currentBatch);
 
-          // 更新依赖节点的入度
+          if (abortController.signal.aborted) break;
+
           currentBatch.forEach(nodeId => {
             const neighbors = adjacency.get(nodeId) || [];
             neighbors.forEach(neighborId => {
@@ -1048,11 +1048,26 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
           });
         }
 
-        set({ isExecuting: false });
+        set({ isExecuting: false, _globalAbortController: null });
       },
 
       stopExecution: () => {
-        set({ isExecuting: false });
+        const { _globalAbortController } = get();
+        if (_globalAbortController) {
+          _globalAbortController.abort();
+        }
+        // 通知所有节点组件终止任务
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('workflow:abort-all'));
+        }
+        // 将所有 running 节点重置为 idle
+        const { nodes: currentNodes } = get();
+        const updatedNodes = currentNodes.map(n => {
+          if (n.data.status !== 'running') return n
+          const newData = { ...n.data, status: 'idle' as const, _stepInfo: undefined }
+          return { ...n, data: newData }
+        }) as typeof currentNodes;
+        set({ isExecuting: false, nodes: updatedNodes, _globalAbortController: null });
       },
 
       // ==================== 工作流导入导出 ====================
