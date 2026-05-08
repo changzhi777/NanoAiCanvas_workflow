@@ -13,7 +13,7 @@ export function ToastContainer() {
       {toasts.length > 0 && (
         <div
           className={cn(
-            'fixed top-4 right-4 z-50 space-y-2 max-w-sm',
+            'fixed top-4 right-4 z-[100] space-y-2 max-w-sm',
             isDark ? 'text-slate-200' : 'text-gray-700'
           )}
         >
