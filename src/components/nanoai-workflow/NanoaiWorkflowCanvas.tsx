@@ -50,6 +50,7 @@ const PAGES: { key: PageKey; label: string }[] = [
 
 function PageSwitcher() {
   const [active, setActive] = useState<PageKey>('workflow')
+  const [panelOpen, setPanelOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const [indicator, setIndicator] = useState({ left: 0, width: 0 })
 
@@ -57,6 +58,12 @@ function PageSwitcher() {
     setActive(key)
     window.dispatchEvent(new CustomEvent('switch-page', { detail: key }))
   }
+
+  useEffect(() => {
+    const handler = (e: Event) => setPanelOpen((e as CustomEvent).detail.open)
+    window.addEventListener('properties-panel-toggle', handler)
+    return () => window.removeEventListener('properties-panel-toggle', handler)
+  }, [])
 
   useEffect(() => {
     const container = containerRef.current
@@ -72,7 +79,10 @@ function PageSwitcher() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-16 right-4 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
+      className={cn(
+        'fixed bottom-16 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg transition-all duration-300',
+        panelOpen ? 'right-[336px]' : 'right-4'
+      )}
     >
       <div
         className="absolute top-1 bottom-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"

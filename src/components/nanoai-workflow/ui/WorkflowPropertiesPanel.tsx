@@ -39,7 +39,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
     if (selectedNode) {
       setEditData(selectedNode.data);
       // 选中节点时自动展开面板
-      setIsCollapsed(false);
+      expand();
       setIsEditing(false);
     }
   }, [selectedNode]);
@@ -84,7 +84,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
           onMouseEnter={() => {
             if (selectedNode) {
               // 有选中节点时，鼠标移入自动展开
-              setIsCollapsed(false);
+              expand();
             }
           }}
           className={cn(
@@ -97,7 +97,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
           onClick={() => {
             // 点击边缘触发区域展开面板
             if (selectedNode) {
-              setIsCollapsed(false);
+              expand();
             }
           }}
         />
@@ -106,7 +106,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
         <button
           onClick={() => {
             if (selectedNode) {
-              setIsCollapsed(false);
+              expand();
             } else {
               toast.info('请先选择一个节点');
             }
@@ -228,7 +228,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setIsCollapsed(true)}
+              onClick={() => collapse()}
               className="h-8 w-8 p-0"
               title="折叠"
             >
