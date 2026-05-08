@@ -389,15 +389,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           onClick={() => { setIsFullscreen(false); setZoomLevel(1) }}
         >
           {/* 顶部工具栏 */}
-          <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between" onClick={e => e.stopPropagation()}>
-            <div className="flex-1 mr-4">
-              {resultData?.prompt && (
-                <div className="bg-black/60 backdrop-blur rounded-lg px-3 py-2 text-xs text-gray-200 max-w-md truncate">
-                  <span className="text-blue-400 font-medium mr-1">Prompt:</span>{resultData.prompt}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2" onClick={e => e.stopPropagation()}>
               {/* 缩放 */}
               <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur text-white text-xs">
                 <button onClick={() => setZoomLevel(p => Math.max(0.25, p - 0.5))} className="px-1.5 hover:text-blue-400">−</button>
@@ -421,7 +413,6 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
               <button onClick={() => { setIsFullscreen(false); setZoomLevel(1) }} className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white">
                 <X className="w-5 h-5" />
               </button>
-            </div>
           </div>
 
           {/* 图片区域 */}
