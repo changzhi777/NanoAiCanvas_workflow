@@ -156,6 +156,18 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
     clearWorkflow,
   } = useNanoaiWorkflowStore();
 
+  // 自动保存
+  const autoSaveEnabled = useNanoaiWorkflowStore(s => s.autoSaveEnabled);
+  const saveVersion = useNanoaiWorkflowStore(s => s.saveVersion);
+  useEffect(() => {
+    if (!autoSaveEnabled) return;
+    const timer = setInterval(() => {
+      const { nodes: n } = useNanoaiWorkflowStore.getState();
+      if (n.length > 0) saveVersion('自动保存', [], true);
+    }, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [autoSaveEnabled, saveVersion]);
+
   // React Flow 状态
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>(storeEdges as any);

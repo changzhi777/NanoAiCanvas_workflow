@@ -42,6 +42,7 @@ import { HelpDialog } from './ui/HelpDialog';
 import { PluginManagerDialog } from './ui/PluginManagerDialog';
 import { CollaborationPanel } from './ui/CollaborationPanel';
 import { AutoLayoutButton } from './ui/AutoLayoutButton';
+import { VersionHistoryDialog } from './ui/VersionHistoryDialog';
 import { useI18n } from '@/hooks/useI18n';
 import { AssetLibraryPanel, SyncStatusIndicator } from '@/components/ui/AssetLibrary';
 import { LoginButton } from '@/components/ui/LoginButton';
@@ -103,6 +104,7 @@ export function NanoaiWorkflowToolbar() {
   const [pluginDialogOpen, setPluginDialogOpen] = useState(false);
   const [collaborationDialogOpen, setCollaborationDialogOpen] = useState(false);
   const [assetLibraryOpen, setAssetLibraryOpen] = useState(false);
+  const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
 
   // Initialize sync on mount
   useEffect(() => {
@@ -427,10 +429,7 @@ export function NanoaiWorkflowToolbar() {
 
               {/* 版本历史 */}
               <DropdownMenuItem
-                onClick={() => {
-                  const versionCount = versions.length;
-                  toast.info(`当前有 ${versionCount} 个版本快照`);
-                }}
+                onClick={() => setVersionHistoryOpen(true)}
                 className="cursor-pointer"
               >
                 <History className="w-4 h-4 mr-2 text-blue-600" />
@@ -550,6 +549,9 @@ export function NanoaiWorkflowToolbar() {
         open={assetLibraryOpen}
         onClose={() => setAssetLibraryOpen(false)}
       />
+
+      {/* 版本历史对话框 */}
+      <VersionHistoryDialog open={versionHistoryOpen} onOpenChange={setVersionHistoryOpen} />
 
       {/* 保存模板对话框 */}
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>

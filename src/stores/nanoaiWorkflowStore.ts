@@ -159,6 +159,9 @@ export interface WorkflowVersion {
   createdAt: string;
   description?: string;
   tags?: string[];
+  autoSaved?: boolean;
+  nodeCount?: number;
+  edgeCount?: number;
 }
 
 // ==================== 预设模板 ====================
@@ -494,9 +497,12 @@ interface WorkflowState {
   resetTemplates: () => void;
 
   // Actions - 版本管理
-  saveVersion: (description?: string, tags?: string[]) => void;
+  saveVersion: (description?: string, tags?: string[], autoSaved?: boolean) => void;
   restoreVersion: (versionId: string) => void;
   listVersions: (workflowId?: string) => WorkflowVersion[];
+  deleteVersion: (versionId: string) => void;
+  autoSaveEnabled: boolean;
+  toggleAutoSave: () => void;
 
   // Actions - 工作流执行
   executeNode: (nodeId: string) => Promise<void>;
@@ -529,6 +535,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
       isExecuting: false,
       executionLog: [],
       _globalAbortController: null as AbortController | null,
+      autoSaveEnabled: false,
 
       // ==================== 节点管理 ====================
 
@@ -635,8 +642,9 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
       // ==================== 版本管理 ====================
 
-      saveVersion: (description, tags) => {
+      saveVersion: (description, tags, autoSaved) => {
         const { nodes, edges } = get();
+        const MAX_VERSIONS = 50;
         const version: WorkflowVersion = {
           id: `version-${Date.now()}`,
           workflowId: 'current',
@@ -647,11 +655,16 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
           },
           createdAt: new Date().toISOString(),
           description,
-          tags
+          tags,
+          autoSaved: !!autoSaved,
+          nodeCount: nodes.length,
+          edgeCount: edges.length,
         };
-        set((state) => ({
-          versions: [...state.versions, version]
-        }));
+        set((state) => {
+          const updated = [...state.versions, version];
+          if (updated.length > MAX_VERSIONS) updated.splice(0, updated.length - MAX_VERSIONS);
+          return { versions: updated };
+        });
       },
 
       restoreVersion: (versionId) => {
@@ -665,12 +678,22 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         }
       },
 
+      deleteVersion: (versionId) => {
+        set((state) => ({
+          versions: state.versions.filter(v => v.id !== versionId)
+        }));
+      },
+
       listVersions: (workflowId) => {
         const { versions } = get();
         if (workflowId) {
           return versions.filter(v => v.workflowId === workflowId);
         }
         return versions;
+      },
+
+      toggleAutoSave: () => {
+        set((state) => ({ autoSaveEnabled: !state.autoSaveEnabled }));
       },
 
       // ==================== 工作流执行 ====================
@@ -1121,7 +1144,8 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         nodes: state.nodes,
         edges: state.edges,
         templates: state.templates,
-        versions: state.versions
+        versions: state.versions,
+        autoSaveEnabled: state.autoSaveEnabled,
       }),
       merge: (persistedState, currentState) => {
         const stored = persistedState as Partial<typeof currentState>
