@@ -177,11 +177,37 @@ async def generate_storyboard_script(
             raise HTTPException(status_code=502, detail="GLM 返回为空")
 
         # Extract JSON from response
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        if not json_match:
+        # 1. Try ```json ... ``` code block first
+        code_block = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', content)
+        json_str = code_block.group(1) if code_block else None
+
+        # 2. Try <output>...</output>
+        if not json_str:
+            output_match = re.search(r'<output>\s*(\{[\s\S]*?\})\s*</output>', content)
+            json_str = output_match.group(1) if output_match else None
+
+        # 3. Greedy brace match (fallback)
+        if not json_str:
+            brace_match = re.search(r'\{[\s\S]*\}', content)
+            json_str = brace_match.group() if brace_match else None
+
+        if not json_str:
             raise HTTPException(status_code=502, detail=f"无法解析分镜头脚本，GLM 返回格式错误: {content[:200]}")
 
-        script = json.loads(json_match.group())
+        # Attempt JSON parse with auto-repair for common GLM mistakes
+        try:
+            script = json.loads(json_str)
+        except json.JSONDecodeError:
+            # Strip trailing commas before ] or }
+            cleaned = re.sub(r',\s*([}\]])', r'\1', json_str)
+            # Remove JS-style comments
+            cleaned = re.sub(r'//.*?\n', '\n', cleaned)
+            # Remove control characters
+            cleaned = re.sub(r'[\x00-\x1f]', ' ', cleaned)
+            try:
+                script = json.loads(cleaned)
+            except json.JSONDecodeError as e2:
+                raise HTTPException(status_code=502, detail=f"JSON 解析失败: {str(e2)}")
 
         # Validate structure
         if "shots" not in script or not isinstance(script["shots"], list):
@@ -196,8 +222,6 @@ async def generate_storyboard_script(
 
         return {"script": script}
 
-    except json.JSONDecodeError as e:
-        raise HTTPException(status_code=502, detail=f"JSON 解析失败: {str(e)}")
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="GLM API 超时")
     except HTTPException:

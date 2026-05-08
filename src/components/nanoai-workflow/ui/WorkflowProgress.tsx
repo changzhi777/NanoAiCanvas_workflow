@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Loader2, Circle, Timer } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from './Theme';
 import { NodeStatus } from '@/stores/nanoaiWorkflowStore';
@@ -26,7 +26,7 @@ const STEP_KEYS = ['validating', 'prompt_building', 'api_submitting', 'generatin
 function stepIcon(state: 'done' | 'active' | 'pending' | 'failed') {
   switch (state) {
     case 'done': return <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-    case 'active': return <Timer className="w-3 h-3 text-blue-500" />
+    case 'active': return <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />
     case 'failed': return <XCircle className="w-3 h-3 text-red-500" />
     case 'pending': return <Circle className="w-3 h-3 text-muted-foreground/30" />
   }
@@ -76,7 +76,7 @@ export function WorkflowProgress({ nodes }: WorkflowProgressProps) {
         <div className="flex items-center gap-4 text-[10px]">
           {runningNodes > 0 && (
             <span className="flex items-center gap-1 text-blue-500">
-              <Timer className="w-3 h-3" /> 运行中: {runningNodes}
+              <Loader2 className="w-3 h-3 animate-spin" /> 运行中: {runningNodes}
             </span>
           )}
           {completedNodes > 0 && (
@@ -114,7 +114,7 @@ export function WorkflowProgress({ nodes }: WorkflowProgressProps) {
             >
               {/* 节点标题行 */}
               <div className="flex items-center gap-2">
-                {node.data.status === NodeStatus.RUNNING && <Loader2 className="w-3 h-3 text-blue-500" />}
+                {node.data.status === NodeStatus.RUNNING && <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />}
                 {node.data.status === NodeStatus.SUCCESS && <CheckCircle2 className="w-3 h-3 text-green-500" />}
                 {node.data.status === NodeStatus.ERROR && <XCircle className="w-3 h-3 text-red-500" />}
                 {node.data.status === NodeStatus.IDLE && <Circle className="w-3 h-3 text-muted-foreground/40" />}

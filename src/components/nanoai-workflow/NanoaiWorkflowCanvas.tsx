@@ -119,6 +119,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   });
   const [showProgress, setShowProgress] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -156,6 +157,13 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   // React Flow 状态
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>(storeEdges as any);
+
+  // 监听属性面板展开/缩进，用于调整进度面板位置
+  useEffect(() => {
+    const handler = (e: Event) => setPropertiesPanelOpen((e as CustomEvent).detail.open)
+    window.addEventListener('properties-panel-toggle', handler)
+    return () => window.removeEventListener('properties-panel-toggle', handler)
+  }, [])
 
   // 首次加载时自动导入默认模板（自动清理版本）
   useEffect(() => {
@@ -606,6 +614,8 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
           className={cn(
             'fixed bottom-16 right-4 z-50 w-80 rounded-2xl shadow-2xl backdrop-blur-xl border',
             'max-h-[60vh] flex flex-col',
+            'transition-all duration-300',
+            propertiesPanelOpen && 'right-[336px]',
             isDark
               ? 'bg-slate-900/95 border-white/10'
               : 'bg-white/95 border-gray-200'
