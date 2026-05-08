@@ -41,6 +41,62 @@ import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
 import { BarChart3, Search, Code, Keyboard, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
 
+type PageKey = 'canvas' | 'workflow' | 'nano2'
+const PAGES: { key: PageKey; label: string }[] = [
+  { key: 'canvas', label: '无限画布' },
+  { key: 'workflow', label: 'Workflow' },
+  { key: 'nano2', label: 'Nano2' },
+]
+
+function PageSwitcher() {
+  const [active, setActive] = useState<PageKey>('workflow')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
+
+  const switchTo = (key: PageKey) => {
+    setActive(key)
+    window.dispatchEvent(new CustomEvent('switch-page', { detail: key }))
+  }
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const btns = container.querySelectorAll<HTMLButtonElement>('[data-page]')
+    const idx = PAGES.findIndex(p => p.key === active)
+    const btn = btns[idx]
+    if (btn) {
+      setIndicator({ left: btn.offsetLeft, width: btn.offsetWidth })
+    }
+  }, [active])
+
+  return (
+    <div
+      ref={containerRef}
+      className="fixed bottom-16 right-4 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
+    >
+      <div
+        className="absolute top-1 bottom-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"
+        style={{ left: indicator.left, width: indicator.width }}
+      />
+      {PAGES.map(({ key, label }) => (
+        <button
+          key={key}
+          data-page={key}
+          onClick={() => switchTo(key)}
+          className={cn(
+            'relative z-10 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors duration-200 whitespace-nowrap',
+            active === key
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface NanoaiWorkflowCanvasProps {
   className?: string;
 }
@@ -674,27 +730,8 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
         <Search className="w-5 h-5" />
       </button>
 
-      {/* 页面切换按钮 - 垂直排列 */}
-      <div className="fixed bottom-16 right-4 z-50 flex flex-col gap-1 rounded-full p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg">
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'canvas' }))}
-          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all text-foreground hover:bg-muted whitespace-nowrap"
-        >
-          无限画布
-        </button>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'workflow' }))}
-          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all bg-primary text-primary-foreground whitespace-nowrap"
-        >
-          Workflow
-        </button>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('switch-page', { detail: 'nano2' }))}
-          className="px-3 py-1.5 rounded-full text-xs font-medium transition-all text-foreground hover:bg-muted whitespace-nowrap"
-        >
-          Nano2
-        </button>
-      </div>
+      {/* 页面切换按钮 - 滑动指示器 */}
+      <PageSwitcher />
 
       {/* 折叠/展开侧边栏 */}
       <button
@@ -756,7 +793,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
               nodeTypes={customNodeTypes}
               edgeTypes={edgeTypes}
               defaultEdgeOptions={defaultEdgeOptions}
-              fitView
+              defaultViewport={{ x: 0, y: 0, zoom: 2 }}
               className="bg-background"
               proOptions={{
                 hideAttribution: true,

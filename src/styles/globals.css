@@ -587,45 +587,38 @@
 /* 节点卡片玻璃态效果 */
 @layer components {
   .card-node {
-    @apply relative overflow-hidden rounded-lg border-2;
+    @apply relative overflow-hidden rounded-2xl border-2;
     @apply transition-all duration-200 ease-out;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    min-width: 220px;
-    max-width: 320px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 
     /* GPU 加速 */
     will-change: transform, box-shadow;
-    /* 默认显示比例：50% */
-    transform: translate3d(0, 0, 0) scale(0.5);
-    transform-origin: center center;
     backface-visibility: hidden;
     perspective: 1000px;
   }
 
-  /* Hover 状态 - 保持50%比例，添加阴影 */
+  /* Hover 状态 */
   .card-node:hover {
-    transform: translate3d(0, -2px, 0) scale(0.5);
+    transform: translate3d(0, -2px, 0);
     box-shadow:
       0 10px 30px -10px hsl(168 70% 45% / 0.3),
       0 0 0 1px hsl(168 70% 45% / 0.5);
   }
 
-  /* 选中状态 - 保持50%比例，移除外框边缘 */
+  /* 选中状态 */
   .card-node.selected {
-    transform: translate3d(0, 0, 0) scale(0.5);
-    /* 移除外框边缘，保留阴影 */
     box-shadow:
-      /* 0 0 0 2px hsl(var(--primary)), */ /* 移除外框 */
-      0 0 20px hsl(168 70% 45% / 0.3), /* 减弱发光效果 */
+      0 0 20px hsl(168 70% 45% / 0.3),
       0 10px 30px -5px hsl(0 0% 0% / 0.3);
-    /* animation: select-pulse 2s ease-in-out infinite; */ /* 移除脉冲动画 */
   }
 
-  /* 拖拽状态 - 保持50%比例，增强阴影 */
+  /* 拖拽状态 */
   .card-node.dragging {
     opacity: 0.9;
-    transform: translate3d(0, 0, 0) scale(0.5);
     box-shadow:
       0 20px 40px -10px hsl(0 0% 0% / 0.5),
       0 0 0 2px hsl(var(--accent));

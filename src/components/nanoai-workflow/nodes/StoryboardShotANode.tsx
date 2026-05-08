@@ -166,14 +166,15 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
         maxWidth={480}
         minHeight={120}
         maxHeight={400}
-        lineStyle={{ borderColor: 'rgba(255,255,255,0.15)' }}
-        handleStyle={{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' }}
+        lineStyle={{ borderWidth: 0 }}
+        handleStyle={{ width: 12, height: 12, borderRadius: 6, backgroundColor: 'transparent' }}
       />
 
       <div
         className="card-node node-appear node-task"
         style={{
-          transform: 'none',
+          width: '100%',
+          height: '100%',
           willChange: 'auto',
           boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -193,7 +194,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
           id="text-in"
         />
 
-        <div className="space-y-2 p-3" style={{ minWidth: 200 }}>
+        <div className="space-y-2 p-3 h-full box-border overflow-hidden">
           {/* 头部 */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
