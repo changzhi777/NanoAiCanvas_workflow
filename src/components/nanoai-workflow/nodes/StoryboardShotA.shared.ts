@@ -54,6 +54,15 @@ export function getSizeTier(size: string): '1K' | '2K' | '4K' {
   return '1K'
 }
 
+// 节点画布显示尺寸（基于比例自动计算，不使用拖拽）
+export const NODE_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
+  '1:1': { width: 240, height: 240 },
+  '16:9': { width: 320, height: 180 },
+  '9:16': { width: 180, height: 320 },
+  '4:3': { width: 280, height: 210 },
+  '3:4': { width: 210, height: 280 },
+}
+
 export const DEFAULT_PARAMS = {
   inputText: '',
   size: '1024x1024',

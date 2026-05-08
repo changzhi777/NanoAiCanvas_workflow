@@ -10,11 +10,11 @@ import {
   ZoomIn, FileImage, Circle, Clock,
 } from 'lucide-react'
 import { Handle, Position, NodeProps } from 'reactflow'
-import { NodeResizer } from '@reactflow/node-resizer'
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { NODE_DIMENSIONS, type AspectRatio } from './StoryboardShotA.shared'
 
 export interface ImagePreviewNodeData extends WorkflowNodeData {
   params: {
@@ -42,17 +42,6 @@ const statusMap: Record<string, { icon: typeof Circle; label: string; cls: strin
   [NodeStatus.SUCCESS]: { icon: CheckCircle2, label: '已完成', cls: 'completed' },
   [NodeStatus.ERROR]: { icon: X, label: '失败', cls: 'blocked' },
   [NodeStatus.DISABLED]: { icon: Circle, label: '禁用', cls: 'not-started' },
-}
-
-function getResizerConstraints(aspectRatio?: string) {
-  const ratioMap: Record<string, { minW: number; minH: number; maxW: number; maxH: number }> = {
-    '1:1': { minW: 160, minH: 160, maxW: 600, maxH: 600 },
-    '16:9': { minW: 280, minH: 160, maxW: 720, maxH: 405 },
-    '9:16': { minW: 160, minH: 280, maxW: 405, maxH: 720 },
-    '4:3': { minW: 240, minH: 180, maxW: 640, maxH: 480 },
-    '3:4': { minW: 180, minH: 240, maxW: 480, maxH: 640 },
-  }
-  return ratioMap[aspectRatio || '1:1'] || ratioMap['1:1']
 }
 
 export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) => {
@@ -93,27 +82,18 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
   const statusInfo = statusMap[data.status] || statusMap[NodeStatus.IDLE]
   const StatusIcon = statusInfo.icon
   const currentItem = displayImages[currentIndex]
-  const resizer = getResizerConstraints(upstreamAspectRatio)
+  const dims = NODE_DIMENSIONS[upstreamAspectRatio as AspectRatio] || NODE_DIMENSIONS['1:1']
 
   // 图片容器的 aspect-ratio CSS 值
   const aspectCSS = upstreamAspectRatio.replace(':', '/')
 
   return (
     <>
-      <NodeResizer
-        minWidth={resizer.minW}
-        maxWidth={resizer.maxW}
-        minHeight={resizer.minH}
-        maxHeight={resizer.maxH}
-        lineStyle={{ borderWidth: 0 }}
-        handleStyle={{ width: 12, height: 12, borderRadius: 6, backgroundColor: 'transparent' }}
-      />
-
       <div
         className="card-node node-appear node-end"
         style={{
-          width: '100%',
-          height: '100%',
+          width: dims.width,
+          minHeight: dims.height,
           willChange: 'auto',
           boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -133,7 +113,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           id="image-in"
         />
 
-        <div className="space-y-2 p-3 h-full box-border overflow-hidden">
+        <div className="space-y-2 p-3">
           {/* 头部 */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">

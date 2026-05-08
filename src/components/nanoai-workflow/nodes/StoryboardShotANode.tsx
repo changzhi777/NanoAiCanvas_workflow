@@ -6,7 +6,6 @@
 
 import { memo, useCallback, useState, useRef, useMemo } from 'react'
 import { Handle, Position } from 'reactflow'
-import { NodeResizer } from '@reactflow/node-resizer'
 import {
   ClipboardList, Play, Circle, Timer, CheckCircle2, Ban,
 } from 'lucide-react'
@@ -18,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
-import { DEFAULT_PARAMS, getSizeTier, type AspectRatio } from './StoryboardShotA.shared'
+import { DEFAULT_PARAMS, getSizeTier, NODE_DIMENSIONS, type AspectRatio } from './StoryboardShotA.shared'
 
 // ==================== 类型定义 ====================
 
@@ -158,22 +157,14 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
     setCurrentStep('cancelled')
   }, [id, updateNode])
 
+  const dims = NODE_DIMENSIONS[params.aspectRatio] || NODE_DIMENSIONS['1:1']
+
   return (
     <>
-      <NodeResizer
-        minWidth={200}
-        maxWidth={480}
-        minHeight={120}
-        maxHeight={400}
-        lineStyle={{ borderWidth: 0 }}
-        handleStyle={{ width: 12, height: 12, borderRadius: 6, backgroundColor: 'transparent' }}
-      />
-
       <div
         className="card-node node-appear node-task"
         style={{
-          width: '100%',
-          height: '100%',
+          width: dims.width,
           willChange: 'auto',
           boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -193,7 +184,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
           id="text-in"
         />
 
-        <div className="space-y-2 p-3 h-full box-border overflow-hidden">
+        <div className="space-y-2 p-3">
           {/* 头部 */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
