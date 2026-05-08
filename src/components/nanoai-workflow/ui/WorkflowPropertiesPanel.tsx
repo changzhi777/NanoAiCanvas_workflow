@@ -458,8 +458,10 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <Label className="text-xs mb-1.5 block text-muted-foreground">优化模型</Label>
                         <select value={p.model || 'glm-4.5-air'} onChange={e => setP({ model: e.target.value })} className={selectCls}>
                           <option value="glm-4.5-air">GLM-4.5-Air（快速）</option>
-                          <option value="glm-4-flash">GLM-4-Flash</option>
+                          <option value="glm-4-flash">GLM-4-Flash（快速）</option>
                           <option value="glm-4">GLM-4</option>
+                          <option value="glm-4.7-flashx">GLM-4.7-FlashX（快速·推理）</option>
+                          <option value="glm-4.7">GLM-4.7（增强·推理）</option>
                         </select>
                       </div>
                     </div>

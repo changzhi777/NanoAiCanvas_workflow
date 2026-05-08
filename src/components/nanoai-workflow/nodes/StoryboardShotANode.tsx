@@ -216,10 +216,10 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
             </div>
           ) : (
             <textarea
-              value={inputText}
+              value={editablePrompt || inputText}
               onChange={(e) => {
                 setInputText(e.target.value)
-                updateNode(id, { params: { ...data.params, inputText: e.target.value } })
+                updateNode(id, { params: { ...data.params, inputText: e.target.value, _editablePrompt: '', _optimizedPrompt: '' } })
               }}
               rows={3}
               className="w-full text-xs resize-none rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500"

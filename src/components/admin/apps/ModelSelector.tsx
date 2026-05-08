@@ -39,6 +39,11 @@ const fallbackModels: Record<string, Model[]> = {
   realtime: [
     { id: 5, name: 'MiniMax-M2.7', code: 'MiniMax-M2.7', provider_id: 3, model_type: 'text', points_per_call: 1, points_per_token: 0, is_active: true },
   ],
+  prompt_optimize: [
+    { id: 10, name: 'GLM-4.7-FlashX（快速）', code: 'glm-4.7-flashx', provider_id: 2, model_type: 'text', points_per_call: 0, points_per_token: 50, is_active: true },
+    { id: 11, name: 'GLM-4.7（增强）', code: 'glm-4.7', provider_id: 2, model_type: 'text', points_per_call: 0, points_per_token: 120, is_active: true },
+    { id: 3, name: 'GLM-5', code: 'glm-5', provider_id: 2, model_type: 'text', points_per_call: 0, points_per_token: 100, is_active: true },
+  ],
 }
 
 export function ModelSelector({ selectedModels, onChange, appId }: ModelSelectorProps) {

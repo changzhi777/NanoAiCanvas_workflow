@@ -15,6 +15,7 @@ import {
   Phone,
   Loader2,
   Save,
+  Sparkles,
 } from 'lucide-react'
 
 // 应用图标映射
@@ -25,6 +26,7 @@ const APP_ICONS: Record<string, React.ElementType> = {
   'message-square': MessageSquare,
   type: Type,
   phone: Phone,
+  sparkles: Sparkles,
 }
 
 interface AppConfigCardProps {

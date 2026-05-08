@@ -12,6 +12,7 @@ class AssetType(str, enum.Enum):
     VIDEO = "video"
     AUDIO = "audio"
     TEXT = "text"
+    STORYBOARD_SHOT = "storyboard_shot"
 
 
 class AssetCategory(str, enum.Enum):

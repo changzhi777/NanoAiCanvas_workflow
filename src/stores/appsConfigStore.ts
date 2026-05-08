@@ -8,7 +8,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 // 应用类型
-export type AppType = 'storyboard' | 'image' | 'voice' | 'dialogue' | 'text' | 'realtime'
+export type AppType = 'storyboard' | 'image' | 'voice' | 'dialogue' | 'text' | 'realtime' | 'prompt_optimize'
 
 // 应用配置
 export interface AppConfig {
@@ -67,6 +67,14 @@ export const APPS_LIST: AppConfig[] = [
     name: '实时语音',
     description: '语音对话交互',
     icon: 'phone',
+    enabled: true,
+    models: [],
+  },
+  {
+    id: 'prompt_optimize',
+    name: '提示词优化',
+    description: 'GLM 提示词优化服务',
+    icon: 'sparkles',
     enabled: true,
     models: [],
   },
