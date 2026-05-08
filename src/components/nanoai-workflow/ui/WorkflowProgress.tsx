@@ -1,66 +1,68 @@
-import { useEffect, useState } from 'react';
-import { CheckCircle2, XCircle, Loader2, Zap } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Circle, Timer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from './Theme';
 import { NodeStatus } from '@/stores/nanoaiWorkflowStore';
+import { TASK_STEPS } from '@/lib/api/adapters/SkillQueueAdapter';
+
+interface StepInfo { step: string; progress: number; message: string }
+
+interface WorkflowProgressNode {
+  id: string
+  data: {
+    label: string
+    status: NodeStatus
+    startedAt?: string
+    _stepInfo?: StepInfo
+  }
+}
 
 interface WorkflowProgressProps {
-  nodes: Array<{ id: string; data: { label: string; status: NodeStatus } }>;
+  nodes: WorkflowProgressNode[];
   isExecuting?: boolean;
 }
 
-export function WorkflowProgress({ nodes, isExecuting }: WorkflowProgressProps) {
+const STEP_KEYS = ['validating', 'prompt_building', 'api_submitting', 'generating'] as const
+
+function stepIcon(state: 'done' | 'active' | 'pending' | 'failed') {
+  switch (state) {
+    case 'done': return <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+    case 'active': return <Timer className="w-3 h-3 text-blue-500" />
+    case 'failed': return <XCircle className="w-3 h-3 text-red-500" />
+    case 'pending': return <Circle className="w-3 h-3 text-muted-foreground/30" />
+  }
+}
+
+export function WorkflowProgress({ nodes }: WorkflowProgressProps) {
   const { isDark } = useTheme();
-  const [progress, setProgress] = useState(0);
 
   const totalNodes = nodes.length;
   const completedNodes = nodes.filter(n => n.data.status === NodeStatus.SUCCESS).length;
   const runningNodes = nodes.filter(n => n.data.status === NodeStatus.RUNNING).length;
   const errorNodes = nodes.filter(n => n.data.status === NodeStatus.ERROR).length;
-
-  useEffect(() => {
-    if (totalNodes > 0) {
-      const newProgress = (completedNodes / totalNodes) * 100;
-      setProgress(newProgress);
-    }
-  }, [completedNodes, totalNodes]);
+  const progress = totalNodes > 0 ? (completedNodes / totalNodes) * 100 : 0;
 
   if (totalNodes === 0) return null;
 
   return (
     <div className={cn(
-      'space-y-3 p-4 rounded-xl backdrop-blur-xl border transition-all duration-300',
-      isDark
-        ? 'bg-slate-900/80 border-white/10'
-        : 'bg-white/90 border-gray-200'
+      'space-y-3 p-4 rounded-xl backdrop-blur-xl border',
+      isDark ? 'bg-slate-900/80 border-white/10' : 'bg-white/90 border-gray-200'
     )}>
       {/* 总体进度 */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className={cn(
-            'font-medium',
-            isDark ? 'text-slate-200' : 'text-gray-700'
-          )}>
-            工作流进度
+          <span className={cn('font-medium', isDark ? 'text-slate-200' : 'text-gray-700')}>
+            执行进度
           </span>
-          <span className={cn(
-            'text-xs font-mono',
-            isDark ? 'text-slate-400' : 'text-gray-500'
-          )}>
-            {completedNodes}/{totalNodes} 节点完成
+          <span className={cn('text-xs font-mono', isDark ? 'text-slate-400' : 'text-gray-500')}>
+            {completedNodes}/{totalNodes} 完成
           </span>
         </div>
 
-        {/* 进度条 */}
-        <div className={cn(
-          'h-2 rounded-full overflow-hidden',
-          isDark ? 'bg-slate-800' : 'bg-gray-200'
-        )}>
+        <div className={cn('h-1.5 rounded-full overflow-hidden', isDark ? 'bg-slate-800' : 'bg-gray-200')}>
           <div
             className={cn(
-              'h-full rounded-full transition-all duration-500 ease-out',
-              'relative overflow-hidden',
-              isExecuting && 'animate-pulse',
+              'h-full rounded-full transition-all duration-500',
               errorNodes > 0
                 ? 'bg-gradient-to-r from-red-500 to-orange-500'
                 : progress === 100
@@ -68,108 +70,109 @@ export function WorkflowProgress({ nodes, isExecuting }: WorkflowProgressProps) 
                   : 'bg-gradient-to-r from-blue-500 to-cyan-500'
             )}
             style={{ width: `${progress}%` }}
-          >
-            {/* 闪光效果 */}
-            {isExecuting && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-            )}
-          </div>
+          />
+        </div>
+
+        <div className="flex items-center gap-4 text-[10px]">
+          {runningNodes > 0 && (
+            <span className="flex items-center gap-1 text-blue-500">
+              <Timer className="w-3 h-3" /> 运行中: {runningNodes}
+            </span>
+          )}
+          {completedNodes > 0 && (
+            <span className="flex items-center gap-1 text-emerald-500">
+              <CheckCircle2 className="w-3 h-3" /> 完成: {completedNodes}
+            </span>
+          )}
+          {errorNodes > 0 && (
+            <span className="flex items-center gap-1 text-red-500">
+              <XCircle className="w-3 h-3" /> 失败: {errorNodes}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 状态统计 */}
-      <div className="flex items-center gap-4 text-xs">
-        <div className={cn(
-          'flex items-center gap-1.5',
-          isDark ? 'text-slate-400' : 'text-gray-500'
-        )}>
-          <Loader2 className={cn(
-            'w-3.5 h-3.5',
-            runningNodes > 0 && 'animate-spin text-blue-500'
-          )} />
-          <span>运行中: {runningNodes}</span>
-        </div>
+      {/* 节点列表（含步骤详情） */}
+      <div className="space-y-1.5 max-h-64 overflow-y-auto">
+        {nodes.map((node) => {
+          const isRunning = node.data.status === NodeStatus.RUNNING
+          const stepInfo = node.data._stepInfo
 
-        <div className={cn(
-          'flex items-center gap-1.5',
-          isDark ? 'text-slate-400' : 'text-gray-500'
-        )}>
-          <CheckCircle2 className={cn(
-            'w-3.5 h-3.5',
-            completedNodes > 0 && 'text-green-500'
-          )} />
-          <span>已完成: {completedNodes}</span>
-        </div>
-
-        {errorNodes > 0 && (
-          <div className={cn(
-            'flex items-center gap-1.5',
-            isDark ? 'text-red-400' : 'text-red-500'
-          )}>
-            <XCircle className="w-3.5 h-3.5" />
-            <span>失败: {errorNodes}</span>
-          </div>
-        )}
-      </div>
-
-      {/* 节点列表 */}
-      <div className="space-y-1.5 max-h-48 overflow-y-auto">
-        {nodes.map((node, index) => (
-          <div
-            key={node.id}
-            className={cn(
-              'flex items-center gap-2 p-2 rounded-lg transition-all duration-200',
-              'text-xs',
-              node.data.status === NodeStatus.RUNNING && 'animate-pulse',
-              isDark
-                ? node.data.status === NodeStatus.RUNNING
-                  ? 'bg-blue-900/30 border border-blue-500/50'
+          return (
+            <div
+              key={node.id}
+              className={cn(
+                'rounded-lg p-2 text-xs',
+                node.data.status === NodeStatus.RUNNING
+                  ? isDark ? 'bg-blue-900/20 border border-blue-500/30' : 'bg-blue-50 border border-blue-200'
                   : node.data.status === NodeStatus.SUCCESS
-                    ? 'bg-green-900/30 border border-green-500/50'
+                    ? isDark ? 'bg-green-900/20 border border-green-500/30' : 'bg-green-50 border border-green-200'
                     : node.data.status === NodeStatus.ERROR
-                      ? 'bg-red-900/30 border border-red-500/50'
-                      : 'bg-white/5'
-                : node.data.status === NodeStatus.RUNNING
-                  ? 'bg-blue-50 border border-blue-200'
-                  : node.data.status === NodeStatus.SUCCESS
-                    ? 'bg-green-50 border border-green-200'
-                    : node.data.status === NodeStatus.ERROR
-                      ? 'bg-red-50 border border-red-200'
-                      : 'bg-gray-50'
-            )}
-          >
-            <div className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium">
-              {node.data.status === NodeStatus.RUNNING && (
-                <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+                      ? isDark ? 'bg-red-900/20 border border-red-500/30' : 'bg-red-50 border border-red-200'
+                      : isDark ? 'bg-white/5' : 'bg-gray-50'
               )}
-              {node.data.status === NodeStatus.SUCCESS && (
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
-              )}
-              {node.data.status === NodeStatus.ERROR && (
-                <XCircle className="w-3 h-3 text-red-500" />
-              )}
-              {node.data.status === NodeStatus.IDLE && (
-                <span className={isDark ? 'text-slate-500' : 'text-gray-400'}>
-                  {index + 1}
+            >
+              {/* 节点标题行 */}
+              <div className="flex items-center gap-2">
+                {node.data.status === NodeStatus.RUNNING && <Loader2 className="w-3 h-3 text-blue-500" />}
+                {node.data.status === NodeStatus.SUCCESS && <CheckCircle2 className="w-3 h-3 text-green-500" />}
+                {node.data.status === NodeStatus.ERROR && <XCircle className="w-3 h-3 text-red-500" />}
+                {node.data.status === NodeStatus.IDLE && <Circle className="w-3 h-3 text-muted-foreground/40" />}
+                <span className={cn('flex-1 truncate', isDark ? 'text-slate-200' : 'text-gray-700')}>
+                  {node.data.label}
                 </span>
+                {isRunning && stepInfo && (
+                  <span className="text-[10px] text-muted-foreground font-mono">{stepInfo.progress}%</span>
+                )}
+              </div>
+
+              {/* 运行中节点的步骤详情 */}
+              {isRunning && stepInfo && (
+                <div className="mt-1.5 space-y-0.5">
+                  {STEP_KEYS.map((stepKey) => {
+                    const stepDef = TASK_STEPS[stepKey]
+                    const currentIdx = STEP_KEYS.indexOf(stepInfo.step as any)
+                    const thisIdx = STEP_KEYS.indexOf(stepKey)
+                    let state: 'done' | 'active' | 'pending' | 'failed' = 'pending'
+                    if (thisIdx < currentIdx) state = 'done'
+                    else if (thisIdx === currentIdx) state = 'active'
+
+                    return (
+                      <div key={stepKey} className={cn(
+                        'flex items-center gap-1.5 px-1 py-0.5 rounded',
+                        state === 'active' && 'bg-blue-500/10',
+                        state === 'done' && 'opacity-50',
+                      )}>
+                        {stepIcon(state)}
+                        <span className={cn(
+                          'text-[10px]',
+                          state === 'active' && 'text-blue-500 font-medium',
+                          state === 'done' && 'text-emerald-500',
+                          state === 'pending' && 'text-muted-foreground/40',
+                        )}>
+                          {stepDef?.label || stepKey}
+                        </span>
+                        {state === 'active' && stepInfo.message && (
+                          <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[80px]">
+                            {stepInfo.message}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
+
+                  {/* 步骤进度条 */}
+                  <div className="w-full bg-muted rounded-full h-0.5 overflow-hidden mt-1">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-500"
+                      style={{ width: `${Math.min(100, stepInfo.progress)}%` }}
+                    />
+                  </div>
+                </div>
               )}
             </div>
-
-            <span className={cn(
-              'flex-1 truncate',
-              isDark ? 'text-slate-200' : 'text-gray-700'
-            )}>
-              {node.data.label}
-            </span>
-
-            {node.data.status === NodeStatus.RUNNING && (
-              <div className="flex items-center gap-1">
-                <Zap className="w-3 h-3 text-blue-500 animate-pulse" />
-                <span className="text-blue-500">执行中</span>
-              </div>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   );

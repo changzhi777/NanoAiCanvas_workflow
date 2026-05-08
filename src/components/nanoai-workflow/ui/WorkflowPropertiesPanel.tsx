@@ -327,6 +327,17 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <Label className="text-xs mb-1.5 block text-muted-foreground">批量生成数量</Label>
                         <input type="number" min={1} max={8} value={p.batchCount || 1} onChange={e => setP({ batchCount: Math.max(1, Math.min(8, Number(e.target.value) || 1)) })} className={selectCls} />
                       </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">分镜头数量</Label>
+                        <input type="number" min={4} max={8} value={p.shotCount || 6} onChange={e => setP({ shotCount: Math.max(4, Math.min(8, Number(e.target.value) || 6)) })} className={selectCls} />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">预览布局</Label>
+                        <select value={p.layoutDirection || 'horizontal'} onChange={e => setP({ layoutDirection: e.target.value as any })} className={selectCls}>
+                          <option value="horizontal">横向网格</option>
+                          <option value="vertical">纵向排列</option>
+                        </select>
+                      </div>
                     </div>
 
                     <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>优化参数</h3>

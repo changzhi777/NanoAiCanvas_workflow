@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from starlette.routing import Route
 from contextlib import asynccontextmanager
+import os
 
 from app.config import get_settings
 from app.api import (
@@ -31,9 +33,15 @@ async def lifespan(app: FastAPI):
     await worker_mgr.start_all(["gpt_image_2"])
     print("✅ Skills Workers started")
 
+    # 启动聊天 Redis pub/sub 订阅者
+    await chat.manager.start_subscriber()
+    print("✅ Chat Redis subscriber started")
+
     yield
 
     # Shutdown
+    await chat.manager.stop_subscriber()
+    print("👋 Chat Redis subscriber stopped")
     print("👋 Stopping Skills Workers...")
     await worker_mgr.stop_all()
     print("👋 NanoAI Backend shutting down...")
@@ -89,6 +97,11 @@ app.include_router(v2_genlog.router)
 # WebSocket routes for real-time task status
 for route in websocket_routes:
     app.add_route(route.path, route.endpoint, methods=["GET"])
+
+# 静态文件：聊天上传文件
+upload_dir = os.environ.get("CHAT_UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "..", "chat-uploads"))
+os.makedirs(upload_dir, exist_ok=True)
+app.mount("/chat-uploads", StaticFiles(directory=upload_dir), name="chat-uploads")
 
 
 @app.get("/")

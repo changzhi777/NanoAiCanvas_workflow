@@ -80,15 +80,15 @@ async def get_stats(
     total_q = select(func.count(GenerationTaskLog.id)).where(GenerationTaskLog.created_at >= since)
     success_q = select(func.count(GenerationTaskLog.id)).where(
         GenerationTaskLog.created_at >= since,
-        GenerationTaskLog.status == GenerationStatus.SUCCESS,
+        GenerationTaskLog.status == "success",
     )
     failed_q = select(func.count(GenerationTaskLog.id)).where(
         GenerationTaskLog.created_at >= since,
-        GenerationTaskLog.status == GenerationStatus.FAILED,
+        GenerationTaskLog.status == "failed",
     )
     aborted_q = select(func.count(GenerationTaskLog.id)).where(
         GenerationTaskLog.created_at >= since,
-        GenerationTaskLog.status == GenerationStatus.ABORTED,
+        GenerationTaskLog.status == "aborted",
     )
     avg_time_q = select(func.avg(GenerationTaskLog.total_time_ms)).where(
         GenerationTaskLog.created_at >= since,

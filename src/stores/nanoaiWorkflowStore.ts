@@ -113,6 +113,7 @@ export interface WorkflowNodeData {
   status: NodeStatus;
   result?: any;
   error?: string;
+  _stepInfo?: { step: string; progress: number; message: string };
 }
 
 export type WorkflowNode = Node<WorkflowNodeData>;

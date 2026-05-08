@@ -8,12 +8,24 @@ import { CheckCircle2, Loader2, Circle, XCircle, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TASK_STEPS } from '@/lib/api/adapters/SkillQueueAdapter'
 
-const STEP_ORDER = [
+const STEP_ORDER_DIRECT = [
   'validating',
   'prompt_building',
   'api_submitting',
   'generating',
 ] as const
+
+const STEP_ORDER_STORYBOARD = [
+  'script_generating',
+  'shot_parsing',
+  'shot_generating',
+] as const
+
+const STORYBOARD_STEP_LABELS: Record<string, string> = {
+  script_generating: '生成分镜头脚本',
+  shot_parsing: '解析分镜头',
+  shot_generating: '逐镜头生图',
+}
 
 interface TaskStepAnimationProps {
   currentStep: string
@@ -57,7 +69,10 @@ export const TaskStepAnimation = memo(({ currentStep, progress, stepMessage, sta
   const rafRef = useRef<number>(0)
   const startTimeRef = useRef<number>(0)
 
-  const currentIndex = STEP_ORDER.indexOf(currentStep as any)
+  // 自动检测步骤模式
+  const isStoryboard = STORYBOARD_STEP_LABELS[currentStep] !== undefined
+  const stepOrder = isStoryboard ? STEP_ORDER_STORYBOARD : STEP_ORDER_DIRECT
+  const currentIndex = [...stepOrder].indexOf(currentStep as any)
   const isComplete = currentStep === 'completed'
   const isFailed = currentStep === 'failed' || currentStep === 'cancelled'
   const isRunning = !isComplete && !isFailed
@@ -84,8 +99,9 @@ export const TaskStepAnimation = memo(({ currentStep, progress, stepMessage, sta
     <div className={cn('space-y-2', className)}>
       {/* 步骤列表 */}
       <div className="space-y-1">
-        {STEP_ORDER.map((stepKey, idx) => {
-          const stepDef = TASK_STEPS[stepKey]
+        {stepOrder.map((stepKey, idx) => {
+          const taskStepDef = TASK_STEPS[stepKey as any]
+          const label = STORYBOARD_STEP_LABELS[stepKey as string] || taskStepDef?.label || stepKey
           let state: 'done' | 'active' | 'pending' | 'failed' = 'pending'
 
           if (isComplete) {
@@ -118,7 +134,7 @@ export const TaskStepAnimation = memo(({ currentStep, progress, stepMessage, sta
                   state === 'failed' && 'text-red-500',
                 )}
               >
-                {stepDef?.label || stepKey}
+                {label}
               </span>
               {state === 'active' && stepMessage && (
                 <span className="text-[10px] text-muted-foreground ml-auto truncate max-w-[100px]">

@@ -1,7 +1,6 @@
 /**
- * 图片预览节点 — 精简版（左→右连线）
- * 节点：图片预览 + 放大灯箱
- * 属性面板：下载、保存、提示词、生成信息
+ * 图片预览节点 — 分镜头绘本版
+ * 支持横向/纵向布局，显示场景描述，P编号
  */
 
 import { useState, useMemo } from 'react'
@@ -14,7 +13,7 @@ import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/n
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { NODE_DIMENSIONS, type AspectRatio } from './StoryboardShotA.shared'
+import { type AspectRatio, type LayoutDirection, type StoryboardShot } from './StoryboardShotA.shared'
 
 export interface ImagePreviewNodeData extends WorkflowNodeData {
   params: {
@@ -22,6 +21,7 @@ export interface ImagePreviewNodeData extends WorkflowNodeData {
     sourceNodeId?: string
     enableAssetSave: boolean
     enableDownload: boolean
+    layoutDirection?: LayoutDirection
   }
   result?: {
     images?: string[]
@@ -29,6 +29,8 @@ export interface ImagePreviewNodeData extends WorkflowNodeData {
     prompt?: string
     rawPrompt?: string
     optimizedPrompt?: string
+    shots?: StoryboardShot[]
+    scriptTitle?: string
     startedAt?: string
     completedAt?: string
     savedToAsset?: boolean
@@ -51,49 +53,45 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
   const [zoomLevel, setZoomLevel] = useState(1)
 
   // 上游数据
-  const resultData = useMemo(() => {
+  const sourceData = useMemo(() => {
     if (data.params.sourceNodeId) {
       const sourceNode = nodes.find(n => n.id === data.params.sourceNodeId)
-      return sourceNode?.data?.result
+      return sourceNode?.data
     }
     const incomingEdge = edges.find(e => e.target === id)
     if (incomingEdge) {
       const sourceNode = nodes.find(n => n.id === incomingEdge.source)
-      return sourceNode?.data?.result
+      return sourceNode?.data
     }
-    return data.result
-  }, [edges, nodes, id, data.params.sourceNodeId, data.result])
+    return data
+  }, [edges, nodes, id, data.params.sourceNodeId, data])
 
-  // 上游节点的 aspectRatio
-  const upstreamAspectRatio = useMemo(() => {
-    if (data.params.sourceNodeId) {
-      const sourceNode = nodes.find(n => n.id === data.params.sourceNodeId)
-      return (sourceNode?.data?.params as any)?.aspectRatio || '1:1'
-    }
-    const incomingEdge = edges.find(e => e.target === id)
-    if (incomingEdge) {
-      const sourceNode = nodes.find(n => n.id === incomingEdge.source)
-      return (sourceNode?.data?.params as any)?.aspectRatio || '1:1'
-    }
-    return '1:1'
-  }, [edges, nodes, id, data.params.sourceNodeId])
+  const resultData = sourceData?.result
+  const shots: StoryboardShot[] = resultData?.shots || []
+  const layoutDir: LayoutDirection = (sourceData?.params as any)?.layoutDirection || data.params.layoutDirection || 'horizontal'
+  const upstreamAspectRatio: AspectRatio = (sourceData?.params as any)?.aspectRatio || '16:9'
 
   const displayImages = useMemo(() => resultData?.images || [], [resultData])
   const statusInfo = statusMap[data.status] || statusMap[NodeStatus.IDLE]
   const StatusIcon = statusInfo.icon
   const currentItem = displayImages[currentIndex]
-  const dims = NODE_DIMENSIONS[upstreamAspectRatio as AspectRatio] || NODE_DIMENSIONS['1:1']
 
-  // 图片容器的 aspect-ratio CSS 值
+  // 预览节点使用更大的宽度以容纳多图
+  const previewWidth = layoutDir === 'horizontal' ? 380 : 200
   const aspectCSS = upstreamAspectRatio.replace(':', '/')
+
+  // 网格列数
+  const gridCols = layoutDir === 'horizontal'
+    ? displayImages.length <= 4 ? 2 : displayImages.length <= 6 ? 3 : 4
+    : 1
 
   return (
     <>
       <div
         className="card-node node-appear node-end"
         style={{
-          width: dims.width,
-          minHeight: dims.height,
+          width: previewWidth,
+          minHeight: layoutDir === 'vertical' ? 200 : 120,
           willChange: 'auto',
           boxShadow: '0 2px 8px -2px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
         }}
@@ -118,7 +116,9 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <FileImage className="w-4 h-4 text-primary shrink-0" />
-              <h3 className="font-semibold text-foreground truncate text-xs">图片预览</h3>
+              <h3 className="font-semibold text-foreground truncate text-xs">
+                {resultData?.scriptTitle || '图片预览'}
+              </h3>
             </div>
             <Badge variant="default" className={cn('status-badge', statusInfo.cls)}>
               <StatusIcon className="w-3 h-3" />
@@ -136,38 +136,49 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             </div>
           )}
 
-          {/* 图片预览 */}
+          {/* 分镜头绘本网格 */}
           {data.status !== NodeStatus.RUNNING && displayImages.length > 0 && (
-            <div className="grid gap-1.5" style={{ gridTemplateColumns: displayImages.length === 1 ? '1fr' : 'repeat(2, 1fr)' }}>
-              {displayImages.slice(0, 4).map((img: string, idx: number) => (
-                <button
-                  key={idx}
-                  onClick={() => { setCurrentIndex(idx); setIsFullscreen(true); setZoomLevel(1) }}
-                  className={cn(
-                    'relative group rounded-lg overflow-hidden border-2 transition-all duration-200',
-                    'hover:border-primary hover:scale-[1.02]',
-                    idx === currentIndex ? 'border-primary' : 'border-white/10'
-                  )}
-                  style={{ aspectRatio: aspectCSS }}
-                >
-                  <img src={img} alt={`图片 ${idx + 1}`} className="w-full h-full object-cover" />
-                  {/* 镜头编号 */}
-                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur-sm">
-                    P{idx + 1}
-                  </span>
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="p-1.5 rounded-full bg-black/50">
-                      <ZoomIn className="w-3.5 h-3.5 text-white" />
+            <div
+              className="grid gap-1.5"
+              style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
+            >
+              {displayImages.map((img: string, idx: number) => {
+                const shot = shots[idx]
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => { setCurrentIndex(idx); setIsFullscreen(true); setZoomLevel(1) }}
+                    className={cn(
+                      'relative group rounded-lg overflow-hidden border-2 transition-all duration-200',
+                      'hover:border-primary hover:scale-[1.02]',
+                      idx === currentIndex ? 'border-primary' : 'border-white/10'
+                    )}
+                    style={{ aspectRatio: aspectCSS }}
+                  >
+                    <img src={img} alt={`P${idx + 1}`} className="w-full h-full object-cover" />
+                    <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur-sm">
+                      P{idx + 1}
+                    </span>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="p-1.5 rounded-full bg-black/50">
+                        <ZoomIn className="w-3.5 h-3.5 text-white" />
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                    {/* 场景描述 */}
+                    {shot && layoutDir === 'vertical' && (
+                      <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm px-1.5 py-1">
+                        <p className="text-[9px] text-white/90 line-clamp-2">{shot.scene_description}</p>
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
 
           {/* 无数据 */}
           {data.status !== NodeStatus.RUNNING && displayImages.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground" style={{ aspectRatio: aspectCSS }}>
+            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground" style={{ aspectRatio: '16/9' }}>
               <FileImage className="w-8 h-8 mb-1 opacity-30" />
               <p className="text-[10px]">暂无图片</p>
             </div>
@@ -214,6 +225,16 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             <div className="relative">
               <img src={currentItem} alt="预览" className="rounded-lg shadow-2xl transition-transform duration-150" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }} draggable={false} />
               <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-sm font-bold bg-black/70 text-white backdrop-blur-sm">{displayImages.length > 1 ? `P${currentIndex + 1}` : 'P1'}</span>
+              {/* 镜头信息 */}
+              {shots[currentIndex] && (
+                <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-blue-400 font-bold text-sm">P{currentIndex + 1}</span>
+                    <span className="text-white/60 text-xs">{shots[currentIndex].camera_angle}</span>
+                  </div>
+                  <p className="text-white/90 text-xs line-clamp-3">{shots[currentIndex].scene_description}</p>
+                </div>
+              )}
             </div>
           </div>
 

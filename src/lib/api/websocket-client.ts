@@ -30,6 +30,12 @@ class TaskWebSocketClient {
    * 连接到任务的 WebSocket 频道
    */
   connect(taskId: string): Promise<void> {
+    // 不同任务时先断开旧连接
+    if (this.taskId !== taskId && this.ws) {
+      this.ws.close()
+      this.ws = null
+    }
+
     return new Promise((resolve, reject) => {
       this.taskId = taskId;
       this.reconnectAttempts = 0;

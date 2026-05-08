@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { getChatWsUrl } from '@/lib/api/chat-api'
+import type { Attachment, MessageType } from '@/lib/api/chat-api'
 
 interface UseChatSocketOptions {
   userId: string | null
@@ -53,11 +54,16 @@ export function useChatSocket({
     wsRef.current = ws
   }, [userId, enabled])
 
-  const sendMessage = useCallback((conversationId: string, content: string) => {
+  const sendMessage = useCallback((
+    conversationId: string,
+    content: string,
+    messageType: MessageType = 'text',
+    attachments: Attachment[] = [],
+  ) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'message',
-        payload: { conversation_id: conversationId, content },
+        payload: { conversation_id: conversationId, content, message_type: messageType, attachments },
       }))
     }
   }, [])

@@ -1,10 +1,9 @@
 /**
- * 故事板分镜A 节点 — 精简版
- * 节点：文本输入框 + 运行按钮（左→右连线）
- * 属性面板：提示词优化、模型选择、生成参数、比例设置
+ * 故事板分镜A 节点 — 分镜头流水线版
+ * 流程：提示词 → GLM生成分镜头脚本 → 逐镜头生图 → 汇总输出到预览节点
  */
 
-import { memo, useCallback, useState, useRef, useMemo } from 'react'
+import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { Handle, Position } from 'reactflow'
 import {
   ClipboardList, Play, Circle, Timer, CheckCircle2, Ban,
@@ -17,11 +16,18 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
-import { DEFAULT_PARAMS, getSizeTier, NODE_DIMENSIONS, type AspectRatio } from './StoryboardShotA.shared'
+import {
+  DEFAULT_PARAMS, getSizeTier, NODE_DIMENSIONS,
+  type AspectRatio, type LayoutDirection, type StoryboardShot,
+  generateStoryboardScript,
+} from './StoryboardShotA.shared'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 // ==================== 类型定义 ====================
 
-export type { AspectRatio }
+export type { AspectRatio, LayoutDirection }
+export type { StoryboardShot }
 
 export interface StoryboardShotAData extends WorkflowNodeData {
   params: {
@@ -30,6 +36,8 @@ export interface StoryboardShotAData extends WorkflowNodeData {
     quality: string
     style: string
     batchCount: number
+    shotCount: number
+    layoutDirection: LayoutDirection
     temperature: number
     systemPromptTemplate: string
     model: string
@@ -46,10 +54,13 @@ export interface StoryboardShotAData extends WorkflowNodeData {
     rawPrompt?: string
     optimizedPrompt?: string
     prompt?: string
+    shots?: StoryboardShot[]
+    scriptTitle?: string
     startedAt?: string
     completedAt?: string
   }
   error?: string
+  _stepInfo?: { step: string; progress: number; message: string }
 }
 
 // ==================== 状态映射 ====================
@@ -71,6 +82,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
   const [stepProgress, setStepProgress] = useState(0)
   const [stepMessage, setStepMessage] = useState('')
   const abortRef = useRef<AbortController | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
 
   const optimizedPrompt = data.params?._optimizedPrompt || ''
@@ -95,10 +107,25 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
   const prompt = editablePrompt || optimizedPrompt || rawPrompt
 
+  const autoResize = useCallback((el: HTMLTextAreaElement | null) => {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useEffect(() => { autoResize(textareaRef.current) }, [editablePrompt, inputText, autoResize])
+
+  const emitStep = useCallback((step: string, progress: number, message: string) => {
+    setCurrentStep(step)
+    setStepProgress(progress)
+    setStepMessage(message)
+    updateNode(id, { _stepInfo: { step, progress, message } })
+  }, [id, updateNode])
+
   const logGenerationTask = useCallback(async (info: { startedAt: string; status: string; error?: string }) => {
     try {
       const token = localStorage.getItem('nanoai_token')
-      await fetch('/api/v2/generation-logs', {
+      await fetch(`${API_BASE}/v2/generation-logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({
@@ -118,65 +145,107 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
     if (!prompt) { setLocalError('请先输入故事描述'); return }
 
     setLocalError(null)
-    setCurrentStep('validating')
-    setStepProgress(0)
-    setStepMessage('准备中...')
     window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open: false } }))
     const startedAt = new Date().toISOString()
-    updateNode(id, { status: NodeStatus.RUNNING, error: undefined })
+    updateNode(id, { status: NodeStatus.RUNNING, error: undefined, result: { ...data.result, startedAt }, _stepInfo: undefined })
+
+    const abortController = new AbortController()
+    abortRef.current = abortController
 
     try {
+      // ===== 阶段1：生成分镜头脚本 =====
+      emitStep('script_generating', 5, '正在生成分镜头脚本...')
+      const script = await generateStoryboardScript(prompt, {
+        shotCount: params.shotCount,
+        model: params.model,
+        temperature: params.temperature,
+      })
+
+      if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
+
+      const shots = script.shots || []
+      if (shots.length === 0) throw new Error('GLM 未返回有效的分镜头脚本')
+
+      emitStep('shot_parsing', 10, `已解析 ${shots.length} 个分镜头`)
+
+      // ===== 阶段2：逐镜头串行生成图片 =====
       const adapter = getSkillQueueAdapter()
-      const abortController = new AbortController()
-      abortRef.current = abortController
-
+      const totalShots = shots.length
+      const completedShots: StoryboardShot[] = []
       const allImages: string[] = []
-      const batchSize = Math.max(1, Math.min(8, params.batchCount))
 
-      for (let i = 0; i < batchSize; i++) {
-        const batchImages = await adapter.generateImage(
-          { prompt: batchSize > 1 ? `${prompt} (variation ${i + 1})` : prompt, size: getSizeTier(params.size), aspectRatio: params.aspectRatio, signal: abortController.signal },
-          (progress) => { setStepProgress(progress) },
-          (stepInfo: TaskStepInfo) => {
-            setCurrentStep(stepInfo.step)
-            setStepProgress(stepInfo.progress)
-            setStepMessage(stepInfo.message)
-          },
-        )
-        allImages.push(...batchImages)
+      for (let idx = 0; idx < totalShots; idx++) {
+        if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
+
+        const shot = shots[idx]
+        const shotPrompt = shot.visual_prompt || shot.scene_description
+        const startProg = 10 + Math.floor((idx / totalShots) * 85)
+
+        emitStep('shot_generating', startProg, `镜头 P${idx + 1}/${totalShots}: ${shot.scene_description?.substring(0, 30)}...`)
+
+        try {
+          const images = await adapter.generateImage(
+            { prompt: shotPrompt, size: getSizeTier(params.size), aspectRatio: params.aspectRatio, signal: abortController.signal },
+            (progress) => {
+              const overall = startProg + Math.floor((progress / 100) * (85 / totalShots))
+              setStepProgress(overall)
+            },
+            (stepInfo: TaskStepInfo) => {
+              const overall = startProg + Math.floor((stepInfo.progress / 100) * (85 / totalShots))
+              setStepProgress(overall)
+              setStepMessage(`P${idx + 1} ${stepInfo.message}`)
+            },
+          )
+
+          if (images[0]) {
+            completedShots.push({ ...shot, imageUrl: images[0] })
+            allImages.push(images[0])
+          }
+        } catch (shotErr: any) {
+          // 单个镜头失败不中断整体流程
+          console.warn(`Shot P${idx + 1} failed:`, shotErr.message)
+        }
       }
+
+      if (allImages.length === 0) throw new Error('所有镜头生成失败')
 
       updateNode(id, {
         status: NodeStatus.SUCCESS,
+        _stepInfo: undefined,
         result: {
           images: allImages,
           imageUrl: allImages[0],
           rawPrompt,
           optimizedPrompt,
           prompt,
+          shots: completedShots,
+          scriptTitle: script.title,
           startedAt,
           completedAt: new Date().toISOString(),
         },
       })
       setCurrentStep('completed')
       setStepProgress(100)
-      setStepMessage('完成')
+      setStepMessage(`完成！${allImages.length}/${totalShots} 个镜头`)
       logGenerationTask({ startedAt, status: 'success' })
-      setStepProgress(100)
-      setStepMessage('完成')
+
     } catch (err: any) {
       if (err.name === 'AbortError') {
         logGenerationTask({ startedAt, status: 'aborted', error: '用户终止' })
+        setCurrentStep('cancelled')
+        setStepMessage('已终止')
+        setStepProgress(0)
+        updateNode(id, { _stepInfo: undefined })
         return
       }
       const errorMsg = err.message || '生成失败'
       setLocalError(errorMsg)
       setCurrentStep('failed')
       setStepMessage(errorMsg)
-      updateNode(id, { status: NodeStatus.ERROR, error: errorMsg })
+      updateNode(id, { status: NodeStatus.ERROR, error: errorMsg, _stepInfo: undefined })
       logGenerationTask({ startedAt, status: 'failed', error: errorMsg })
     }
-  }, [id, updateNode, prompt, rawPrompt, optimizedPrompt, params])
+  }, [id, updateNode, prompt, rawPrompt, optimizedPrompt, params, emitStep])
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort()
@@ -230,17 +299,19 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
           {upstreamText ? (
             <div className="space-y-1">
               <span className="text-[10px] font-medium text-muted-foreground">上游输入</span>
-              <p className="text-xs break-all max-h-12 overflow-y-auto text-muted-foreground line-clamp-3">{upstreamText}</p>
+              <p className="text-xs break-all text-muted-foreground">{upstreamText}</p>
             </div>
           ) : (
             <textarea
+              ref={textareaRef}
               value={editablePrompt || inputText}
               onChange={(e) => {
                 setInputText(e.target.value)
+                autoResize(e.target)
                 updateNode(id, { params: { ...data.params, inputText: e.target.value, _editablePrompt: '', _optimizedPrompt: '' } })
               }}
-              rows={3}
-              className="w-full text-xs resize-none rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500"
+              rows={1}
+              className="w-full text-xs resize-none overflow-hidden rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500"
               placeholder="输入故事描述..."
             />
           )}

@@ -1,5 +1,20 @@
 import { create } from 'zustand'
-import type { ConversationInfo, ChatMessage, ChatUser } from '@/lib/api/chat-api'
+import type { ConversationInfo, ChatMessage, ChatUser, MessageType } from '@/lib/api/chat-api'
+
+const TYPE_LABELS: Record<MessageType, string> = {
+  text: '',
+  image: '[图片]',
+  video: '[视频]',
+  audio: '[音频]',
+  mixed: '[多媒体]',
+}
+
+function getPreviewContent(msg: { content: string; message_type?: MessageType }): string {
+  if (msg.message_type && msg.message_type !== 'text') {
+    return msg.content ? `${TYPE_LABELS[msg.message_type]} ${msg.content}` : TYPE_LABELS[msg.message_type]
+  }
+  return msg.content
+}
 
 interface ChatState {
   conversations: ConversationInfo[]
@@ -22,7 +37,7 @@ interface ChatState {
   reset: () => void
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
+export const useChatStore = create<ChatState>((set) => ({
   conversations: [],
   currentConvId: null,
   messages: [],
@@ -62,7 +77,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateConvLastMessage: (convId, msg) => set((s) => ({
     conversations: s.conversations.map(c =>
-      c.id === convId ? { ...c, last_message: { id: msg.id, sender_id: msg.sender_id, content: msg.content, created_at: msg.created_at }, updated_at: msg.created_at } : c
+      c.id === convId ? {
+        ...c,
+        last_message: {
+          id: msg.id,
+          sender_id: msg.sender_id,
+          content: getPreviewContent(msg),
+          message_type: msg.message_type,
+          created_at: msg.created_at,
+        },
+        updated_at: msg.created_at,
+      } : c
     ).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
   })),
 

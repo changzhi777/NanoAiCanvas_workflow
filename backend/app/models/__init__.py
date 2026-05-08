@@ -16,7 +16,7 @@ from app.models.points import (
     RechargeRecord,
 )
 from app.models.notification import Notification, NotificationType
-from app.models.conversation import Conversation, ConversationMember, Message, ConversationType
+from app.models.conversation import Conversation, ConversationMember, Message, ConversationType, MessageType
 from app.models.prompt_restrictions import (
     PromptRestrictionCategory,
     PromptRestrictionWord,
@@ -60,6 +60,7 @@ __all__ = [
     "ConversationMember",
     "Message",
     "ConversationType",
+    "MessageType",
     "PromptRestrictionCategory",
     "PromptRestrictionWord",
     "ApiKeyConfig",

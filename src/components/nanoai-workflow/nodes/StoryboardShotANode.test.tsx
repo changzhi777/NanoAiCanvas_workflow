@@ -44,6 +44,8 @@ const defaultData: StoryboardShotAData = {
     quality: 'standard',
     style: 'realistic',
     batchCount: 1,
+    shotCount: 6,
+    layoutDirection: 'horizontal' as const,
     temperature: 0.8,
     systemPromptTemplate: 'storyboard',
     model: 'glm-4.5-air',

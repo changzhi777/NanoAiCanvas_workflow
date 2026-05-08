@@ -23,12 +23,42 @@ class OptimizeRequest(BaseModel):
     system_prompt_template: str = "storyboard"
 
 
+class StoryboardScriptRequest(BaseModel):
+    prompt: str
+    shot_count: int = 6
+    model: str = "glm-4.5-air"
+    temperature: float = 0.7
+
+
 SYSTEM_PROMPTS = {
     "storyboard": "【应用场景：故事板分镜】你是一个专业的故事板分镜提示词优化专家。根据用户提供的故事描述、场景设定等信息，生成高质量的分镜图片提示词。优化规则：1.保留用户原始意图和核心故事内容 2.添加详细画面描述（角色动作、表情、构图）3.指定光影效果和氛围 4.描述镜头语言 5.明确画面风格和色调 6.使用中文输出 7.只输出优化后的提示词，不要添加解释或前缀",
     "character": "【应用场景：角色设计】你是一个专业的角色设计提示词优化专家。根据用户的角色描述，生成高质量的AI图片生成提示词。优化规则：1.详细描述角色的外貌、服装、表情和姿态 2.指定光影效果 3.明确画面构图和视角 4.指定画风 5.使用中文输出 6.只输出优化后的提示词，不要添加解释或前缀",
     "scene": "【应用场景：场景设计】你是一个专业的场景设计提示词优化专家。根据用户的场景描述，生成高质量的AI图片生成提示词。优化规则：1.详细描述场景的空间布局、建筑、自然环境 2.指定光影和氛围 3.明确镜头语言和透视 4.指定画风和色调 5.使用中文输出 6.只输出优化后的提示词，不要添加解释或前缀",
     "custom": "【应用场景：通用】你是一个专业的AI图片提示词优化专家。根据用户的描述，生成高质量的图片生成提示词。规则：1.保留用户原始意图 2.添加画面细节描述 3.使用中文输出 4.只输出优化后的提示词",
 }
+
+STORYBOARD_SCRIPT_PROMPT = """你是一个专业的电影分镜头脚本编剧。根据用户提供的故事描述，将其拆分为{shot_count}个连续的分镜头，形成一个完整的故事板。
+
+要求：
+1. 每个分镜头必须包含：场景描述、图片生成提示词、镜头角度、氛围
+2. 图片生成提示词要详细具体，包含角色外貌、动作、表情、服装、场景细节、光影、构图
+3. 所有分镜头必须形成连续叙事，前后衔接自然
+4. 镜头角度多样化：特写、中景、全景、俯拍、仰拍等
+5. 提示词使用中文
+6. 严格按以下JSON格式输出，不要添加任何其他文字：
+
+{{
+  "title": "故事标题",
+  "shots": [
+    {{
+      "shot_number": 1,
+      "scene_description": "这个镜头发生了什么，角色的动作和情感",
+      "visual_prompt": "详细的图片生成提示词，包含角色、场景、光影、构图、色调",
+      "camera_angle": "镜头角度和景别",
+      "mood": "氛围和情绪"
+    }}
+  ]
+}}"""
 
 
 @router.post("/optimize")
@@ -88,6 +118,86 @@ async def optimize_prompt(
 
         return {"optimized_prompt": optimized}
 
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GLM API 超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/storyboard-script")
+async def generate_storyboard_script(
+    req: StoryboardScriptRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """生成结构化分镜头脚本"""
+    import json, re
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    system_prompt = STORYBOARD_SCRIPT_PROMPT.format(shot_count=req.shot_count)
+    if req.model.startswith("glm-4.7"):
+        system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中，格式：<output>{...}</output>"
+
+    try:
+        async with httpx.AsyncClient(timeout=90) as client:
+            resp = await client.post(
+                f"{settings.GLM_API_BASE_URL}/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
+                },
+                json={
+                    "model": req.model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"请将以下故事拆分为{req.shot_count}个分镜头：\n{req.prompt}"},
+                    ],
+                    "temperature": req.temperature,
+                    "max_tokens": 2000,
+                },
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
+
+        data = resp.json()
+        msg = data.get("choices", [{}])[0].get("message", {})
+        content = msg.get("content", "").strip()
+
+        if not content:
+            rc = msg.get("reasoning_content", "").strip()
+            if rc:
+                match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
+                content = match.group(1).strip() if match else rc
+
+        if not content:
+            raise HTTPException(status_code=502, detail="GLM 返回为空")
+
+        # Extract JSON from response
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if not json_match:
+            raise HTTPException(status_code=502, detail=f"无法解析分镜头脚本，GLM 返回格式错误: {content[:200]}")
+
+        script = json.loads(json_match.group())
+
+        # Validate structure
+        if "shots" not in script or not isinstance(script["shots"], list):
+            raise HTTPException(status_code=502, detail="分镜头脚本缺少 shots 数组")
+
+        for shot in script["shots"]:
+            shot.setdefault("shot_number", script["shots"].index(shot) + 1)
+            shot.setdefault("scene_description", "")
+            shot.setdefault("visual_prompt", "")
+            shot.setdefault("camera_angle", "")
+            shot.setdefault("mood", "")
+
+        return {"script": script}
+
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=502, detail=f"JSON 解析失败: {str(e)}")
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="GLM API 超时")
     except HTTPException:

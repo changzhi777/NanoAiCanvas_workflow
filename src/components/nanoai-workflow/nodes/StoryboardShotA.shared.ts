@@ -6,6 +6,21 @@
 import { client } from '@/lib/api/client'
 
 export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+export type LayoutDirection = 'horizontal' | 'vertical'
+
+export interface StoryboardShot {
+  shot_number: number
+  scene_description: string
+  visual_prompt: string
+  camera_angle: string
+  mood: string
+  imageUrl?: string
+}
+
+export interface StoryboardScript {
+  title: string
+  shots: StoryboardShot[]
+}
 
 export const SIZE_OPTIONS: Record<AspectRatio, { label: string; value: string; tier: '1K' | '2K' | '4K' }[]> = {
   '1:1': [
@@ -69,6 +84,8 @@ export const DEFAULT_PARAMS = {
   quality: 'standard',
   style: 'realistic',
   batchCount: 1,
+  shotCount: 6,
+  layoutDirection: 'horizontal' as LayoutDirection,
   temperature: 0.8,
   systemPromptTemplate: 'storyboard',
   model: 'glm-4.5-air',
@@ -83,4 +100,14 @@ export async function optimizePromptWithGLM(rawPrompt: string, opts: { temperatu
     system_prompt_template: opts.systemPromptTemplate,
   })
   return data.optimized_prompt
+}
+
+export async function generateStoryboardScript(prompt: string, opts: { shotCount: number; model: string; temperature: number }): Promise<StoryboardScript> {
+  const data = await client.post<{ script: StoryboardScript }>('/glm/storyboard-script', {
+    prompt,
+    shot_count: opts.shotCount,
+    model: opts.model,
+    temperature: opts.temperature,
+  })
+  return data.script
 }

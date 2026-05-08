@@ -33,7 +33,7 @@ class Asset(Base):
     url = Column(Text, nullable=False)
     thumbnail_url = Column(Text, nullable=True)
 
-    meta_data = Column(JSONB, default=dict)  # {prompt, model, dimensions, duration, format, sourceNodeId, sourceWorkflowId}
+    meta_data = Column("meta", JSONB, default=dict)  # DB column: meta
     category = Column(SQLEnum(AssetCategory), nullable=True, index=True)
     tags = Column(ARRAY(String), default=list)
 

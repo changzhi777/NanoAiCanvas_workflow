@@ -167,7 +167,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
         console.warn('[SkillQueueAdapter] WebSocket 连接失败，降级为轮询')
       }
 
-      // 轮询降级（6 秒后开始）
+      // 轮询降级
       let pollAttempts = 0
       const maxPolls = 120 // 120 * 2s = 240s
       pollingTimer = setInterval(async () => {
@@ -177,7 +177,6 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
         }
 
         pollAttempts++
-        if (pollAttempts < 3) return // 前 3 次跳过，给 WebSocket 机会
 
         try {
           const statusResp = await fetch(`${API_BASE}/v2/skills/tasks/${taskId}`)

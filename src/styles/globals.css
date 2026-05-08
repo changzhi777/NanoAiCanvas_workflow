@@ -671,7 +671,6 @@
     background: hsl(var(--status-in-progress) / 0.2);
     color: hsl(var(--status-in-progress));
     border: 1px solid hsl(var(--status-in-progress) / 0.3);
-    animation: status-pulse 2s ease-in-out infinite;
   }
 
   .status-badge.completed {

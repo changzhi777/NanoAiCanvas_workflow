@@ -1,10 +1,12 @@
 """即时聊天 API — REST + WebSocket"""
+import asyncio
 import json
+import os
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy import select, update, func, desc, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +14,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import User
 from app.models.conversation import Conversation, ConversationMember, Message, ConversationType
+from app.models.asset import Asset, AssetType
 from app.api.auth import get_current_user
 from app.redis import redis_client
+
+# 聊天文件上传目录
+UPLOAD_DIR = os.environ.get("CHAT_UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "chat-uploads"))
+
+ALLOWED_TYPES = {
+    "image": {"exts": {".jpg", ".jpeg", ".png", ".gif", ".webp"}, "max_size": 10 * 1024 * 1024},
+    "video": {"exts": {".mp4", ".webm", ".mov"}, "max_size": 100 * 1024 * 1024},
+    "audio": {"exts": {".mp3", ".wav", ".ogg", ".m4a"}, "max_size": 50 * 1024 * 1024},
+}
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -22,6 +34,64 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 class ConnectionManager:
     def __init__(self):
         self.active: dict[str, WebSocket] = {}
+        self._pubsub = None
+        self._pubsub_redis = None
+        self._listener_task = None
+
+    async def start_subscriber(self):
+        """启动 Redis pub/sub 订阅，实现跨 Worker 消息分发"""
+        import redis.asyncio as aioredis
+        from app.config import get_settings
+        s = get_settings()
+        self._pubsub_redis = aioredis.Redis(
+            host=s.REDIS_HOST, port=s.REDIS_PORT,
+            password=s.REDIS_PASSWORD, decode_responses=True,
+        )
+        self._pubsub = self._pubsub_redis.pubsub()
+        await self._pubsub.psubscribe("chat:user:*", "chat:broadcast:*")
+        self._listener_task = asyncio.create_task(self._redis_listener())
+
+    async def stop_subscriber(self):
+        if self._listener_task:
+            self._listener_task.cancel()
+            try:
+                await self._listener_task
+            except asyncio.CancelledError:
+                pass
+        if self._pubsub:
+            await self._pubsub.close()
+        if self._pubsub_redis:
+            await self._pubsub_redis.aclose()
+
+    async def _redis_listener(self):
+        """后台任务：监听 Redis 消息，分发到本 Worker 的本地 WebSocket"""
+        try:
+            async for message in self._pubsub.listen():
+                if message["type"] != "pmessage":
+                    continue
+                channel = message["channel"]
+                data = json.loads(message["data"])
+
+                if channel.startswith("chat:user:"):
+                    user_id = channel.split(":")[-1]
+                    ws = self.active.get(user_id)
+                    if ws:
+                        try:
+                            await ws.send_json(data)
+                        except Exception:
+                            self.disconnect(user_id)
+                elif channel == "chat:broadcast:online":
+                    broadcaster_id = data.get("payload", {}).get("user_id")
+                    for uid, ws in list(self.active.items()):
+                        if uid != broadcaster_id:
+                            try:
+                                await ws.send_json(data)
+                            except Exception:
+                                pass
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
 
     async def connect(self, user_id: str, ws: WebSocket):
         await ws.accept()
@@ -32,21 +102,28 @@ class ConnectionManager:
         self.active.pop(user_id, None)
 
     async def send_to_user(self, user_id: str, data: dict):
-        ws = self.active.get(user_id)
-        if ws:
-            try:
-                await ws.send_json(data)
-            except Exception:
-                self.disconnect(user_id)
+        """通过 Redis pub/sub 发送消息，所有 Worker 均可接收"""
+        try:
+            await redis_client.publish(f"chat:user:{user_id}", json.dumps(data))
+        except Exception:
+            ws = self.active.get(user_id)
+            if ws:
+                try:
+                    await ws.send_json(data)
+                except Exception:
+                    self.disconnect(user_id)
 
     async def broadcast_online_status(self, user_id: str, online: bool):
         msg = {"type": "online_status", "payload": {"user_id": user_id, "online": online}}
-        for uid, ws in list(self.active.items()):
-            if uid != user_id:
-                try:
-                    await ws.send_json(msg)
-                except Exception:
-                    pass
+        try:
+            await redis_client.publish("chat:broadcast:online", json.dumps(msg))
+        except Exception:
+            for uid, ws in list(self.active.items()):
+                if uid != user_id:
+                    try:
+                        await ws.send_json(msg)
+                    except Exception:
+                        pass
 
     async def _set_online(self, user_id: str):
         try:
@@ -114,7 +191,9 @@ async def chat_ws(ws: WebSocket, user_id: str):
 async def _handle_chat_message(sender_id: str, payload: dict):
     conversation_id = payload.get("conversation_id")
     content = payload.get("content", "").strip()
-    if not conversation_id or not content:
+    message_type = payload.get("message_type", "text")
+    attachments = payload.get("attachments", [])
+    if not conversation_id or (not content and not attachments):
         return
 
     from app.database import async_session_maker
@@ -124,6 +203,8 @@ async def _handle_chat_message(sender_id: str, payload: dict):
             conversation_id=uuid.UUID(conversation_id),
             sender_id=uuid.UUID(sender_id),
             content=content,
+            message_type=message_type,
+            attachments=attachments,
         )
         db.add(msg)
 
@@ -140,14 +221,15 @@ async def _handle_chat_message(sender_id: str, payload: dict):
                 "conversation_id": str(msg.conversation_id),
                 "sender_id": str(msg.sender_id),
                 "content": msg.content,
+                "message_type": msg.message_type if isinstance(msg.message_type, str) else (msg.message_type.value if msg.message_type else "text"),
+                "attachments": msg.attachments or [],
+                "is_read": msg.is_read,
                 "created_at": msg.created_at.isoformat() if msg.created_at else "",
             },
         }
 
-        # 发送给自己（确认）
         await manager.send_to_user(sender_id, msg_data)
 
-        # 发送给同会话的其他成员
         result = await db.execute(
             select(ConversationMember.user_id).where(
                 ConversationMember.conversation_id == uuid.UUID(conversation_id)
@@ -211,6 +293,10 @@ async def list_conversations(
     conv_ids = [row[0] for row in result.all()]
     if not conv_ids:
         return []
+
+    # 一次性获取在线用户集合
+    online_ids = await manager.get_online_users()
+    online_set = set(online_ids)
 
     # 批量获取会话
     conv_result = await db.execute(
@@ -303,7 +389,7 @@ async def list_conversations(
                 "id": str(other.id),
                 "username": other.username,
                 "avatar_url": other.avatar_url,
-                "online": await manager.is_online(str(other.id)),
+                "online": str(other.id) in online_set,
             }
 
         last_msg = msg_map.get(conv_id)
@@ -313,6 +399,7 @@ async def list_conversations(
                 "id": str(last_msg.id),
                 "sender_id": str(last_msg.sender_id) if last_msg.sender_id else None,
                 "content": last_msg.content,
+                "message_type": last_msg.message_type if isinstance(last_msg.message_type, str) else (last_msg.message_type.value if last_msg.message_type else "text"),
                 "created_at": last_msg.created_at.isoformat() if last_msg.created_at else "",
             }
 
@@ -386,6 +473,8 @@ class MessageResponse(BaseModel):
     sender_name: str | None
     sender_avatar: str | None
     content: str
+    message_type: str
+    attachments: list[dict]
     is_read: bool
     created_at: str
 
@@ -430,6 +519,8 @@ async def get_messages(
             sender_name=u.username if u else None,
             sender_avatar=u.avatar_url if u else None,
             content=m.content,
+            message_type=m.message_type if isinstance(m.message_type, str) else (m.message_type.value if m.message_type else "text"),
+            attachments=m.attachments or [],
             is_read=m.is_read,
             created_at=m.created_at.isoformat() if m.created_at else "",
         )
@@ -467,6 +558,8 @@ async def list_chat_users(
     db: AsyncSession = Depends(get_db),
 ):
     """获取可对话的用户列表（同团队成员 + 自己可见的用户）"""
+    online_ids = await manager.get_online_users()
+    online_set = set(online_ids)
     result = await db.execute(
         select(User.id, User.username, User.avatar_url)
         .where(User.is_active == True)
@@ -479,6 +572,106 @@ async def list_chat_users(
             "id": str(uid),
             "username": username,
             "avatar_url": avatar_url,
-            "online": await manager.is_online(str(uid)),
+            "online": str(uid) in online_set,
         })
     return {"users": users}
+
+
+# ============ REST: 文件上传 ============
+
+@router.post("/upload")
+async def upload_chat_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    """聊天文件上传，支持图片/视频/音频"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="缺少文件名")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    file_category = None
+    for cat, cfg in ALLOWED_TYPES.items():
+        if ext in cfg["exts"]:
+            file_category = cat
+            break
+
+    if not file_category:
+        allowed = ", ".join(e for cfg in ALLOWED_TYPES.values() for e in cfg["exts"])
+        raise HTTPException(status_code=400, detail=f"不支持的文件类型，允许: {allowed}")
+
+    content = await file.read()
+    max_size = ALLOWED_TYPES[file_category]["max_size"]
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail=f"{file_category} 文件不能超过 {max_size // 1024 // 1024}MB")
+
+    # 保存文件
+    file_id = str(uuid.uuid4())
+    save_dir = os.path.join(UPLOAD_DIR, file_category)
+    os.makedirs(save_dir, exist_ok=True)
+    filename = f"{file_id}{ext}"
+    filepath = os.path.join(save_dir, filename)
+
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    url = f"/chat-uploads/{file_category}/{filename}"
+    return {
+        "url": url,
+        "thumbnail_url": url if file_category == "image" else None,
+        "name": file.filename,
+        "type": file_category,
+    }
+
+
+# ============ REST: 保存附件到资产库 ============
+
+class SaveAttachmentRequest(BaseModel):
+    url: str
+    type: str  # image / video / audio
+    name: str
+    prompt: str | None = None
+    thumbnail_url: str | None = None
+
+
+@router.post("/save-attachment")
+async def save_attachment_to_assets(
+    data: SaveAttachmentRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """将聊天中的附件保存到自己的资产库"""
+    type_map = {"image": AssetType.IMAGE, "video": AssetType.VIDEO, "audio": AssetType.AUDIO}
+    asset_type = type_map.get(data.type)
+    if not asset_type:
+        raise HTTPException(status_code=400, detail="不支持的类型")
+
+    """将聊天中的附件保存到自己的资产库"""
+    type_map = {"image": AssetType.IMAGE, "video": AssetType.VIDEO, "audio": AssetType.AUDIO}
+    asset_type = type_map.get(data.type)
+    if not asset_type:
+        raise HTTPException(status_code=400, detail="不支持的类型")
+
+    meta = {}
+    if data.prompt:
+        meta["prompt"] = data.prompt
+
+    asset_id = uuid.uuid4()
+    now = datetime.utcnow()
+    # 直接用 raw SQL 避免 ORM 模型与数据库列名不匹配
+    from sqlalchemy import text
+    await db.execute(
+        text("""INSERT INTO assets (id, user_id, type, name, url, thumbnail_url, meta, is_starred, is_deleted, created_at, updated_at)
+                VALUES (:id, :uid, :type, :name, :url, :thumb, :meta, false, false, :now, :now)"""),
+        {
+            "id": asset_id,
+            "uid": current_user.id,
+            "type": asset_type.value,
+            "name": data.name,
+            "url": data.url,
+            "thumb": data.thumbnail_url,
+            "meta": json.dumps(meta),
+            "now": now,
+        },
+    )
+    await db.commit()
+    return {"asset_id": str(asset_id), "success": True}
