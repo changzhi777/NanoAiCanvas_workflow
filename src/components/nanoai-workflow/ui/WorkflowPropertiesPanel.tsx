@@ -253,135 +253,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
             </div>
           ) : (
             <>
-              {/* 节点基本信息 */}
-              <div
-                className={cn(
-                  'space-y-3 p-4 rounded-lg',
-                  isDark
-                    ? 'bg-slate-800/50'
-                    : 'bg-gray-50'
-                )}
-              >
-                <h3
-                  className={cn(
-                    'text-sm font-semibold mb-3',
-                    isDark ? 'text-slate-200' : 'text-gray-700'
-                  )}
-                >
-                  基本信息
-                </h3>
-
-                <div className="space-y-3">
-                  <div>
-                    <Label
-                      className={cn(
-                        'text-xs mb-1.5 block',
-                        isDark ? 'text-slate-400' : 'text-gray-600'
-                      )}
-                    >
-                      节点ID
-                    </Label>
-                    <Input
-                      value={selectedNode.id}
-                      disabled
-                      className={cn(
-                        'text-xs font-mono',
-                        isDark
-                          ? 'bg-slate-900/50 border-white/5 text-slate-500'
-                          : 'bg-gray-200/50 border-gray-300 text-gray-500'
-                      )}
-                    />
-                  </div>
-
-                  <div>
-                    <Label
-                      className={cn(
-                        'text-xs mb-1.5 block',
-                        isDark ? 'text-slate-400' : 'text-gray-600'
-                      )}
-                    >
-                      节点名称
-                    </Label>
-                    {isEditing ? (
-                      <Input
-                        value={editData.label || ''}
-                        onChange={(e) => handleInputChange('label', e.target.value)}
-                        className="text-sm"
-                        placeholder="输入节点名称"
-                      />
-                    ) : (
-                      <div
-                        className={cn(
-                          'text-sm p-2 rounded border',
-                          isDark
-                            ? 'bg-slate-900/50 border-white/5 text-slate-300'
-                            : 'bg-white border-gray-200 text-gray-700'
-                        )}
-                      >
-                        {selectedNode.data.label || '未命名'}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label
-                      className={cn(
-                        'text-xs mb-1.5 block',
-                        isDark ? 'text-slate-400' : 'text-gray-600'
-                      )}
-                    >
-                      节点类型
-                    </Label>
-                    <div
-                      className={cn(
-                        'text-sm p-2 rounded border',
-                        isDark
-                          ? 'bg-slate-900/50 border-white/5 text-slate-300'
-                          : 'bg-white border-gray-200 text-gray-700'
-                      )}
-                    >
-                      {selectedNode.type}
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label
-                      className={cn(
-                        'text-xs mb-1.5 block',
-                        isDark ? 'text-slate-400' : 'text-gray-600'
-                      )}
-                    >
-                      状态
-                    </Label>
-                    <div
-                      className={cn(
-                        'text-xs p-2 rounded-full inline-block',
-                        selectedNode.data.status === 'success'
-                          ? isDark
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                            : 'bg-green-50 text-green-600 border border-green-200'
-                          : selectedNode.data.status === 'error'
-                            ? isDark
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/50'
-                              : 'bg-red-50 text-red-600 border border-red-200'
-                            : selectedNode.data.status === 'running'
-                              ? isDark
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
-                                : 'bg-blue-50 text-blue-600 border border-blue-200'
-                              : isDark
-                                ? 'bg-slate-700/50 text-slate-400 border border-white/10'
-                                : 'bg-gray-100 text-gray-600 border border-gray-200'
-                      )}
-                    >
-                      {selectedNode.data.status === 'success' && '已完成'}
-                      {selectedNode.data.status === 'error' && '错误'}
-                      {selectedNode.data.status === 'running' && '运行中'}
-                      {selectedNode.data.status === 'idle' && '空闲'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* 故事板分镜A 专属配置 — 直接可编辑 */}
               {selectedNode.type === 'storyboard_shot_a' && (() => {
                 const p = { ...DEFAULT_PARAMS, ...(editData.params || {}) };
@@ -610,6 +481,135 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 </div>
               </div>
               )}
+
+              {/* 节点基本信息 */}
+              <div
+                className={cn(
+                  'space-y-3 p-4 rounded-lg',
+                  isDark
+                    ? 'bg-slate-800/50'
+                    : 'bg-gray-50'
+                )}
+              >
+                <h3
+                  className={cn(
+                    'text-sm font-semibold mb-3',
+                    isDark ? 'text-slate-200' : 'text-gray-700'
+                  )}
+                >
+                  基本信息
+                </h3>
+
+                <div className="space-y-3">
+                  <div>
+                    <Label
+                      className={cn(
+                        'text-xs mb-1.5 block',
+                        isDark ? 'text-slate-400' : 'text-gray-600'
+                      )}
+                    >
+                      节点ID
+                    </Label>
+                    <Input
+                      value={selectedNode.id}
+                      disabled
+                      className={cn(
+                        'text-xs font-mono',
+                        isDark
+                          ? 'bg-slate-900/50 border-white/5 text-slate-500'
+                          : 'bg-gray-200/50 border-gray-300 text-gray-500'
+                      )}
+                    />
+                  </div>
+
+                  <div>
+                    <Label
+                      className={cn(
+                        'text-xs mb-1.5 block',
+                        isDark ? 'text-slate-400' : 'text-gray-600'
+                      )}
+                    >
+                      节点名称
+                    </Label>
+                    {isEditing ? (
+                      <Input
+                        value={editData.label || ''}
+                        onChange={(e) => handleInputChange('label', e.target.value)}
+                        className="text-sm"
+                        placeholder="输入节点名称"
+                      />
+                    ) : (
+                      <div
+                        className={cn(
+                          'text-sm p-2 rounded border',
+                          isDark
+                            ? 'bg-slate-900/50 border-white/5 text-slate-300'
+                            : 'bg-white border-gray-200 text-gray-700'
+                        )}
+                      >
+                        {selectedNode.data.label || '未命名'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label
+                      className={cn(
+                        'text-xs mb-1.5 block',
+                        isDark ? 'text-slate-400' : 'text-gray-600'
+                      )}
+                    >
+                      节点类型
+                    </Label>
+                    <div
+                      className={cn(
+                        'text-sm p-2 rounded border',
+                        isDark
+                          ? 'bg-slate-900/50 border-white/5 text-slate-300'
+                          : 'bg-white border-gray-200 text-gray-700'
+                      )}
+                    >
+                      {selectedNode.type}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label
+                      className={cn(
+                        'text-xs mb-1.5 block',
+                        isDark ? 'text-slate-400' : 'text-gray-600'
+                      )}
+                    >
+                      状态
+                    </Label>
+                    <div
+                      className={cn(
+                        'text-xs p-2 rounded-full inline-block',
+                        selectedNode.data.status === 'success'
+                          ? isDark
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                            : 'bg-green-50 text-green-600 border border-green-200'
+                          : selectedNode.data.status === 'error'
+                            ? isDark
+                              ? 'bg-red-500/20 text-red-400 border border-red-500/50'
+                              : 'bg-red-50 text-red-600 border border-red-200'
+                            : selectedNode.data.status === 'running'
+                              ? isDark
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50'
+                                : 'bg-blue-50 text-blue-600 border border-blue-200'
+                              : isDark
+                                ? 'bg-slate-700/50 text-slate-400 border border-white/10'
+                                : 'bg-gray-100 text-gray-600 border border-gray-200'
+                      )}
+                    >
+                      {selectedNode.data.status === 'success' && '已完成'}
+                      {selectedNode.data.status === 'error' && '错误'}
+                      {selectedNode.data.status === 'running' && '运行中'}
+                      {selectedNode.data.status === 'idle' && '空闲'}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* 节点结果 */}
               {selectedNode.data.result && (
