@@ -541,7 +541,6 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
         <div
           className={cn(
             'fixed bottom-16 right-4 z-50 w-80 rounded-2xl shadow-2xl backdrop-blur-xl border',
-            'animate-in slide-in-from-bottom-4 duration-300',
             'max-h-[60vh] flex flex-col',
             isDark
               ? 'bg-slate-900/95 border-white/10'

@@ -67,10 +67,8 @@ export function OnboardingTour() {
   const { isDark } = useTheme()
 
   useEffect(() => {
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      const timer = setTimeout(() => setVisible(true), 1200)
-      return () => clearTimeout(timer)
-    }
+    // 直接标记已完成，跳过新手教程
+    localStorage.setItem(STORAGE_KEY, 'true')
   }, [])
 
   const close = useCallback(() => {
