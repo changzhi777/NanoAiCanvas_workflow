@@ -8,6 +8,7 @@ import ReactFlow, {
   Connection,
   useNodesState,
   useEdgesState,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import '@/styles/dark-theme.css';
@@ -112,6 +113,7 @@ interface NanoaiWorkflowCanvasProps {
 
 export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   const { isDark } = useTheme();
+  const { fitView } = useReactFlow();
   // 从 localStorage 恢复侧边栏折叠状态
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
@@ -256,11 +258,18 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
 
   // 同步 store 到 React Flow
   const isDraggingRef = useRef(false);
+  const prevNodeCountRef = useRef(0);
   useEffect(() => {
-    // 确保同步 store 的最新状态
     setNodes(storeNodes);
     setEdges(storeEdges);
-  }, [storeNodes, storeEdges, setNodes, setEdges]);
+    // 节点数量变化时自动居中（首次加载/模板加载/导入）
+    if (storeNodes.length > 0 && storeNodes.length !== prevNodeCountRef.current) {
+      prevNodeCountRef.current = storeNodes.length;
+      requestAnimationFrame(() => {
+        fitView({ padding: 0.2, duration: 400 });
+      });
+    }
+  }, [storeNodes, storeEdges, setNodes, setEdges, fitView]);
 
   // 调整 MiniMap 位置到右下角偏左
   useEffect(() => {
@@ -811,7 +820,7 @@ export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
               nodeTypes={customNodeTypes}
               edgeTypes={edgeTypes}
               defaultEdgeOptions={defaultEdgeOptions}
-              defaultViewport={{ x: 0, y: 0, zoom: 2 }}
+              defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               className="bg-background"
               proOptions={{
                 hideAttribution: true,
