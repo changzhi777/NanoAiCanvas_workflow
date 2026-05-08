@@ -33,7 +33,7 @@ class TeamMemberUpdate(BaseModel):
 
 
 class TeamResponse(BaseModel):
-    id: UUID
+    id: int
     name: str
     owner_id: UUID
     admin_id: Optional[UUID]
@@ -44,8 +44,8 @@ class TeamResponse(BaseModel):
 
 
 class TeamMemberResponse(BaseModel):
-    id: UUID
-    team_id: UUID
+    id: int
+    team_id: int
     user_id: UUID
     role: str
     can_edit: bool

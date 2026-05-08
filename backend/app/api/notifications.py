@@ -1,7 +1,7 @@
 """用户通知 API + 管理端通知接口"""
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, func, desc, or_
+from sqlalchemy import select, update, func, desc, or_, text
 from pydantic import BaseModel
 from typing import List, Optional
 from uuid import UUID
@@ -90,7 +90,7 @@ async def list_notifications(
     )
     unread_result = await db.execute(
         select(func.count()).select_from(Notification)
-        .where(Notification.receiver_id == current_user.id, Notification.status != "read")
+        .where(Notification.receiver_id == current_user.id, Notification.status != text("'READ'::notificationstatus"))
     )
     return {
         "notifications": items,
@@ -107,7 +107,7 @@ async def unread_count(
     result = await db.execute(
         select(func.count()).select_from(Notification).where(
             Notification.receiver_id == current_user.id,
-            Notification.status != "read",
+            Notification.status != text("'READ'::notificationstatus"),
         )
     )
     return UnreadCountResponse(count=result.scalar() or 0)
@@ -128,7 +128,7 @@ async def mark_read(
     n = result.scalar_one_or_none()
     if not n:
         raise HTTPException(status_code=404, detail="Notification not found")
-    n.status = "read"
+    n.status = "READ"
     n.read_at = datetime.utcnow()
     await db.commit()
     return {"success": True}
@@ -141,8 +141,8 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.receiver_id == current_user.id, Notification.status != "read")
-        .values(status="read", read_at=datetime.utcnow())
+        .where(Notification.receiver_id == current_user.id, Notification.status != text("'READ'::notificationstatus"))
+        .values(status=text("'READ'::notificationstatus"), read_at=datetime.utcnow())
     )
     await db.commit()
     return {"success": True}
