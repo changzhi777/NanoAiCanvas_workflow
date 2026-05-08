@@ -35,11 +35,14 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   // 获取当前选中的节点
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
-  // 选中节点时同步数据到编辑状态，但不自动展开
+  // 选中节点时同步数据并自动展开面板
   useEffect(() => {
     if (selectedNode) {
       setEditData(selectedNode.data);
       setIsEditing(false);
+      expand();
+    } else {
+      collapse();
     }
   }, [selectedNode]);
 
