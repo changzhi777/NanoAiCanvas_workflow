@@ -44,6 +44,10 @@ import { AutoLayoutButton } from './ui/AutoLayoutButton';
 import { useI18n } from '@/hooks/useI18n';
 import { AssetLibraryPanel, SyncStatusIndicator } from '@/components/ui/AssetLibrary';
 import { LoginButton } from '@/components/ui/LoginButton';
+import { ChatDialog } from '@/components/ui/ChatDialog';
+import { MessageSquare } from 'lucide-react';
+import { useChatStore } from '@/stores/chatStore';
+import { useNotificationStore } from '@/stores/notificationStore';
 
 export function NanoaiWorkflowToolbar() {
   const { isDark, toggleTheme } = useTheme();
@@ -51,6 +55,10 @@ export function NanoaiWorkflowToolbar() {
   const { t } = useI18n();
   const token = useAuthStore((s) => s.token);
   const syncInit = useSyncStore((s) => s.init);
+  const [chatOpen, setChatOpen] = useState(false);
+  const chatUnread = useChatStore((s) => s.totalUnread);
+  const notifUnread = useNotificationStore((s) => s.unreadCount);
+  const combinedUnread = chatUnread + notifUnread;
 
   // Force re-render when auth state changes
   const [, forceUpdate] = useState({});
@@ -253,6 +261,25 @@ export function NanoaiWorkflowToolbar() {
               资产库
             </Button>
           )}
+
+          {/* 消息按钮 */}
+          {token && (
+            <Button
+              onClick={() => setChatOpen(true)}
+              variant="ghost"
+              size="icon"
+              className="relative"
+              title="消息"
+            >
+              <MessageSquare className="w-4 h-4" />
+              {combinedUnread > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {combinedUnread > 99 ? '99+' : combinedUnread}
+                </span>
+              )}
+            </Button>
+          )}
+          <ChatDialog open={chatOpen} onOpenChange={setChatOpen} />
 
           {/* 用户名按钮 */}
           <LoginButton />
