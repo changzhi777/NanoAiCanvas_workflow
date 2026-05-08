@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
-import { DEFAULT_PARAMS, type AspectRatio } from './StoryboardShotA.shared'
+import { DEFAULT_PARAMS, getSizeTier, type AspectRatio } from './StoryboardShotA.shared'
 
 // ==================== 类型定义 ====================
 
@@ -111,13 +111,12 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
       const abortController = new AbortController()
       abortRef.current = abortController
 
-      const sizeMap: Record<string, '1K' | '2K' | '4K'> = { '512x512': '1K', '1024x1024': '1K', '1536x1536': '2K' }
       const allImages: string[] = []
       const batchSize = Math.max(1, Math.min(8, params.batchCount))
 
       for (let i = 0; i < batchSize; i++) {
         const batchImages = await adapter.generateImage(
-          { prompt: batchSize > 1 ? `${prompt} (variation ${i + 1})` : prompt, size: sizeMap[params.size] || '1K', aspectRatio: params.aspectRatio, signal: abortController.signal },
+          { prompt: batchSize > 1 ? `${prompt} (variation ${i + 1})` : prompt, size: getSizeTier(params.size), aspectRatio: params.aspectRatio, signal: abortController.signal },
           (progress) => { setStepProgress(progress) },
           (stepInfo: TaskStepInfo) => {
             setCurrentStep(stepInfo.step)

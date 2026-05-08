@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
-import { DEFAULT_PARAMS, optimizePromptWithGLM } from '../nodes/StoryboardShotA.shared';
+import { DEFAULT_PARAMS, optimizePromptWithGLM, SIZE_OPTIONS, getDefaultSize } from '../nodes/StoryboardShotA.shared';
 
 export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElement>) {
   const { isDark } = useTheme();
@@ -16,6 +16,20 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, any>>({});
+
+  const notifyPanelState = useCallback((open: boolean) => {
+    window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open } }));
+  }, []);
+
+  const collapse = useCallback(() => {
+    setIsCollapsed(true);
+    notifyPanelState(false);
+  }, [notifyPanelState]);
+
+  const expand = useCallback(() => {
+    setIsCollapsed(false);
+    notifyPanelState(true);
+  }, [notifyPanelState]);
 
   // 获取当前选中的节点
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
@@ -396,7 +410,11 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                     <div className="space-y-3">
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">图片比例</Label>
-                        <select value={p.aspectRatio || '1:1'} onChange={e => setP({ aspectRatio: e.target.value })} className={selectCls}>
+                        <select value={p.aspectRatio || '1:1'} onChange={e => {
+                          const newRatio = e.target.value as any
+                          const newSize = getDefaultSize(newRatio)
+                          setP({ aspectRatio: newRatio, size: newSize })
+                        }} className={selectCls}>
                           <option value="1:1">1:1 正方形</option>
                           <option value="16:9">16:9 横屏</option>
                           <option value="9:16">9:16 竖屏</option>
@@ -406,10 +424,14 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">图片尺寸</Label>
-                        <select value={p.size || '1024x1024'} onChange={e => setP({ size: e.target.value })} className={selectCls}>
-                          <option value="512x512">512×512</option>
-                          <option value="1024x1024">1024×1024</option>
-                          <option value="1536x1536">1536×1536</option>
+                        <select
+                          value={p.size || '1024x1024'}
+                          onChange={e => setP({ size: e.target.value })}
+                          className={selectCls}
+                        >
+                          {(SIZE_OPTIONS[(p.aspectRatio || '1:1') as keyof typeof SIZE_OPTIONS] || SIZE_OPTIONS['1:1']).map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div>
