@@ -52,7 +52,7 @@ function PageSwitcher() {
   const [active, setActive] = useState<PageKey>('workflow')
   const [panelOpen, setPanelOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-  const [indicator, setIndicator] = useState({ left: 0, width: 0 })
+  const [indicator, setIndicator] = useState({ top: 0, height: 0 })
 
   const switchTo = (key: PageKey) => {
     setActive(key)
@@ -72,7 +72,7 @@ function PageSwitcher() {
     const idx = PAGES.findIndex(p => p.key === active)
     const btn = btns[idx]
     if (btn) {
-      setIndicator({ left: btn.offsetLeft, width: btn.offsetWidth })
+      setIndicator({ top: btn.offsetTop, height: btn.offsetHeight })
     }
   }, [active])
 
@@ -81,11 +81,11 @@ function PageSwitcher() {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-16 right-4 z-50 flex rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
+      className="fixed bottom-16 right-4 z-50 flex flex-col rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
     >
       <div
-        className="absolute top-1 bottom-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"
-        style={{ left: indicator.left, width: indicator.width }}
+        className="absolute left-1 right-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"
+        style={{ top: indicator.top, height: indicator.height }}
       />
       {PAGES.map(({ key, label }) => (
         <button
