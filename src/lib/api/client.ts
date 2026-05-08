@@ -114,13 +114,14 @@ async function request<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  const { token, apiKey, ...fetchOptions } = options;
+  const { token: explicitToken, apiKey, ...fetchOptions } = options;
 
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
 
+  const token = explicitToken || (typeof window !== 'undefined' ? localStorage.getItem('nanoai_token') : null);
   if (token) {
     (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
   }
