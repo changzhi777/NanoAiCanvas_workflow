@@ -95,6 +95,25 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
   const prompt = editablePrompt || optimizedPrompt || rawPrompt
 
+  const logGenerationTask = useCallback(async (info: { startedAt: string; status: string; error?: string }) => {
+    try {
+      const token = localStorage.getItem('nanoai_token')
+      await fetch('/api/v2/generation-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          node_id: id,
+          skill_id: 'gpt_image_2',
+          prompt: prompt.substring(0, 500),
+          status: info.status,
+          error_message: info.error || null,
+          started_at: info.startedAt,
+          completed_at: new Date().toISOString(),
+        }),
+      })
+    } catch {}
+  }, [id, prompt])
+
   const handleExecute = useCallback(async () => {
     if (!prompt) { setLocalError('请先输入故事描述'); return }
 
@@ -142,13 +161,20 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
       setCurrentStep('completed')
       setStepProgress(100)
       setStepMessage('完成')
+      logGenerationTask({ startedAt, status: 'success' })
+      setStepProgress(100)
+      setStepMessage('完成')
     } catch (err: any) {
-      if (err.name === 'AbortError') return
+      if (err.name === 'AbortError') {
+        logGenerationTask({ startedAt, status: 'aborted', error: '用户终止' })
+        return
+      }
       const errorMsg = err.message || '生成失败'
       setLocalError(errorMsg)
       setCurrentStep('failed')
       setStepMessage(errorMsg)
       updateNode(id, { status: NodeStatus.ERROR, error: errorMsg })
+      logGenerationTask({ startedAt, status: 'failed', error: errorMsg })
     }
   }, [id, updateNode, prompt, rawPrompt, optimizedPrompt, params])
 
@@ -228,13 +254,17 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
           {/* 运行时步骤动画 */}
           {data.status === NodeStatus.RUNNING && (
-            <TaskStepAnimation currentStep={currentStep} progress={stepProgress} stepMessage={stepMessage} />
+            <TaskStepAnimation
+              currentStep={currentStep}
+              progress={stepProgress}
+              stepMessage={stepMessage}
+              startedAt={data.result?.startedAt}
+              onCancel={handleCancel}
+            />
           )}
 
-          {/* 执行按钮 */}
-          {data.status === NodeStatus.RUNNING ? (
-            <Button onClick={handleCancel} variant="outline" size="sm" className="w-full h-7 text-xs">取消</Button>
-          ) : (
+          {/* 执行按钮（非运行状态显示） */}
+          {data.status !== NodeStatus.RUNNING && (
             <Button
               onClick={handleExecute}
               disabled={data.status === NodeStatus.DISABLED || !prompt}

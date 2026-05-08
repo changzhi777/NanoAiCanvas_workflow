@@ -82,6 +82,10 @@ app.include_router(v2_admin.router)
 # V2 GLM proxy (prompt optimization)
 app.include_router(v2_glm.router)
 
+# V2 Generation task logs
+from app.api.v2 import generation_log as v2_genlog
+app.include_router(v2_genlog.router)
+
 # WebSocket routes for real-time task status
 for route in websocket_routes:
     app.add_route(route.path, route.endpoint, methods=["GET"])

@@ -276,14 +276,17 @@ async def list_conversations(
     # 批量统计未读数
     unread_counts: dict = {}
     for conv_id in conv_ids:
-        last_read = my_member_map.get(conv_id).last_read_at if conv_id in my_member_map else None
-        count_result = await db.execute(
-            select(func.count()).select_from(Message).where(
-                Message.conversation_id == conv_id,
-                Message.sender_id != current_user.id,
-                Message.is_read == False if not last_read else Message.created_at > last_read,
-            )
+        member = my_member_map.get(conv_id)
+        last_read = member.last_read_at if member else None
+        unread_q = select(func.count()).select_from(Message).where(
+            Message.conversation_id == conv_id,
+            Message.sender_id != current_user.id,
         )
+        if last_read:
+            unread_q = unread_q.where(Message.created_at > last_read)
+        else:
+            unread_q = unread_q.where(Message.is_read == False)
+        count_result = await db.execute(unread_q)
         unread_counts[conv_id] = count_result.scalar() or 0
 
     resp = []
@@ -315,7 +318,7 @@ async def list_conversations(
 
         resp.append(ConversationResponse(
             id=str(conv.id),
-            type=conv.type.value,
+            type=conv.type if isinstance(conv.type, str) else conv.type.value,
             name=conv.name,
             other_user=other_user,
             last_message=last_message,
