@@ -13,6 +13,7 @@ from app.api import (
 from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
 from app.api.v2 import admin as v2_admin
+from app.api.v2 import glm_proxy as v2_glm
 from app.api.websocket import websocket_routes
 from app.services.skills_worker import WorkerManager
 
@@ -75,6 +76,9 @@ app.include_router(v2_skills.router)
 
 # V2 Admin routers (provider/model/key management)
 app.include_router(v2_admin.router)
+
+# V2 GLM proxy (prompt optimization)
+app.include_router(v2_glm.router)
 
 # WebSocket routes for real-time task status
 for route in websocket_routes:

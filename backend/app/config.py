@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Skills Service
     SKILLS_API_KEY: str = ""  # Optional API key for LLM-based template recommendation
 
+    # GLM (智谱AI)
+    GLM_API_KEY: str = ""
+    GLM_API_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
+
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
