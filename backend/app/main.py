@@ -10,6 +10,7 @@ from app.api import (
     prompt_restrictions, categories, teams, assets_export,
     admin_users, notifications
 )
+from app.api import chat
 from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
 from app.api.v2 import admin as v2_admin
@@ -67,6 +68,7 @@ app.include_router(teams.router, prefix="/api")
 app.include_router(assets_export.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 # V2 Image generation routers (new unified routes)
 app.include_router(v2_image.router)

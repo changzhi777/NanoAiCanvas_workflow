@@ -151,6 +151,10 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
                   style={{ aspectRatio: aspectCSS }}
                 >
                   <img src={img} alt={`图片 ${idx + 1}`} className="w-full h-full object-cover" />
+                  {/* 镜头编号 */}
+                  <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur-sm">
+                    P{idx + 1}
+                  </span>
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <div className="p-1.5 rounded-full bg-black/50">
                       <ZoomIn className="w-3.5 h-3.5 text-white" />
@@ -207,7 +211,10 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           <div className="w-full h-full flex items-center justify-center overflow-auto" onClick={e => e.stopPropagation()}
             onWheel={(e) => { e.preventDefault(); setZoomLevel(p => Math.max(0.25, Math.min(4, p + (e.deltaY > 0 ? -0.15 : 0.15)))) }}
           >
-            <img src={currentItem} alt="预览" className="rounded-lg shadow-2xl transition-transform duration-150" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }} draggable={false} />
+            <div className="relative">
+              <img src={currentItem} alt="预览" className="rounded-lg shadow-2xl transition-transform duration-150" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }} draggable={false} />
+              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-sm font-bold bg-black/70 text-white backdrop-blur-sm">{displayImages.length > 1 ? `P${currentIndex + 1}` : 'P1'}</span>
+            </div>
           </div>
 
           {displayImages.length > 1 && (
