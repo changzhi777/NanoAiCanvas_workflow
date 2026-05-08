@@ -7,8 +7,8 @@ from typing import List, Optional
 from uuid import UUID
 from app.database import get_db
 from app.models import User
-from app.models.user import UserStatus, UserRole
-from app.api.auth import get_current_user
+from app.models.user import UserStatus
+from app.api.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
@@ -26,13 +26,6 @@ class ApproveResponse(BaseModel):
     username: str
     email: str
     status: str
-
-
-async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Require admin user"""
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return current_user
 
 
 @router.get("/pending", response_model=List[PendingUserResponse])

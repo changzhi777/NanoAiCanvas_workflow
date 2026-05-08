@@ -10,7 +10,7 @@ from uuid import UUID
 from datetime import datetime
 from app.database import get_db
 from app.models import User, PointsAccount, PointsTransaction, TransactionType, TransactionStatus, BillingRule, RechargeRecord
-from app.api.auth import get_current_user
+from app.api.auth import require_admin
 
 router = APIRouter(prefix="/v2/admin/points", tags=["points-admin"])
 
@@ -154,7 +154,7 @@ async def list_users_with_points(
     page_size: int = Query(20, ge=1, le=100),
     search: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """
     获取所有用户及其积分信息
@@ -207,7 +207,7 @@ async def list_users_with_points(
 async def recharge_user_points(
     request: RechargeRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """
     管理员为用户充值积分
@@ -247,7 +247,7 @@ async def list_transactions(
     user_id: Optional[UUID] = None,
     transaction_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """
     获取交易记录列表
@@ -308,7 +308,7 @@ async def list_transactions(
 @router.get("/rules", response_model=List[BillingRuleSchema])
 async def list_billing_rules(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """获取扣费规则列表"""
     result = await db.execute(select(BillingRule).order_by(BillingRule.id))
@@ -332,7 +332,7 @@ async def list_billing_rules(
 async def create_billing_rule(
     request: BillingRuleCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """创建扣费规则"""
     if request.points_per_unit <= 0:
@@ -368,7 +368,7 @@ async def update_billing_rule(
     rule_id: int,
     request: BillingRuleUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """更新扣费规则"""
     result = await db.execute(select(BillingRule).where(BillingRule.id == rule_id))
@@ -404,7 +404,7 @@ async def update_billing_rule(
 async def delete_billing_rule(
     rule_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """删除扣费规则"""
     result = await db.execute(select(BillingRule).where(BillingRule.id == rule_id))
@@ -423,7 +423,7 @@ async def delete_billing_rule(
 async def get_billing_rule(
     rule_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """获取单个扣费规则"""
     result = await db.execute(select(BillingRule).where(BillingRule.id == rule_id))
@@ -452,7 +452,7 @@ async def list_recharge_records(
     user_id: Optional[UUID] = None,
     status: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """
     获取充值记录列表
@@ -493,7 +493,7 @@ async def create_recharge_order(
     amount: int,
     payment_method: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """
     创建充值订单（扫码充值）
@@ -531,7 +531,7 @@ async def create_recharge_order(
 async def get_recharge_record(
     order_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    admin: User = Depends(require_admin)
 ):
     """根据订单号查询充值记录"""
     result = await db.execute(

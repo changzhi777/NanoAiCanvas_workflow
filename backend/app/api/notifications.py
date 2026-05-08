@@ -9,7 +9,7 @@ from datetime import datetime
 from app.database import get_db
 from app.models import User, Notification
 from app.models.notification import NotificationType
-from app.api.auth import get_current_user
+from app.api.auth import get_current_user, require_admin
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -162,7 +162,7 @@ async def list_notification_records(
     page_size: int = Query(50, ge=1, le=100),
     notification_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    admin: User = Depends(require_admin),
 ):
     """管理端：获取所有通知记录"""
     query = select(Notification, User).join(
@@ -201,7 +201,7 @@ async def list_notification_records(
 async def admin_send_notification(
     data: AdminNotificationSend,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    admin: User = Depends(require_admin),
 ):
     """管理端：发送通知"""
     ntype = _notification_type_from_str(data.notification_type)

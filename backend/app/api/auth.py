@@ -8,7 +8,7 @@ from typing import Optional
 
 from app.database import get_db
 from app.models import User
-from app.models.user import UserStatus
+from app.models.user import UserStatus, UserRole
 from app.schemas import UserRegister, UserLogin, TokenResponse, UserResponse, UserUpdate
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.redis import SessionManager, redis_client
@@ -65,6 +65,13 @@ async def get_current_user_optional(token: str = Depends(oauth2_scheme), db: Asy
         return user
     except Exception:
         return None
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Require admin user - shared dependency for all admin routes"""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user
 
 
 @router.post("/register")

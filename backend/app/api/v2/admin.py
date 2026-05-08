@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.models.api_key import Provider, Model, ModelUsageLog, APIKey, ModelRoute
+from app.models import User
+from app.api.auth import require_admin
 
 router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
 
@@ -198,7 +200,7 @@ def _apikey_to_out(k: APIKey) -> dict:
 # ============ 渠道商 CRUD ============
 
 @router.get("/providers", response_model=List[ProviderOut])
-async def list_providers(db: AsyncSession = Depends(get_db)):
+async def list_providers(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     stmt = select(Provider).order_by(Provider.id)
     result = await db.execute(stmt)
     providers = result.scalars().all()
@@ -214,7 +216,7 @@ async def list_providers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/providers", response_model=ProviderOut)
-async def create_provider(data: ProviderCreate, db: AsyncSession = Depends(get_db)):
+async def create_provider(data: ProviderCreate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(Provider).where(Provider.code == data.code))
     if existing.scalar_one_or_none():
         raise HTTPException(400, f"渠道商代码 '{data.code}' 已存在")
@@ -226,7 +228,7 @@ async def create_provider(data: ProviderCreate, db: AsyncSession = Depends(get_d
 
 
 @router.get("/providers/{provider_id}", response_model=ProviderOut)
-async def get_provider(provider_id: int, db: AsyncSession = Depends(get_db)):
+async def get_provider(provider_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -238,7 +240,7 @@ async def get_provider(provider_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/providers/{provider_id}", response_model=ProviderOut)
-async def update_provider(provider_id: int, data: ProviderUpdate, db: AsyncSession = Depends(get_db)):
+async def update_provider(provider_id: int, data: ProviderUpdate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -250,7 +252,7 @@ async def update_provider(provider_id: int, data: ProviderUpdate, db: AsyncSessi
 
 
 @router.delete("/providers/{provider_id}")
-async def delete_provider(provider_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_provider(provider_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -260,7 +262,7 @@ async def delete_provider(provider_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/providers/{provider_id}/toggle")
-async def toggle_provider(provider_id: int, data: ToggleRequest, db: AsyncSession = Depends(get_db)):
+async def toggle_provider(provider_id: int, data: ToggleRequest, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -272,7 +274,7 @@ async def toggle_provider(provider_id: int, data: ToggleRequest, db: AsyncSessio
 # ============ 模型 CRUD ============
 
 @router.get("/providers/{provider_id}/models", response_model=List[ModelOut])
-async def list_models(provider_id: int, db: AsyncSession = Depends(get_db)):
+async def list_models(provider_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -282,7 +284,7 @@ async def list_models(provider_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/providers/{provider_id}/models", response_model=ModelOut)
-async def create_model(provider_id: int, data: ModelCreate, db: AsyncSession = Depends(get_db)):
+async def create_model(provider_id: int, data: ModelCreate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, provider_id)
     if not p:
         raise HTTPException(404, "渠道商不存在")
@@ -294,7 +296,7 @@ async def create_model(provider_id: int, data: ModelCreate, db: AsyncSession = D
 
 
 @router.put("/providers/{provider_id}/models/{model_id}", response_model=ModelOut)
-async def update_model(provider_id: int, model_id: int, data: ModelUpdate, db: AsyncSession = Depends(get_db)):
+async def update_model(provider_id: int, model_id: int, data: ModelUpdate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     m = await db.get(Model, model_id)
     if not m or m.provider_id != provider_id:
         raise HTTPException(404, "模型不存在")
@@ -306,7 +308,7 @@ async def update_model(provider_id: int, model_id: int, data: ModelUpdate, db: A
 
 
 @router.delete("/providers/{provider_id}/models/{model_id}")
-async def delete_model(provider_id: int, model_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_model(provider_id: int, model_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     m = await db.get(Model, model_id)
     if not m or m.provider_id != provider_id:
         raise HTTPException(404, "模型不存在")
@@ -316,7 +318,7 @@ async def delete_model(provider_id: int, model_id: int, db: AsyncSession = Depen
 
 
 @router.post("/providers/{provider_id}/models/{model_id}/toggle")
-async def toggle_model(provider_id: int, model_id: int, data: ToggleRequest, db: AsyncSession = Depends(get_db)):
+async def toggle_model(provider_id: int, model_id: int, data: ToggleRequest, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     m = await db.get(Model, model_id)
     if not m or m.provider_id != provider_id:
         raise HTTPException(404, "模型不存在")
@@ -331,7 +333,7 @@ async def toggle_model(provider_id: int, model_id: int, data: ToggleRequest, db:
 async def list_api_keys(
     provider_id: Optional[int] = None,
     status: Optional[str] = None,
-    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db),
 ):
     stmt = select(APIKey)
     if provider_id:
@@ -344,7 +346,7 @@ async def list_api_keys(
 
 
 @router.get("/api-keys/{key_id}", response_model=APIKeyOut)
-async def get_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
+async def get_api_key(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     k = await db.get(APIKey, key_id)
     if not k:
         raise HTTPException(404, "密钥不存在")
@@ -352,7 +354,7 @@ async def get_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/api-keys", response_model=APIKeyOut)
-async def create_api_key(data: APIKeyCreate, db: AsyncSession = Depends(get_db)):
+async def create_api_key(data: APIKeyCreate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     p = await db.get(Provider, data.provider_id)
     if not p:
         raise HTTPException(400, "渠道商不存在")
@@ -364,7 +366,7 @@ async def create_api_key(data: APIKeyCreate, db: AsyncSession = Depends(get_db))
 
 
 @router.put("/api-keys/{key_id}", response_model=APIKeyOut)
-async def update_api_key(key_id: int, data: APIKeyUpdate, db: AsyncSession = Depends(get_db)):
+async def update_api_key(key_id: int, data: APIKeyUpdate, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     k = await db.get(APIKey, key_id)
     if not k:
         raise HTTPException(404, "密钥不存在")
@@ -376,7 +378,7 @@ async def update_api_key(key_id: int, data: APIKeyUpdate, db: AsyncSession = Dep
 
 
 @router.delete("/api-keys/{key_id}")
-async def delete_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_api_key(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     k = await db.get(APIKey, key_id)
     if not k:
         raise HTTPException(404, "密钥不存在")
@@ -386,7 +388,7 @@ async def delete_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/api-keys/{key_id}/test")
-async def test_api_key(key_id: int, db: AsyncSession = Depends(get_db)):
+async def test_api_key(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     k = await db.get(APIKey, key_id)
     if not k:
         raise HTTPException(404, "密钥不存在")
@@ -427,7 +429,7 @@ async def update_load_balance(
     key_id: int,
     weight: int = Query(1, ge=1, le=100),
     max_concurrent: int = Query(10, ge=1, le=1000),
-    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db),
 ):
     k = await db.get(APIKey, key_id)
     if not k:
@@ -442,7 +444,7 @@ async def update_load_balance(
 async def get_key_statistics(
     provider_id: Optional[int] = None,
     days: int = Query(7, ge=1, le=90),
-    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db),
 ):
     since = datetime.utcnow() - timedelta(days=days)
     stmt = select(
@@ -476,7 +478,7 @@ async def get_key_statistics(
 async def get_models_usage(
     days: int = Query(7, ge=1, le=90),
     provider_id: Optional[int] = None,
-    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db),
 ):
     since = datetime.utcnow() - timedelta(days=days)
 
@@ -527,7 +529,7 @@ async def get_models_usage(
 # ============ 健康检查 ============
 
 @router.get("/models/{model_id}/health")
-async def get_model_health(model_id: int, db: AsyncSession = Depends(get_db)):
+async def get_model_health(model_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     m = await db.get(Model, model_id)
     if not m:
         raise HTTPException(404, "模型不存在")
@@ -596,7 +598,7 @@ class RouteOut(BaseModel):
 
 
 @router.get("/model-routes", response_model=List[RouteOut])
-async def list_routes(db: AsyncSession = Depends(get_db)):
+async def list_routes(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """获取所有路由映射"""
     stmt = (
         select(ModelRoute, Model, Provider)
@@ -621,7 +623,7 @@ async def list_routes(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/model-routes")
-async def set_route(data: RouteSetRequest, db: AsyncSession = Depends(get_db)):
+async def set_route(data: RouteSetRequest, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """设置路由（category → model_id），存在则更新"""
     model = await db.get(Model, data.model_id)
     if not model:
@@ -641,7 +643,7 @@ async def set_route(data: RouteSetRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.delete("/model-routes/{route_id}")
-async def delete_route(route_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_route(route_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     """删除路由映射"""
     r = await db.get(ModelRoute, route_id)
     if not r:
