@@ -21,7 +21,7 @@ class GenerationTaskLog(Base):
     workflow_id = Column(UUID(as_uuid=True), nullable=True)
     skill_id = Column(String(64), nullable=True, index=True)
     prompt = Column(Text, nullable=True)
-    status = Column(SQLEnum(GenerationStatus), nullable=False, index=True)
+    status = Column(SQLEnum(GenerationStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False, index=True)
     error_message = Column(Text, nullable=True)
     total_time_ms = Column(Integer, nullable=True)
     step_durations = Column(JSONB, nullable=True)
