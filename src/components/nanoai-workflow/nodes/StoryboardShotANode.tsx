@@ -18,12 +18,11 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
-import { GLM_CONFIG } from '@/config/glm'
-import { SYSTEM_PROMPT_TEMPLATES } from './StoryboardShotA.shared'
+import { DEFAULT_PARAMS, type AspectRatio } from './StoryboardShotA.shared'
 
 // ==================== 类型定义 ====================
 
-export type AspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4'
+export type { AspectRatio }
 
 export interface StoryboardShotAData extends WorkflowNodeData {
   params: {
@@ -36,6 +35,8 @@ export interface StoryboardShotAData extends WorkflowNodeData {
     systemPromptTemplate: string
     model: string
     aspectRatio: AspectRatio
+    _optimizedPrompt?: string
+    _editablePrompt?: string
   }
   inputs: NodePort[]
   outputs: NodePort[]
@@ -50,48 +51,6 @@ export interface StoryboardShotAData extends WorkflowNodeData {
     completedAt?: string
   }
   error?: string
-}
-
-const DEFAULT_PARAMS = {
-  inputText: '',
-  size: '1024x1024',
-  quality: 'standard',
-  style: 'realistic',
-  batchCount: 1,
-  temperature: 0.8,
-  systemPromptTemplate: 'storyboard',
-  model: 'glm-4.5-air',
-  aspectRatio: '1:1' as AspectRatio,
-}
-
-async function optimizePromptWithGLM(rawPrompt: string, opts: { temperature: number; systemPromptTemplate: string; model: string }): Promise<string> {
-  const apiKey = GLM_CONFIG.API_KEY
-  if (!apiKey) throw new Error('GLM API Key 未配置（VITE_GLM_API_KEY）')
-
-  const systemPrompt = SYSTEM_PROMPT_TEMPLATES[opts.systemPromptTemplate] || SYSTEM_PROMPT_TEMPLATES.storyboard
-
-  const response = await fetch(`${GLM_CONFIG.API_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: opts.model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `请优化以下描述，生成图片提示词：\n${rawPrompt}` },
-      ],
-      temperature: opts.temperature,
-      max_tokens: 500,
-    }),
-  })
-
-  if (!response.ok) {
-    const err = await response.text().catch(() => '')
-    throw new Error(`GLM API 错误 ${response.status}: ${err}`)
-  }
-  const data = await response.json()
-  const optimized = data.choices?.[0]?.message?.content?.trim()
-  if (!optimized) throw new Error('GLM 返回为空')
-  return optimized
 }
 
 // ==================== 状态映射 ====================
@@ -115,7 +74,6 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
   const abortRef = useRef<AbortController | null>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
 
-  // 属性面板中的提示词优化状态（通过 store 同步）
   const optimizedPrompt = data.params?._optimizedPrompt || ''
   const editablePrompt = data.params?._editablePrompt || ''
 
@@ -311,4 +269,3 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 StoryboardShotANode.displayName = 'StoryboardShotANode'
 
 export default StoryboardShotANode
-export { DEFAULT_PARAMS, optimizePromptWithGLM }

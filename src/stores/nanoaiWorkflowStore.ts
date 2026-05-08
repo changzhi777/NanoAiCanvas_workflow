@@ -406,6 +406,12 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
             inputText: '',
             size: '1024x1024',
             quality: 'standard',
+            style: 'realistic',
+            batchCount: 1,
+            temperature: 0.8,
+            systemPromptTemplate: 'storyboard',
+            model: 'glm-4.5-air',
+            aspectRatio: '1:1',
           },
           inputs: [
             { id: 'text-in', name: '文本', type: 'text', required: true },
@@ -419,14 +425,12 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
       {
         id: 'node-shot-a-preview',
         type: 'image_preview',
-        position: { x: 600, y: 250 },
+        position: { x: 520, y: 280 },
         data: {
-          label: '图片预览+输出',
+          label: '图片预览',
           params: {
             autoConnectSource: true,
             sourceNodeId: 'node-shot-a-input',
-            thumbnailSize: 'medium' as const,
-            gridColumns: 2 as const,
             enableAssetSave: true,
             enableDownload: true,
           },
@@ -447,7 +451,7 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
         target: 'node-shot-a-preview',
         sourceHandle: 'result-out',
         targetHandle: 'image-in',
-        type: 'smoothstep',
+        type: 'custom',
         animated: true,
         style: { stroke: '#3ecf8e', strokeWidth: 2 },
         data: { type: 'auto' },

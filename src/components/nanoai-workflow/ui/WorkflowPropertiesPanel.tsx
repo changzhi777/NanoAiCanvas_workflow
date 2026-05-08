@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, Trash2, Save, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Edit2, Trash2, Save, X, Sparkles, RotateCcw, Loader2, Download, ShieldCheck, Copy, Clock, Calendar, FileImage } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
+import { DEFAULT_PARAMS, optimizePromptWithGLM } from '../nodes/StoryboardShotA.shared';
 
 export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElement>) {
   const { isDark } = useTheme();
@@ -369,7 +370,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 
               {/* 故事板分镜A 专属配置 — 直接可编辑 */}
               {selectedNode.type === 'storyboard_shot_a' && (() => {
-                const p = editData.params || {};
+                const p = { ...DEFAULT_PARAMS, ...(editData.params || {}) };
                 const setP = (update: Record<string, any>) => {
                   const newParams = { ...p, ...update };
                   handleInputChange('params', newParams);
@@ -378,8 +379,31 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
                 return (
                   <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
-                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>生成参数</h3>
+                    {/* 提示词优化 */}
+                    <StoryboardPromptOptimizer
+                      rawPrompt={p.inputText || ''}
+                      optimizedPrompt={p._optimizedPrompt || ''}
+                      editablePrompt={p._editablePrompt || ''}
+                      onOptimizedChange={(optimized, editable) => setP({ _optimizedPrompt: optimized, _editablePrompt: editable })}
+                      onReset={() => setP({ _optimizedPrompt: '', _editablePrompt: '' })}
+                      temperature={p.temperature}
+                      systemPromptTemplate={p.systemPromptTemplate}
+                      model={p.model}
+                      isDark={isDark}
+                    />
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>生成参数</h3>
                     <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">图片比例</Label>
+                        <select value={p.aspectRatio || '1:1'} onChange={e => setP({ aspectRatio: e.target.value })} className={selectCls}>
+                          <option value="1:1">1:1 正方形</option>
+                          <option value="16:9">16:9 横屏</option>
+                          <option value="9:16">9:16 竖屏</option>
+                          <option value="4:3">4:3 横屏</option>
+                          <option value="3:4">3:4 竖屏</option>
+                        </select>
+                      </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">图片尺寸</Label>
                         <select value={p.size || '1024x1024'} onChange={e => setP({ size: e.target.value })} className={selectCls}>
@@ -443,8 +467,61 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 );
               })()}
 
-              {/* 节点参数（storyboard_shot_a 已有专属配置，跳过通用区域） */}
-              {selectedNode.type !== 'storyboard_shot_a' && (
+              {/* 图片预览节点 专属配置 */}
+              {selectedNode.type === 'image_preview' && (() => {
+                const result = selectedNode.data.result;
+                const images = result?.images || [];
+                const promptText = result?.prompt || '';
+                const startedAt = result?.startedAt;
+                const completedAt = result?.completedAt;
+                const generationTime = (startedAt && completedAt)
+                  ? (() => { const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime(); return ms < 1000 ? `${ms}ms` : ms < 60000 ? `${Math.floor(ms/1000)}s` : `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`; })()
+                  : '';
+                const handleDownload = () => {
+                  if (!images[0]) return;
+                  const link = document.createElement('a');
+                  link.href = images[0];
+                  link.download = `nanoai-preview.png`;
+                  link.click();
+                };
+                const handleSaveToAsset = () => {
+                  if (selectedNodeId) updateNode(selectedNodeId, { result: { ...result, savedToAsset: true } } as any);
+                };
+                const handleCopyPrompt = () => {
+                  if (!promptText) return;
+                  navigator.clipboard.writeText(promptText);
+                };
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>预览信息</h3>
+                    {images.length > 0 ? (<>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs"><FileImage className="w-3.5 h-3.5 text-orange-400" /><span className="text-muted-foreground">数量：</span><span className="text-slate-200">{images.length} 张</span></div>
+                        {generationTime && <div className="flex items-center gap-1.5 text-xs"><Clock className="w-3.5 h-3.5 text-green-400" /><span className="text-muted-foreground">用时：</span><span className="text-slate-200">{generationTime}</span></div>}
+                        {completedAt && <div className="flex items-center gap-1.5 text-xs"><Calendar className="w-3.5 h-3.5 text-blue-400" /><span className="text-muted-foreground">时间：</span><span className="text-slate-200">{new Date(completedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</span></div>}
+                      </div>
+                      {promptText && (
+                        <div className="p-2.5 rounded-lg border border-blue-500/20 bg-blue-500/5 text-xs space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-blue-400">提示词</span>
+                            <button onClick={handleCopyPrompt} className="p-1 rounded hover:bg-white/10 text-muted-foreground"><Copy className="w-3 h-3" /></button>
+                          </div>
+                          <p className="text-slate-300 leading-relaxed break-all max-h-20 overflow-y-auto">{promptText}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <button onClick={handleDownload} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors bg-[#3ecf8e]/20 text-[#3ecf8e] hover:bg-[#3ecf8e]/30"><Download className="w-3.5 h-3.5" />下载</button>
+                        <button onClick={handleSaveToAsset} disabled={result?.savedToAsset} className={cn('flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors disabled:opacity-50', result?.savedToAsset ? 'bg-green-500/20 text-green-500' : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30')}><ShieldCheck className="w-3.5 h-3.5" />{result?.savedToAsset ? '已保存' : '保存到资产库'}</button>
+                      </div>
+                    </>) : (
+                      <div className={cn('text-xs text-center py-4', isDark ? 'text-slate-500' : 'text-gray-400')}>暂无预览数据</div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 节点参数（已有专属配置的节点跳过通用区域） */}
+              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',
@@ -583,3 +660,86 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 }
 
 WorkflowPropertiesPanel.displayName = 'WorkflowPropertiesPanel';
+
+// ==================== 提示词优化子组件 ====================
+
+function StoryboardPromptOptimizer({
+  rawPrompt, optimizedPrompt, editablePrompt, onOptimizedChange, onReset,
+  temperature, systemPromptTemplate, model, isDark,
+}: {
+  rawPrompt: string
+  optimizedPrompt: string
+  editablePrompt: string
+  onOptimizedChange: (optimized: string, editable: string) => void
+  onReset: () => void
+  temperature: number
+  systemPromptTemplate: string
+  model: string
+  isDark: boolean
+}) {
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
+  const hasOptimized = !!optimizedPrompt
+
+  const handleOptimize = useCallback(async () => {
+    if (!rawPrompt) { toast.error('请先输入故事描述'); return }
+    setIsOptimizing(true)
+    setError(null)
+    try {
+      const optimized = await optimizePromptWithGLM(rawPrompt, { temperature, systemPromptTemplate, model })
+      onOptimizedChange(optimized, optimized)
+      toast.success('提示词优化完成')
+    } catch (err: any) {
+      setError('优化失败: ' + (err.message || '未知错误'))
+    } finally {
+      setIsOptimizing(false)
+    }
+  }, [rawPrompt, temperature, systemPromptTemplate, model, onOptimizedChange, toast])
+
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>
+          <Sparkles className="w-3.5 h-3.5 inline text-amber-400 mr-1" />
+          提示词优化
+        </h3>
+        <div className="flex items-center gap-1">
+          {hasOptimized && (
+            <button onClick={onReset} className="p-1 rounded text-[10px] transition-colors hover:bg-white/10 text-slate-400">
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            onClick={handleOptimize}
+            disabled={isOptimizing || !rawPrompt}
+            className={cn(
+              'flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors',
+              isOptimizing || !rawPrompt
+                ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
+                : 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+            )}
+          >
+            {isOptimizing ? <><Loader2 className="w-3 h-3 animate-spin" />优化中...</> : <><Sparkles className="w-3 h-3" />{hasOptimized ? '重新优化' : '优化提示词'}</>}
+          </button>
+        </div>
+      </div>
+
+      {hasOptimized && (
+        <div className="space-y-1.5">
+          <textarea
+            value={editablePrompt}
+            onChange={(e) => onOptimizedChange(optimizedPrompt, e.target.value)}
+            rows={4}
+            className={cn('w-full text-xs resize-none rounded-md border px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')}
+            placeholder="优化后的提示词（可编辑）"
+          />
+          {editablePrompt !== optimizedPrompt && (
+            <p className="text-[10px] text-amber-500">提示词已手动修改</p>
+          )}
+        </div>
+      )}
+      {error && <p className="text-[10px] text-destructive">{error}</p>}
+    </div>
+  )
+}
