@@ -1,5 +1,5 @@
 /**
- * 故事板分镜A 节点 — 分镜头流水线版
+ * 故事板分镜V1版 节点 — 分镜头流水线版
  * 流程：提示词 → GLM生成分镜头脚本 → 逐镜头生图 → 汇总输出到预览节点
  */
 
@@ -301,7 +301,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <ClipboardList className="w-4 h-4 text-primary shrink-0" />
-              <h3 className="font-semibold text-foreground truncate text-xs">故事板分镜A</h3>
+              <h3 className="font-semibold text-foreground truncate text-xs">故事板分镜V1版</h3>
             </div>
             <Badge variant="default" className={cn('status-badge', statusInfo.cls)}>
               <StatusIcon className="w-3 h-3" />

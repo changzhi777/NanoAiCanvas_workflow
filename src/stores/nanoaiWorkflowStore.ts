@@ -387,10 +387,10 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
   },
   // 18 个 Skills 工作流模板
   ...skillsWorkflowTemplates,
-  // ==================== 故事板分镜A 工作流（2节点双面） ====================
+  // ==================== 故事板分镜V1版 工作流（2节点双面） ====================
   {
     id: 'storyboard-shot-a-workflow',
-    name: '故事板分镜A',
+    name: '故事板分镜V1版',
     description: '输入描述→提示词优化→生成分镜图→预览/保存',
     category: 'storyboard',
     tags: ['分镜', '故事板', '提示词优化', '推荐'],
@@ -402,7 +402,7 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
         type: 'storyboard_shot_a',
         position: { x: 100, y: 300 },
         data: {
-          label: '故事板分镜A',
+          label: '故事板分镜V1版',
           params: {
             inputText: '',
             size: '1024x1024',
@@ -909,7 +909,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
             }
 
             case 'storyboard_shot_a': {
-              // 故事板分镜A节点：从上游或自身获取文本 → 直接生图
+              // 故事板分镜V1版节点：从上游或自身获取文本 → 直接生图
               const { edges: shotEdges } = get();
               const incomingShotEdge = shotEdges.find(e => e.target === nodeId);
               let shotPrompt = node.data.params?.inputText || '';

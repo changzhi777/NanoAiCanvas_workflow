@@ -253,7 +253,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
             </div>
           ) : (
             <>
-              {/* 故事板分镜A 专属配置 — 直接可编辑 */}
+              {/* 故事板分镜V1版 专属配置 — 直接可编辑 */}
               {selectedNode.type === 'storyboard_shot_a' && (() => {
                 const p = { ...DEFAULT_PARAMS, ...(editData.params || {}) };
                 const setP = (update: Record<string, any>) => {

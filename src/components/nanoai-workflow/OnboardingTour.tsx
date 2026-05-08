@@ -28,7 +28,7 @@ const STEPS: TourStep[] = [
     icon: PenLine,
     label: '输入描述',
     title: '写下你的想法',
-    description: '在「故事板分镜A」节点中输入场景描述、角色动作或故事片段。',
+    description: '在「故事板分镜V1版」节点中输入场景描述、角色动作或故事片段。',
     detail: '支持中文自然语言描述，越详细生成的图片越精准',
     accent: 'from-blue-500 to-cyan-500',
   },

@@ -37,7 +37,7 @@ vi.mock('@/components/TaskStepAnimation', () => ({
 // ==================== Helpers ====================
 
 const defaultData: StoryboardShotAData = {
-  label: '故事板分镜A',
+  label: '故事板分镜V1版',
   params: {
     inputText: '',
     size: '1024x1024',
@@ -74,7 +74,7 @@ describe('StoryboardShotANode', () => {
   it('renders with idle status', () => {
     renderWithTheme(<StoryboardShotANode id="test-node" data={defaultData} />)
     expect(screen.getByText('未开始')).toBeInTheDocument()
-    expect(screen.getAllByText('故事板分镜A').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('故事板分镜V1版').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows textarea when no upstream text', () => {

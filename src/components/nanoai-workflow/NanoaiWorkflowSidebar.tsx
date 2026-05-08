@@ -63,7 +63,7 @@ const BASE_AI_NODES: NodeTypeConfig[] = [
   },
   {
     type: WorkflowNodeType.STORYBOARD_SHOT_A,
-    label: '故事板分镜A',
+    label: '故事板分镜V1版',
     icon: <Film className="w-5 h-5" />,
     description: '输入描述→优化提示词→生成分镜图',
     category: 'ai',
