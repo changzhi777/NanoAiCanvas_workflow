@@ -460,8 +460,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           <option value="glm-4.5-air">GLM-4.5-Air（快速）</option>
                           <option value="glm-4-flash">GLM-4-Flash（快速）</option>
                           <option value="glm-4">GLM-4</option>
-                          <option value="glm-4.7-flashx">GLM-4.7-FlashX（快速·推理）</option>
-                          <option value="glm-4.7">GLM-4.7（增强·推理）</option>
+                          <option value="glm-4.7-flash">GLM-4.7-Flash（快速）</option>
                         </select>
                       </div>
                     </div>

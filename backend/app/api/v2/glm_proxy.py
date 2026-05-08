@@ -1,7 +1,7 @@
 """
 GLM API 代理路由 - 提示词优化
 前端通过此接口调用 GLM，API Key 安全存储在后端
-支持模型：glm-4.5-air, glm-4-flash, glm-4, glm-4.7-flashx, glm-4.7
+支持模型：glm-4.5-air, glm-4-flash, glm-4, glm-4.7-flash
 """
 
 import httpx
