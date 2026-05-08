@@ -71,21 +71,21 @@ function Toast({ toast, onClose }: ToastProps) {
   return (
     <div
       className={cn(
-        'p-3 rounded-lg shadow-lg backdrop-blur-xl border',
+        'p-3 rounded-lg shadow-2xl border',
         'animate-in slide-in-from-right-4 duration-300',
         'flex items-start gap-2',
         toast.type === 'success' &&
           isDark &&
-          'bg-green-900/30 border-green-500/50 text-green-300',
+          'bg-green-950 border-green-600 text-green-200',
         toast.type === 'error' &&
           isDark &&
-          'bg-red-900/30 border-red-500/50 text-red-300',
+          'bg-red-950 border-red-600 text-red-100',
         toast.type === 'info' &&
           isDark &&
-          'bg-blue-900/30 border-blue-500/50 text-blue-300',
-        toast.type === 'success' && !isDark && 'bg-green-50 border-green-200',
-        toast.type === 'error' && !isDark && 'bg-red-50 border-red-200',
-        toast.type === 'info' && !isDark && 'bg-blue-50 border-blue-200'
+          'bg-blue-950 border-blue-600 text-blue-200',
+        toast.type === 'success' && !isDark && 'bg-green-50 border-green-200 text-green-800',
+        toast.type === 'error' && !isDark && 'bg-red-50 border-red-200 text-red-800',
+        toast.type === 'info' && !isDark && 'bg-blue-50 border-blue-200 text-blue-800'
       )}
     >
       <p className="text-sm font-medium flex-1">{toast.message}</p>
