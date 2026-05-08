@@ -51,7 +51,7 @@ function getToken(): string | null {
  * 发送通知（管理端）
  */
 export async function sendNotification(data: NotificationCreate): Promise<SendResponse> {
-  const response = await client.post<SendResponse>('/api/notifications', {
+  const response = await client.post<SendResponse>('/notifications', {
     title: data.title,
     content: data.content,
     notification_type: data.notification_type,
@@ -74,7 +74,7 @@ export async function getUserNotifications(
   params.set('offset', String((page - 1) * pageSize))
 
   const items = await client.get<any[]>(
-    `/api/notifications?${params}`,
+    `/notifications?${params}`,
     getToken() || undefined
   )
   return {
@@ -101,7 +101,7 @@ export async function getUserNotifications(
  */
 export async function markAsRead(notificationId: string): Promise<{ success: boolean }> {
   const response = await client.post<{ success: boolean }>(
-    `/api/notifications/read/${notificationId}`,
+    `/notifications/read/${notificationId}`,
     undefined,
     getToken() || undefined
   )
@@ -113,7 +113,7 @@ export async function markAsRead(notificationId: string): Promise<{ success: boo
  */
 export async function markAllAsRead(_userId: string): Promise<{ success: boolean }> {
   const response = await client.post<{ success: boolean }>(
-    '/api/notifications/read-all',
+    '/notifications/read-all',
     undefined,
     getToken() || undefined
   )
@@ -134,7 +134,7 @@ export async function getNotificationRecords(
   if (notificationType) params.set('notification_type', notificationType)
 
   const records = await client.get<any[]>(
-    `/api/notifications/records?${params}`,
+    `/notifications/records?${params}`,
     getToken() || undefined
   )
   return records.map(r => ({

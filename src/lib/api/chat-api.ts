@@ -98,5 +98,6 @@ export async function getOnlineUsers(): Promise<{ user_ids: string[] }> {
 export function getChatWsUrl(userId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
-  return `${protocol}//${host}/api/chat/ws/${userId}`
+  const token = typeof window !== 'undefined' ? localStorage.getItem('nanoai_token') : ''
+  return `${protocol}//${host}/api/chat/ws/${userId}?token=${token}`
 }

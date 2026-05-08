@@ -102,6 +102,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
     setCurrentStep('validating')
     setStepProgress(0)
     setStepMessage('准备中...')
+    window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open: false } }))
     const startedAt = new Date().toISOString()
     updateNode(id, { status: NodeStatus.RUNNING, error: undefined })
 

@@ -73,6 +73,19 @@ manager = ConnectionManager()
 
 @router.websocket("/ws/{user_id}")
 async def chat_ws(ws: WebSocket, user_id: str):
+    # 简单认证：从 query param 验证 token
+    token = ws.query_params.get("token")
+    if token:
+        try:
+            from app.core.security import decode_token
+            payload = decode_token(token)
+            if not payload or payload.get("sub") != user_id:
+                await ws.close(code=4001)
+                return
+        except Exception:
+            await ws.close(code=4001)
+            return
+
     await manager.connect(user_id, ws)
     await manager.broadcast_online_status(user_id, True)
     try:
@@ -190,47 +203,107 @@ async def list_conversations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # 批量获取当前用户的会话 ID
     result = await db.execute(
         select(ConversationMember.conversation_id)
         .where(ConversationMember.user_id == current_user.id)
     )
     conv_ids = [row[0] for row in result.all()]
-
     if not conv_ids:
         return []
 
+    # 批量获取会话
+    conv_result = await db.execute(
+        select(Conversation).where(Conversation.id.in_(conv_ids))
+    )
+    conv_map = {c.id: c for c in conv_result.scalars().all()}
+
+    # 批量获取所有会话的对方成员
+    other_members = await db.execute(
+        select(ConversationMember).where(
+            ConversationMember.conversation_id.in_(conv_ids),
+            ConversationMember.user_id != current_user.id,
+        )
+    )
+    other_member_map: dict = {}
+    for m in other_members.scalars().all():
+        other_member_map[m.conversation_id] = m.user_id
+
+    # 批量获取对方用户信息
+    other_user_ids = list(set(other_member_map.values()))
+    user_map: dict = {}
+    if other_user_ids:
+        users_result = await db.execute(
+            select(User).where(User.id.in_(other_user_ids))
+        )
+        for u in users_result.scalars().all():
+            user_map[u.id] = u
+
+    # 批量获取每个会话的最后一条消息
+    from sqlalchemy import literal_column
+    from sqlalchemy.sql import func as sqlfunc
+    # 子查询：每个会话的最新消息 ID
+    latest_msg_subq = (
+        select(Message.conversation_id, func.max(Message.created_at).label("max_time"))
+        .where(Message.conversation_id.in_(conv_ids))
+        .group_by(Message.conversation_id)
+        .subquery()
+    )
+    latest_msgs = await db.execute(
+        select(Message).join(
+            latest_msg_subq,
+            and_(
+                Message.conversation_id == latest_msg_subq.c.conversation_id,
+                Message.created_at == latest_msg_subq.c.max_time,
+            ),
+        )
+    )
+    msg_map: dict = {}
+    for m in latest_msgs.scalars().all():
+        msg_map[m.conversation_id] = m
+
+    # 批量获取当前用户的成员信息（last_read_at）
+    my_members = await db.execute(
+        select(ConversationMember).where(
+            ConversationMember.conversation_id.in_(conv_ids),
+            ConversationMember.user_id == current_user.id,
+        )
+    )
+    my_member_map: dict = {}
+    for m in my_members.scalars().all():
+        my_member_map[m.conversation_id] = m
+
+    # 批量统计未读数
+    unread_counts: dict = {}
+    for conv_id in conv_ids:
+        last_read = my_member_map.get(conv_id).last_read_at if conv_id in my_member_map else None
+        count_result = await db.execute(
+            select(func.count()).select_from(Message).where(
+                Message.conversation_id == conv_id,
+                Message.sender_id != current_user.id,
+                Message.is_read == False if not last_read else Message.created_at > last_read,
+            )
+        )
+        unread_counts[conv_id] = count_result.scalar() or 0
+
     resp = []
     for conv_id in conv_ids:
-        conv = await db.get(Conversation, conv_id)
+        conv = conv_map.get(conv_id)
         if not conv:
             continue
 
-        # 对方用户信息（私聊）
         other_user = None
-        if conv.type == ConversationType.DIRECT:
-            r = await db.execute(
-                select(ConversationMember.user_id).where(
-                    ConversationMember.conversation_id == conv_id,
-                    ConversationMember.user_id != current_user.id,
-                )
-            )
-            other_row = r.first()
-            if other_row:
-                other = await db.get(User, other_row[0])
-                if other:
-                    other_user = {
-                        "id": str(other.id),
-                        "username": other.username,
-                        "avatar_url": other.avatar_url,
-                        "online": await manager.is_online(str(other.id)),
-                    }
+        other_uid = other_member_map.get(conv_id)
+        if other_uid and other_uid in user_map:
+            other = user_map[other_uid]
+            other_user = {
+                "id": str(other.id),
+                "username": other.username,
+                "avatar_url": other.avatar_url,
+                "online": await manager.is_online(str(other.id)),
+            }
 
-        # 最后一条消息
-        msg_result = await db.execute(
-            select(Message).where(Message.conversation_id == conv_id)
-            .order_by(desc(Message.created_at)).limit(1)
-        )
-        last_msg = msg_result.scalar_one_or_none()
+        last_msg = msg_map.get(conv_id)
         last_message = None
         if last_msg:
             last_message = {
@@ -240,43 +313,13 @@ async def list_conversations(
                 "created_at": last_msg.created_at.isoformat() if last_msg.created_at else "",
             }
 
-        # 未读数
-        member_result = await db.execute(
-            select(ConversationMember).where(
-                ConversationMember.conversation_id == conv_id,
-                ConversationMember.user_id == current_user.id,
-            )
-        )
-        member = member_result.scalar_one_or_none()
-        last_read = member.last_read_at if member else None
-
-        unread_result = await db.execute(
-            select(func.count()).select_from(Message).where(
-                Message.conversation_id == conv_id,
-                Message.sender_id != current_user.id,
-            )
-        )
-        total_from_others = unread_result.scalar() or 0
-
-        if last_read:
-            read_count = await db.execute(
-                select(func.count()).select_from(Message).where(
-                    Message.conversation_id == conv_id,
-                    Message.sender_id != current_user.id,
-                    Message.created_at <= last_read,
-                )
-            )
-            unread_count = total_from_others - (read_count.scalar() or 0)
-        else:
-            unread_count = total_from_others
-
         resp.append(ConversationResponse(
             id=str(conv.id),
             type=conv.type.value,
             name=conv.name,
             other_user=other_user,
             last_message=last_message,
-            unread_count=max(0, unread_count),
+            unread_count=unread_counts.get(conv_id, 0),
             created_at=conv.created_at.isoformat() if conv.created_at else "",
             updated_at=conv.updated_at.isoformat() if conv.updated_at else "",
         ))
