@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Boolean
+from sqlalchemy import Column, String, DateTime, Boolean, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -32,7 +32,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     status = Column(String(20), default=UserStatus.APPROVED, nullable=False)
     role = Column(String(20), default=UserRole.USER, nullable=False)
-    avatar_url = Column(String(1024), nullable=True)
+    avatar_url = Column(Text, nullable=True)
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

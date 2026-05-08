@@ -69,7 +69,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
     setEditingUsername(false);
   };
 
-  const avatarUrl = customAvatar || `https://ui-avatars.com/api/?name=${user?.username}&background=168,70%,45%&color=fff&size=128`;
+  const avatarUrl = customAvatar || user?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.username}&background=168,70%,45%&color=fff&size=128`;
   const initial = user?.username?.charAt(0).toUpperCase() || 'U';
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
