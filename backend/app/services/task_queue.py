@@ -33,8 +33,10 @@ def _get_redis() -> redis.Redis:
         port=settings.REDIS_PORT,
         password=settings.REDIS_PASSWORD,
         decode_responses=True,
-        socket_timeout=5,
-        socket_connect_timeout=5,
+        socket_timeout=30,
+        socket_connect_timeout=10,
+        retry_on_timeout=True,
+        health_check_interval=30,
     )
 
 
