@@ -883,7 +883,9 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
               // 轮询任务状态（间隔 2s，超时 120s）
               const maxAttempts = 60;
               for (let i = 0; i < maxAttempts; i++) {
+                if (get()._globalAbortController?.signal.aborted) break;
                 await new Promise(r => setTimeout(r, 2000));
+                if (get()._globalAbortController?.signal.aborted) break;
                 const task = await getTaskStatus(genResp.task_id);
 
                 if (task.status === 'completed' && task.result?.url) {
@@ -901,6 +903,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
                 // 更新节点进度
                 updateNode(nodeId, { status: NodeStatus.RUNNING, result: { progress: task.progress } });
               }
+              if (get()._globalAbortController?.signal.aborted) break;
               if (!result?.imageUrl) throw new Error('生成超时，请重试');
               break;
             }
@@ -931,7 +934,9 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
               const shotMaxAttempts = 60;
               for (let i = 0; i < shotMaxAttempts; i++) {
+                if (get()._globalAbortController?.signal.aborted) break;
                 await new Promise(r => setTimeout(r, 2000));
+                if (get()._globalAbortController?.signal.aborted) break;
                 const shotTask = await shotGetStatus(shotResp.task_id);
                 if (shotTask.status === 'completed' && (shotTask.result?.url || shotTask.result?.images?.length)) {
                   const images = shotTask.result?.images || (shotTask.result?.url ? [shotTask.result.url] : []);
@@ -946,6 +951,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
                 if (shotTask.status === 'failed') throw new Error(shotTask.error || '分镜生成失败');
                 updateNode(nodeId, { status: NodeStatus.RUNNING, result: { progress: shotTask.progress } });
               }
+              if (get()._globalAbortController?.signal.aborted) break;
               if (!result?.imageUrl) throw new Error('生成超时，请重试');
               break;
             }
@@ -982,11 +988,16 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
               result = { message: `节点类型 ${nodeType} 暂未实现` };
           }
 
-          updateNode(nodeId, {
-            status: NodeStatus.SUCCESS,
-            result,
-          });
+          // 被中止的节点跳过结果更新（stopExecution 已统一重置状态）
+          if (!get()._globalAbortController?.signal.aborted) {
+            updateNode(nodeId, {
+              status: NodeStatus.SUCCESS,
+              result,
+            });
+          }
         } catch (error) {
+          // 中止不标记为错误
+          if (get()._globalAbortController?.signal.aborted) return;
           updateNode(nodeId, {
             status: NodeStatus.ERROR,
             error: error instanceof Error ? error.message : '未知错误'
