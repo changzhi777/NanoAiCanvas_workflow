@@ -164,7 +164,7 @@ async def list_notification_records(
     )
 
     if notification_type:
-        query = query.where(Notification.notification_type == notification_type)
+        query = query.where(Notification.notification_type == text(f"'{notification_type}'::notificationtype"))
 
     offset = (page - 1) * page_size
     query = query.order_by(desc(Notification.created_at)).offset(offset).limit(page_size)

@@ -6,7 +6,7 @@
 import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { Handle, Position } from 'reactflow'
 import {
-  ClipboardList, Play, Circle, Timer, CheckCircle2, Ban, Square,
+  ClipboardList, Play, Circle, Timer, CheckCircle2, Ban,
 } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
@@ -268,11 +268,6 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
     }
   }, [id, updateNode, prompt, rawPrompt, optimizedPrompt, params, emitStep])
 
-  const handleCancel = useCallback(() => {
-    abortRef.current?.abort()
-    updateNode(id, { status: NodeStatus.IDLE })
-    setCurrentStep('cancelled')
-  }, [id, updateNode])
 
   const dims = NODE_DIMENSIONS[params.aspectRatio] || NODE_DIMENSIONS['1:1']
 
@@ -353,19 +348,6 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
               startedAt={data.result?.startedAt}
               onCancel={stopExecution}
             />
-          )}
-
-          {/* 运行时终止按钮 — 全局终止所有任务 */}
-          {data.status === NodeStatus.RUNNING && (
-            <Button
-              onClick={stopExecution}
-              size="sm"
-              variant="destructive"
-              className="w-full h-7 text-xs"
-            >
-              <Square className="w-3 h-3 mr-1 fill-current" />
-              终止所有任务
-            </Button>
           )}
 
           {/* 执行按钮（非运行状态显示） */}

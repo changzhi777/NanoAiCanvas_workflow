@@ -370,9 +370,8 @@ export function NanoaiWorkflowToolbar() {
                 'bg-gradient-to-r from-blue-500 to-cyan-500',
                 'hover:from-blue-600 hover:to-cyan-600',
                 'shadow-lg hover:shadow-xl transition-all duration-200',
-                'hover:scale-105 active:scale-95',
-                'text-white',
-                'animate-pulse'
+                'active:scale-95',
+                'text-white'
               )}
               title="按 ⌘T 或 Ctrl+T 快速添加模板"
             >
