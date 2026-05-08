@@ -23,6 +23,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 
   const collapse = useCallback(() => {
     setIsCollapsed(true);
+    setIsEditing(false);
     notifyPanelState(false);
   }, [notifyPanelState]);
 
@@ -34,12 +35,10 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   // 获取当前选中的节点
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
-  // 同步节点数据到编辑状态
+  // 选中节点时同步数据到编辑状态，但不自动展开
   useEffect(() => {
     if (selectedNode) {
       setEditData(selectedNode.data);
-      // 选中节点时自动展开面板
-      expand();
       setIsEditing(false);
     }
   }, [selectedNode]);
@@ -62,6 +61,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   const handleDelete = () => {
     if (selectedNodeId && confirm('确定要删除这个节点吗？')) {
       removeNode(selectedNodeId);
+      collapse();
       toast.info('节点已删除');
     }
   };
@@ -79,29 +79,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
           'transition-transform duration-300'
         )}
       >
-        {/* 边缘触发区域 */}
-        <div
-          onMouseEnter={() => {
-            if (selectedNode) {
-              // 有选中节点时，鼠标移入自动展开
-              expand();
-            }
-          }}
-          className={cn(
-            'absolute right-0 top-0 bottom-0 w-4',
-            'cursor-pointer',
-            isDark
-              ? 'hover:bg-white/10'
-              : 'hover:bg-gray-200'
-          )}
-          onClick={() => {
-            // 点击边缘触发区域展开面板
-            if (selectedNode) {
-              expand();
-            }
-          }}
-        />
-
         {/* 最小触发按钮 */}
         <button
           onClick={() => {
@@ -216,7 +193,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={handleDelete}
+                  onClick={() => handleDelete()}
                   className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
                   title="删除"
                   disabled={!selectedNode}
