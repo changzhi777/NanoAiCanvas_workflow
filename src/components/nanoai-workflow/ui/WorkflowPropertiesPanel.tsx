@@ -704,7 +704,7 @@ function StoryboardPromptOptimizer({
       onOptimizedChange(optimized, optimized)
       toast.success('提示词优化完成')
     } catch (err: any) {
-      setError('优化失败: ' + (err.message || '未知错误'))
+      setError('优化失败: ' + (err.message?.includes('Unknown error') ? '网络错误，请检查连接' : err.message || '未知错误'))
     } finally {
       setIsOptimizing(false)
     }

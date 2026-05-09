@@ -173,13 +173,25 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
     try {
       // ===== 阶段1：生成分镜头脚本 =====
       emitStep('script_generating', 5, '正在生成分镜头脚本...')
-      const script = await generateStoryboardScript(prompt, {
-        shotCount: params.shotCount,
-        model: params.model,
-        temperature: params.temperature,
-        style: params.style,
-        quality: params.quality,
-      })
+      let script
+      try {
+        script = await generateStoryboardScript(prompt, {
+          shotCount: params.shotCount,
+          model: params.model,
+          temperature: params.temperature,
+          style: params.style,
+          quality: params.quality,
+        })
+      } catch (scriptErr: any) {
+        const msg = scriptErr?.message || ''
+        if (msg.includes('504') || msg.includes('超时') || msg.includes('Timeout')) {
+          throw new Error('GLM API 超时，请重试')
+        }
+        if (msg.includes('JSON') || msg.includes('解析失败')) {
+          throw new Error('GLM 返回格式异常，请重试')
+        }
+        throw new Error('分镜头脚本生成失败: ' + (msg || '未知错误'))
+      }
 
       if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
 
