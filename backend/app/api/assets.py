@@ -12,6 +12,23 @@ from app.api.auth import get_current_user
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 
+def _to_response(a: Asset) -> AssetResponse:
+    return AssetResponse(
+        id=a.id,
+        type=a.type.value,
+        name=a.name,
+        url=a.url,
+        thumbnail_url=a.thumbnail_url,
+        metadata=a.meta_data or {},
+        category=a.category.value if a.category else None,
+        tags=a.tags or [],
+        is_starred=a.is_starred,
+        workflow_snapshot=a.workflow_snapshot,
+        version=a.version,
+        created_at=a.created_at.isoformat() if a.created_at else "",
+    )
+
+
 class AssetCreate(BaseModel):
     type: str
     name: str
@@ -80,20 +97,7 @@ async def create_asset(
     await db.commit()
     await db.refresh(asset)
 
-    return AssetResponse(
-        id=asset.id,
-        type=asset.type.value,
-        name=asset.name,
-        url=asset.url,
-        thumbnail_url=asset.thumbnail_url,
-        metadata=asset.meta_data or {},
-        category=asset.category.value if asset.category else None,
-        tags=asset.tags or [],
-        is_starred=asset.is_starred,
-        workflow_snapshot=asset.workflow_snapshot,
-        version=asset.version,
-        created_at=asset.created_at.isoformat() if asset.created_at else "",
-    )
+    return _to_response(asset)
 
 
 @router.get("", response_model=AssetListResponse)
@@ -139,23 +143,7 @@ async def list_assets(
     result = await db.execute(query)
     assets = result.scalars().all()
 
-    items = [
-        AssetResponse(
-            id=a.id,
-            type=a.type.value,
-            name=a.name,
-            url=a.url,
-            thumbnail_url=a.thumbnail_url,
-            metadata=a.meta_data or {},
-            category=a.category.value if a.category else None,
-            tags=a.tags or [],
-            is_starred=a.is_starred,
-            workflow_snapshot=a.workflow_snapshot,
-            version=a.version,
-            created_at=a.created_at.isoformat() if a.created_at else "",
-        )
-        for a in assets
-    ]
+    items = [_to_response(a) for a in assets]
 
     return AssetListResponse(items=items, total=total, page=page, page_size=page_size)
 
@@ -174,20 +162,7 @@ async def get_asset(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    return AssetResponse(
-        id=asset.id,
-        type=asset.type.value,
-        name=asset.name,
-        url=asset.url,
-        thumbnail_url=asset.thumbnail_url,
-        metadata=asset.meta_data or {},
-        category=asset.category.value if asset.category else None,
-        tags=asset.tags or [],
-        is_starred=asset.is_starred,
-        workflow_snapshot=asset.workflow_snapshot,
-        version=asset.version,
-        created_at=asset.created_at.isoformat() if asset.created_at else "",
-    )
+    return _to_response(asset)
 
 
 @router.patch("/{asset_id}", response_model=AssetResponse)
@@ -214,20 +189,7 @@ async def update_asset(
     await db.commit()
     await db.refresh(asset)
 
-    return AssetResponse(
-        id=asset.id,
-        type=asset.type.value,
-        name=asset.name,
-        url=asset.url,
-        thumbnail_url=asset.thumbnail_url,
-        metadata=asset.meta_data or {},
-        category=asset.category.value if asset.category else None,
-        tags=asset.tags or [],
-        is_starred=asset.is_starred,
-        workflow_snapshot=asset.workflow_snapshot,
-        version=asset.version,
-        created_at=asset.created_at.isoformat() if asset.created_at else "",
-    )
+    return _to_response(asset)
 
 
 @router.delete("/{asset_id}")

@@ -795,9 +795,9 @@ function AssetCard({
       {asset.is_starred && <div className="absolute top-2 right-2"><Star className="h-5 w-5 fill-yellow-500 text-yellow-500" /></div>}
 
       {/* 版本标签 */}
-      {(asset as any).version && (
+      {asset.version && (
         <span className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-600/80 text-white backdrop-blur-sm">
-          {(asset as any).version}
+          {asset.version}
         </span>
       )}
 

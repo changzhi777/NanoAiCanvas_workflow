@@ -13,6 +13,72 @@ from app.config import get_settings
 from app.api.auth import get_current_user_optional
 from app.models import User
 
+def _repair_json(raw: str) -> str:
+    """Multi-layer JSON repair for GLM output quirks."""
+    import re as _re
+
+    s = raw
+
+    # 1. Strip trailing commas before ] or }
+    s = _re.sub(r',\s*([}\]])', r'\1', s)
+
+    # 2. Remove JS-style comments
+    s = _re.sub(r'//.*?\n', '\n', s)
+
+    # 3. Remove control characters (keep \n \t)
+    s = _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', s)
+
+    # 4. Un-escape already-escaped quotes inside strings (double-escaped)
+    s = s.replace(r'\"\"', r'\"')
+
+    # 5. Fix missing commas between array elements / object properties
+    #    Pattern: " or ] or } followed by newline+whitespace then " or { or [
+    s = _re.sub(r'(["}\]])\s*\n\s*(["{\[])', r'\1,\n\2', s)
+
+    # 6. Fix missing colons between key and value
+    #    Pattern: "key" whitespace without colon then "
+    s = _re.sub(r'"\s*\n\s*"', '":\n"', s, count=0)
+
+    # 7. Escape unescaped quotes inside string values
+    #    Strategy: walk through the string, track if we're inside a JSON string,
+    #    and escape any raw " that doesn't belong to JSON structure.
+    result = []
+    in_string = False
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if in_string:
+            if ch == '\\' and i + 1 < len(s):
+                # Already escaped, copy both chars
+                result.append(ch)
+                result.append(s[i + 1])
+                i += 2
+                continue
+            elif ch == '"':
+                # End of string — check if next non-space char is , ] } :
+                # If not, this might be an embedded quote that should be escaped
+                rest = s[i + 1:].lstrip()
+                if rest and rest[0] not in (',', ']', '}', ':', '\n'):
+                    # Unescaped quote inside a string value — escape it
+                    result.append('\\"')
+                    i += 1
+                    continue
+                else:
+                    in_string = False
+                    result.append(ch)
+            else:
+                result.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+                result.append(ch)
+            else:
+                result.append(ch)
+        i += 1
+
+    return ''.join(result)
+
+
 router = APIRouter(prefix="/api/glm", tags=["glm"])
 
 
@@ -231,15 +297,14 @@ async def generate_storyboard_script(
         try:
             script = json.loads(json_str)
         except json.JSONDecodeError:
-            # Strip trailing commas before ] or }
-            cleaned = re.sub(r',\s*([}\]])', r'\1', json_str)
-            # Remove JS-style comments
-            cleaned = re.sub(r'//.*?\n', '\n', cleaned)
-            # Remove control characters
-            cleaned = re.sub(r'[\x00-\x1f]', ' ', cleaned)
+            cleaned = _repair_json(json_str)
             try:
                 script = json.loads(cleaned)
             except json.JSONDecodeError as e2:
+                # Log the problematic area for debugging
+                pos = e2.pos if hasattr(e2, 'pos') else 0
+                snippet = cleaned[max(0, pos - 60):pos + 60]
+                print(f"[GLM] JSON repair failed at pos {pos}: ...{snippet}...")
                 raise HTTPException(status_code=502, detail=f"JSON 解析失败: {str(e2)}")
 
         # Validate structure

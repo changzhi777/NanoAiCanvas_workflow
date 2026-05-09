@@ -205,7 +205,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
     loadAssets()
     return () => { cancelled = true }
-  }, [data.status, displayImages.length, data.params.sourceNodeId])
+  }, [data.status, displayImages.length, data.params.sourceNodeId, nodes, resultData])
 
   // === 下载单张 ===
   const handleDownload = useCallback(async (imageUrl: string, index: number) => {
