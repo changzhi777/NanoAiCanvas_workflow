@@ -28,20 +28,10 @@ def _repair_json(raw: str) -> str:
     # 3. Remove control characters (keep \n \t)
     s = _re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', ' ', s)
 
-    # 4. Un-escape already-escaped quotes inside strings (double-escaped)
-    s = s.replace(r'\"\"', r'\"')
-
-    # 5. Fix missing commas between array elements / object properties
-    #    Pattern: " or ] or } followed by newline+whitespace then " or { or [
+    # 4. Fix missing commas between array elements / object properties
     s = _re.sub(r'(["}\]])\s*\n\s*(["{\[])', r'\1,\n\2', s)
 
-    # 6. Fix missing colons between key and value
-    #    Pattern: "key" whitespace without colon then "
-    s = _re.sub(r'"\s*\n\s*"', '":\n"', s, count=0)
-
-    # 7. Escape unescaped quotes inside string values
-    #    Strategy: walk through the string, track if we're inside a JSON string,
-    #    and escape any raw " that doesn't belong to JSON structure.
+    # 5. Escape unescaped quotes inside string values
     result = []
     in_string = False
     i = 0
@@ -49,17 +39,13 @@ def _repair_json(raw: str) -> str:
         ch = s[i]
         if in_string:
             if ch == '\\' and i + 1 < len(s):
-                # Already escaped, copy both chars
                 result.append(ch)
                 result.append(s[i + 1])
                 i += 2
                 continue
             elif ch == '"':
-                # End of string — check if next non-space char is , ] } :
-                # If not, this might be an embedded quote that should be escaped
                 rest = s[i + 1:].lstrip()
                 if rest and rest[0] not in (',', ']', '}', ':', '\n'):
-                    # Unescaped quote inside a string value — escape it
                     result.append('\\"')
                     i += 1
                     continue
@@ -77,6 +63,100 @@ def _repair_json(raw: str) -> str:
         i += 1
 
     return ''.join(result)
+
+
+def _extract_shots_from_content(content: str) -> list:
+    """Extract shots from GLM output, handling multiple formats:
+    1. {"title":..., "shots":[...]}  (standard)
+    2. [{"shot_number":1, ...}, ...]  (bare array)
+    3. Truncated JSON with incomplete shots
+    """
+    import json, re
+
+    # Try extracting JSON blocks in order of specificity
+    json_str = None
+
+    # 1. Code block with object
+    m = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', content)
+    if m:
+        json_str = m.group(1)
+    else:
+        # 2. Code block with array
+        m = re.search(r'```(?:json)?\s*(\[[\s\S]*?\])\s*```', content)
+        if m:
+            json_str = m.group(1)
+
+    # 3. Bare <output> tag with object
+    if not json_str:
+        m = re.search(r'<output>\s*(\{[\s\S]*?\})\s*</output>', content)
+        if m:
+            json_str = m.group(1)
+
+    # 4. Bare <output> tag with array
+    if not json_str:
+        m = re.search(r'<output>\s*(\[[\s\S]*?\])\s*</output>', content)
+        if m:
+            json_str = m.group(1)
+
+    # 5. Greedy object match
+    if not json_str:
+        m = re.search(r'\{[\s\S]*\}', content)
+        if m:
+            json_str = m.group()
+
+    # 6. Greedy array match (GLM sometimes returns bare array)
+    if not json_str:
+        m = re.search(r'\[[\s\S]*\]', content)
+        if m:
+            json_str = m.group()
+
+    if not json_str:
+        return []
+
+    # Attempt parse, then repair
+    for attempt in range(2):
+        try:
+            parsed = json.loads(json_str)
+            break
+        except json.JSONDecodeError:
+            if attempt == 0:
+                json_str = _repair_json(json_str)
+            else:
+                # Final fallback: try to extract individual shot objects via regex
+                shots = []
+                for m in re.finditer(r'\{[^{}]*"shot_number"\s*:\s*\d+[^{}]*\}', json_str):
+                    try:
+                        shot = json.loads(m.group())
+                        shots.append(shot)
+                    except json.JSONDecodeError:
+                        continue
+                return shots
+
+    # Normalize to shots list
+    if isinstance(parsed, list):
+        shots = parsed
+    elif isinstance(parsed, dict):
+        shots = parsed.get("shots", [])
+        # If shots is empty but dict has shot-like fields, treat it as single shot
+        if not shots and "shot_number" in parsed:
+            shots = [parsed]
+    else:
+        return []
+
+    # Normalize each shot: only keep expected fields, fill missing
+    normalized = []
+    for idx, shot in enumerate(shots):
+        if not isinstance(shot, dict):
+            continue
+        normalized.append({
+            "shot_number": shot.get("shot_number", idx + 1),
+            "scene_description": shot.get("scene_description", ""),
+            "visual_prompt": shot.get("visual_prompt", shot.get("description", "")),
+            "camera_angle": shot.get("camera_angle", ""),
+            "mood": shot.get("mood", ""),
+        })
+
+    return normalized
 
 
 router = APIRouter(prefix="/api/glm", tags=["glm"])
@@ -255,7 +335,7 @@ async def generate_storyboard_script(
                         {"role": "user", "content": f"请将以下故事拆分为{req.shot_count}个分镜头：\n{req.prompt}"},
                     ],
                     "temperature": req.temperature,
-                    "max_tokens": 2000,
+                    "max_tokens": 4000,
                 },
             )
 
@@ -275,48 +355,21 @@ async def generate_storyboard_script(
         if not content:
             raise HTTPException(status_code=502, detail="GLM 返回为空")
 
-        # Extract JSON from response
-        # 1. Try ```json ... ``` code block first
-        code_block = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', content)
-        json_str = code_block.group(1) if code_block else None
-
-        # 2. Try <output>...</output>
-        if not json_str:
-            output_match = re.search(r'<output>\s*(\{[\s\S]*?\})\s*</output>', content)
-            json_str = output_match.group(1) if output_match else None
-
-        # 3. Greedy brace match (fallback)
-        if not json_str:
-            brace_match = re.search(r'\{[\s\S]*\}', content)
-            json_str = brace_match.group() if brace_match else None
-
-        if not json_str:
+        # Extract shots using robust multi-format parser
+        shots = _extract_shots_from_content(content)
+        if not shots:
+            print(f"[GLM] No shots extracted. Raw content: {content[:500]}")
             raise HTTPException(status_code=502, detail=f"无法解析分镜头脚本，GLM 返回格式错误: {content[:200]}")
 
-        # Attempt JSON parse with auto-repair for common GLM mistakes
-        try:
-            script = json.loads(json_str)
-        except json.JSONDecodeError:
-            cleaned = _repair_json(json_str)
-            try:
-                script = json.loads(cleaned)
-            except json.JSONDecodeError as e2:
-                # Log the problematic area for debugging
-                pos = e2.pos if hasattr(e2, 'pos') else 0
-                snippet = cleaned[max(0, pos - 60):pos + 60]
-                print(f"[GLM] JSON repair failed at pos {pos}: ...{snippet}...")
-                raise HTTPException(status_code=502, detail=f"JSON 解析失败: {str(e2)}")
+        # Check for truncation: if finish_reason is "length", we got cut off
+        finish_reason = data.get("choices", [{}])[0].get("finish_reason", "")
+        if finish_reason == "length":
+            print(f"[GLM] Output truncated (finish_reason=length). Got {len(shots)} shots, expected {req.shot_count}")
 
-        # Validate structure
-        if "shots" not in script or not isinstance(script["shots"], list):
-            raise HTTPException(status_code=502, detail="分镜头脚本缺少 shots 数组")
-
-        for shot in script["shots"]:
-            shot.setdefault("shot_number", script["shots"].index(shot) + 1)
-            shot.setdefault("scene_description", "")
-            shot.setdefault("visual_prompt", "")
-            shot.setdefault("camera_angle", "")
-            shot.setdefault("mood", "")
+        script = {
+            "title": "分镜头脚本",
+            "shots": shots,
+        }
 
         return {"script": script}
 
