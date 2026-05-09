@@ -12,23 +12,6 @@ from app.api.auth import get_current_user
 router = APIRouter(prefix="/assets", tags=["assets"])
 
 
-def _to_response(a: Asset) -> AssetResponse:
-    return AssetResponse(
-        id=a.id,
-        type=a.type.value,
-        name=a.name,
-        url=a.url,
-        thumbnail_url=a.thumbnail_url,
-        metadata=a.meta_data or {},
-        category=a.category.value if a.category else None,
-        tags=a.tags or [],
-        is_starred=a.is_starred,
-        workflow_snapshot=a.workflow_snapshot,
-        version=a.version,
-        created_at=a.created_at.isoformat() if a.created_at else "",
-    )
-
-
 class AssetCreate(BaseModel):
     type: str
     name: str
@@ -73,6 +56,23 @@ class AssetListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+def _to_response(a: Asset) -> AssetResponse:
+    return AssetResponse(
+        id=a.id,
+        type=a.type.value,
+        name=a.name,
+        url=a.url,
+        thumbnail_url=a.thumbnail_url,
+        metadata=a.meta_data or {},
+        category=a.category.value if a.category else None,
+        tags=a.tags or [],
+        is_starred=a.is_starred,
+        workflow_snapshot=a.workflow_snapshot,
+        version=a.version,
+        created_at=a.created_at.isoformat() if a.created_at else "",
+    )
 
 
 @router.post("", response_model=AssetResponse)
