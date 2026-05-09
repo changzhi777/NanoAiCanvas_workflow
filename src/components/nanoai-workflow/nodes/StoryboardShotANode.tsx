@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
 import {
-  DEFAULT_PARAMS, getSizeTier, NODE_DIMENSIONS,
+  DEFAULT_PARAMS, NODE_DIMENSIONS,
   type AspectRatio, type LayoutDirection, type StoryboardShot,
   generateStoryboardScript,
 } from './StoryboardShotA.shared'
@@ -203,7 +203,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
         try {
           const images = await adapter.generateImage(
-            { prompt: shotPrompt, size: getSizeTier(params.size), aspectRatio: params.aspectRatio, signal: abortController.signal },
+            { prompt: shotPrompt, size: params.size, aspectRatio: params.aspectRatio, signal: abortController.signal },
             (progress) => {
               const overall = startProg + Math.floor((progress / 100) * (85 / totalShots))
               setStepProgress(overall)
