@@ -388,3 +388,200 @@ async def generate_storyboard_script(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 剧本生成 ====================
+
+SCREENPLAY_PROMPT = """你是一个专业的电影编剧和分镜设计师。根据用户提供的故事梗概，生成一份完整的剧本，包含以下所有内容。
+
+严格按以下JSON格式输出，不要添加任何其他文字：
+
+{{
+  "title": "故事标题",
+  "logline": "一句话故事概要",
+  "characters": [
+    {{
+      "name": "角色名",
+      "role": "主角/配角/反派",
+      "description": "角色外貌和性格描述",
+      "pose_prompts": [
+        "正面全身站姿的详细生图提示词，包含服装、发型、体型、表情",
+        "侧面全身站姿的详细生图提示词",
+        "3/4角度全身站姿的详细生图提示词"
+      ],
+      "expression_prompts": [
+        "面部特写提示词：角色微笑/开心的表情，光线柔和",
+        "面部特写提示词：角色严肃/悲伤的表情，光线戏剧性"
+      ],
+      "outfit_prompts": [
+        "日常服装全身提示词，包含配饰和道具",
+        "战斗/正式服装全身提示词，包含配饰和道具"
+      ]
+    }}
+  ],
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "location": "场景地点",
+      "time_of_day": "时间",
+      "description": "场景环境描述（不要包含任何人物）",
+      "visual_prompt": "详细的场景生图提示词，包含建筑、植被、天气、光影、氛围。不要出现任何人物。画面比例16:9",
+      "mood": "氛围关键词"
+    }}
+  ],
+  "shots": [
+    {{
+      "shot_number": 1,
+      "scene_number": 1,
+      "description": "这个镜头发生了什么",
+      "visual_prompt": "详细的分镜头生图提示词，包含角色位置、动作、表情、场景背景、光影、构图。画面比例1:1",
+      "camera_angle": "镜头角度和景别",
+      "dialogue": [{{"character": "角色名", "line": "台词"}}],
+      "mood": "氛围",
+      "duration": "预估时长秒"
+    }}
+  ],
+  "script_table": [
+    {{
+      "shot_number": 1,
+      "scene_location": "场景地点",
+      "description": "动作描述",
+      "dialogue_summary": "对话摘要",
+      "camera": "镜头",
+      "mood": "氛围",
+      "duration": "时长"
+    }}
+  ]
+}}
+
+要求：
+1. characters 至少2-4个核心角色
+2. 每个character的pose_prompts必须3个，expression_prompts必须2个，outfit_prompts必须2个
+3. scenes场景提示词严禁出现人物
+4. shots数量为{shot_count}个，形成完整叙事
+5. 所有visual_prompt使用中文
+6. script_table与shots一一对应"""
+
+
+@router.post("/screenplay")
+async def generate_screenplay(
+    req: ScreenplayRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """生成完整剧本（含角色/场景/分镜头提示词）"""
+    import json, re
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    style_instruction = STYLE_MAP.get(req.style or "realistic", "")
+    quality_instruction = QUALITY_MAP.get(req.quality or "hd", "")
+
+    system_prompt = SCREENPLAY_PROMPT.format(shot_count=req.shot_count)
+    if style_instruction or quality_instruction:
+        system_prompt += f"\n\n所有 visual_prompt 必须体现：{style_instruction}"
+        if quality_instruction:
+            system_prompt += f"。{quality_instruction}"
+
+    if req.model.startswith("glm-4.7"):
+        system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中"
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                f"{settings.GLM_API_BASE_URL}/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
+                },
+                json={
+                    "model": req.model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"请根据以下故事梗概生成完整剧本：\n{req.premise}"},
+                    ],
+                    "temperature": req.temperature,
+                    "max_tokens": 8000,
+                },
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
+
+        data = resp.json()
+        msg = data.get("choices", [{}])[0].get("message", {})
+        content = msg.get("content", "").strip()
+
+        if not content:
+            rc = msg.get("reasoning_content", "").strip()
+            if rc:
+                match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
+                content = match.group(1).strip() if match else rc
+
+        if not content:
+            raise HTTPException(status_code=502, detail="GLM 返回为空")
+
+        # Extract JSON
+        json_str = None
+        for pattern in [
+            r'```(?:json)?\s*(\{[\s\S]*?\})\s*```',
+            r'<output>\s*(\{[\s\S]*?\})\s*</output>',
+            r'\{[\s\S]*\}',
+        ]:
+            m = re.search(pattern, content)
+            if m:
+                json_str = m.group(1) if '```' in pattern or '<output>' in pattern else m.group()
+                break
+
+        if not json_str:
+            raise HTTPException(status_code=502, detail=f"无法解析剧本: {content[:200]}")
+
+        try:
+            screenplay = json.loads(json_str)
+        except json.JSONDecodeError:
+            cleaned = _repair_json(json_str)
+            try:
+                screenplay = json.loads(cleaned)
+            except json.JSONDecodeError as e2:
+                pos = e2.pos if hasattr(e2, 'pos') else 0
+                print(f"[GLM] Screenplay JSON repair failed at pos {pos}")
+                raise HTTPException(status_code=502, detail=f"剧本 JSON 解析失败: {e2}")
+
+        # Validate and fill defaults
+        screenplay.setdefault("title", "未命名故事")
+        screenplay.setdefault("logline", "")
+        screenplay.setdefault("characters", [])
+        screenplay.setdefault("scenes", [])
+        screenplay.setdefault("shots", [])
+        screenplay.setdefault("script_table", [])
+
+        for idx, char in enumerate(screenplay["characters"]):
+            if not isinstance(char, dict): continue
+            char.setdefault("name", f"角色{idx+1}")
+            char.setdefault("pose_prompts", [])
+            char.setdefault("expression_prompts", [])
+            char.setdefault("outfit_prompts", [])
+
+        for idx, scene in enumerate(screenplay["scenes"]):
+            if not isinstance(scene, dict): continue
+            scene.setdefault("scene_number", idx + 1)
+            scene.setdefault("visual_prompt", scene.get("description", ""))
+
+        for idx, shot in enumerate(screenplay["shots"]):
+            if not isinstance(shot, dict): continue
+            shot.setdefault("shot_number", idx + 1)
+            shot.setdefault("visual_prompt", shot.get("description", ""))
+            shot.setdefault("dialogue", [])
+
+        for idx, entry in enumerate(screenplay["script_table"]):
+            if not isinstance(entry, dict): continue
+            entry.setdefault("shot_number", idx + 1)
+
+        return {"screenplay": screenplay}
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GLM API 超时（剧本生成需要较长时间）")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

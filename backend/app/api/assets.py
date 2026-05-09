@@ -24,6 +24,34 @@ class AssetCreate(BaseModel):
     version: Optional[str] = None
     source_node_id: Optional[str] = None
     workflow_id: Optional[str] = None
+    parent_asset_id: Optional[str] = None
+
+
+# --- 元数据 Schema ---
+class StoryboardShotMeta(BaseModel):
+    prompt: Optional[str] = None
+    enhancedPrompt: Optional[str] = None
+    params: Optional[dict] = None
+    referenceImages: Optional[List[str]] = None
+
+    class Config:
+        extra = "allow"
+
+
+class ImageGenMeta(BaseModel):
+    prompt: Optional[str] = None
+    enhancedPrompt: Optional[str] = None
+    params: Optional[dict] = None
+    referenceImages: Optional[List[str]] = None
+
+    class Config:
+        extra = "allow"
+
+
+METADATA_SCHEMAS = {
+    "storyboard_shot": StoryboardShotMeta,
+    "image": ImageGenMeta,
+}
 
 
 class AssetUpdate(BaseModel):
@@ -49,6 +77,7 @@ class AssetResponse(BaseModel):
     version: Optional[str] = None
     source_node_id: Optional[str] = None
     workflow_id: Optional[str] = None
+    parent_asset_id: Optional[str] = None
     created_at: str
 
     class Config:
@@ -77,6 +106,7 @@ def _to_response(a: Asset) -> AssetResponse:
         version=a.version,
         source_node_id=a.source_node_id,
         workflow_id=str(a.workflow_id) if a.workflow_id else None,
+        parent_asset_id=str(a.parent_asset_id) if a.parent_asset_id else None,
         created_at=a.created_at.isoformat() if a.created_at else "",
     )
 
@@ -87,6 +117,15 @@ async def create_asset(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # 元数据 Schema 校验
+    meta = data.metadata or {}
+    schema_cls = METADATA_SCHEMAS.get(data.type)
+    if schema_cls and meta:
+        try:
+            schema_cls(**meta)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Metadata validation error: {e}")
+
     asset = Asset(
         user_id=current_user.id,
         type=AssetType(data.type),
@@ -100,6 +139,7 @@ async def create_asset(
         version=data.version,
         source_node_id=data.source_node_id,
         workflow_id=data.workflow_id,
+        parent_asset_id=UUID(data.parent_asset_id) if data.parent_asset_id else None,
     )
     db.add(asset)
     await db.commit()

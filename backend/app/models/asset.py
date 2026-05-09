@@ -42,6 +42,7 @@ class Asset(Base):
     version = Column(String(10), nullable=True)  # 版本标识，如 'v1'
     source_node_id = Column(String(50), nullable=True)
     workflow_id = Column(UUID(as_uuid=True), nullable=True)
+    parent_asset_id = Column(UUID(as_uuid=True), nullable=True)
 
     is_starred = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)  # Soft delete

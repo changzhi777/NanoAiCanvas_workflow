@@ -303,6 +303,7 @@ export interface Asset {
   version?: string;
   source_node_id?: string;
   workflow_id?: string;
+  parent_asset_id?: string;
   created_at: string;
 }
 
