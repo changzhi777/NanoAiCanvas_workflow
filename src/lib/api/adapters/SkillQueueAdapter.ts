@@ -154,7 +154,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
 
           if (step === 'completed' && message.images) {
             cleanup()
-            const urls = message.images.map(img => img.url)
+            const urls = message.images.map(img => typeof img === 'string' ? img : img.url)
             resolve(urls)
           }
 
@@ -192,7 +192,7 @@ export class SkillQueueAdapter implements ImageGeneratorAdapter {
 
           if (status.status === 'completed' && status.result?.images) {
             cleanup()
-            const urls = status.result.images.map(img => img.url)
+            const urls = status.result.images.map(img => typeof img === 'string' ? img : img.url)
             resolve(urls)
           }
 
