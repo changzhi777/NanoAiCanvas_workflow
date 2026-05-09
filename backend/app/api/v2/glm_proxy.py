@@ -180,6 +180,15 @@ class StoryboardScriptRequest(BaseModel):
     quality: Optional[str] = "standard"
 
 
+class ScreenplayRequest(BaseModel):
+    premise: str
+    shot_count: int = 6
+    style: Optional[str] = "realistic"
+    quality: Optional[str] = "hd"
+    model: str = "glm-4.5-air"
+    temperature: float = 0.7
+
+
 STYLE_MAP = {
     "realistic": "写实风格，真实照片级，电影级光影",
     "anime": "日系动画风格，赛璐璐上色，鲜明色彩",

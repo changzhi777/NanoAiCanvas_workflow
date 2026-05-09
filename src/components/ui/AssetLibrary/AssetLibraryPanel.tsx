@@ -778,7 +778,7 @@ function AssetCard({
 
       {/* 缩略图 */}
       {asset.type === 'IMAGE' && !imageError ? (
-        <img src={asset.thumbnail_url || asset.url} alt={asset.name} className="w-full h-full object-cover" onError={() => setImageError(true)} />
+        <img src={asset.thumbnail_url || asset.url} alt={asset.name} loading="lazy" className="w-full h-full object-cover" onError={() => setImageError(true)} />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">{TYPE_ICONS[asset.type] || '📄'}</div>
       )}

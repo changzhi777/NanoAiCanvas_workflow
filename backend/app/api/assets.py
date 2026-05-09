@@ -134,10 +134,12 @@ async def list_assets(
     if version:
         query = query.where(Asset.version == version)
     if search:
+        search_term = f"%{search}%"
         query = query.where(
             or_(
-                Asset.name.ilike(f"%{search}%"),
-                Asset.tags.op("&&")(func.cast([search], func.array(String).collection) if False else None) if False else None,
+                Asset.name.ilike(search_term),
+                Asset.meta_data["prompt"].astext.ilike(search_term),
+                Asset.meta_data["params"]["scriptTitle"].astext.ilike(search_term),
             )
         )
 
@@ -238,3 +240,51 @@ async def toggle_star(
     await db.commit()
 
     return {"is_starred": asset.is_starred}
+
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[str]
+
+
+@router.post("/batch_delete")
+async def batch_delete(
+    data: BatchDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import update
+    ids = [UUID(i) for i in data.ids]
+    result = await db.execute(
+        update(Asset)
+        .where(Asset.id.in_(ids), Asset.user_id == current_user.id)
+        .values(is_deleted=True)
+    )
+    await db.commit()
+    return {"deleted": result.rowcount}
+
+
+class BatchUpdateRequest(BaseModel):
+    ids: List[str]
+    category: Optional[str] = None
+
+
+@router.post("/batch_update")
+async def batch_update(
+    data: BatchUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import update
+    ids = [UUID(i) for i in data.ids]
+    values = {}
+    if data.category:
+        values["category"] = AssetCategory(data.category)
+    if not values:
+        return {"updated": 0}
+    result = await db.execute(
+        update(Asset)
+        .where(Asset.id.in_(ids), Asset.user_id == current_user.id)
+        .values(**values)
+    )
+    await db.commit()
+    return {"updated": result.rowcount}
