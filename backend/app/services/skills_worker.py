@@ -34,6 +34,8 @@ WUYIN_KEY = os.getenv("WUYINKEJI_API_KEY", "BQQPSV2KBlJsUSfoBGByekjs2s")
 class SkillsWorker:
     """Skills 后台任务 Worker"""
 
+    VALID_RATIOS = {"auto", "1:1", "3:2", "2:3", "16:9", "9:16", "4:3", "3:4", "21:9", "9:21", "1:3", "3:1", "2:1", "1:2"}
+
     def __init__(self, skill_id: str = "gpt_image_2", concurrency: int = 1):
         self.skill_id = skill_id
         self.concurrency = concurrency
@@ -274,30 +276,10 @@ class SkillsWorker:
 
     @staticmethod
     def _convert_size(size: str) -> str:
-        """将 OpenAI 格式 size 转换为速创比例格式"""
-        size_map = {
-            "1024x1024": "1:1",
-            "1024x1536": "2:3",
-            "1536x1024": "3:2",
-            "1536x1536": "1:1",
-            "2048x2048": "1:1",
-            "912x512": "16:9",
-            "1024x576": "16:9",
-            "1280x720": "16:9",
-            "1920x1080": "16:9",
-            "512x912": "9:16",
-            "576x1024": "9:16",
-            "720x1280": "9:16",
-            "1080x1920": "9:16",
-            "680x512": "4:3",
-            "1024x768": "4:3",
-            "2048x1536": "4:3",
-            "512x680": "3:4",
-            "768x1024": "3:4",
-            "1536x2048": "3:4",
-            "auto": "auto",
-        }
-        return size_map.get(size, "auto")
+        """透传比例格式，非标准值回退 auto"""
+        if size in SkillsWorker.VALID_RATIOS:
+            return size
+        return "auto"
 
     async def _publish_step(self, task_id: str, step: str, progress: int, message: str):
         """发布步骤进度"""
