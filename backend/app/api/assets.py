@@ -2,7 +2,7 @@ from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, update
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -10,6 +10,15 @@ from app.models import User, Asset, AssetType, AssetCategory
 from app.api.auth import get_current_user
 
 router = APIRouter(prefix="/assets", tags=["assets"])
+
+
+def _safe_uuid(val: Optional[str]) -> Optional[UUID]:
+    if not val:
+        return None
+    try:
+        return UUID(val)
+    except ValueError:
+        return None
 
 
 class AssetCreate(BaseModel):
@@ -28,17 +37,7 @@ class AssetCreate(BaseModel):
 
 
 # --- 元数据 Schema ---
-class StoryboardShotMeta(BaseModel):
-    prompt: Optional[str] = None
-    enhancedPrompt: Optional[str] = None
-    params: Optional[dict] = None
-    referenceImages: Optional[List[str]] = None
-
-    class Config:
-        extra = "allow"
-
-
-class ImageGenMeta(BaseModel):
+class AssetMeta(BaseModel):
     prompt: Optional[str] = None
     enhancedPrompt: Optional[str] = None
     params: Optional[dict] = None
@@ -49,8 +48,8 @@ class ImageGenMeta(BaseModel):
 
 
 METADATA_SCHEMAS = {
-    "storyboard_shot": StoryboardShotMeta,
-    "image": ImageGenMeta,
+    "storyboard_shot": AssetMeta,
+    "image": AssetMeta,
 }
 
 
@@ -94,12 +93,12 @@ class AssetListResponse(BaseModel):
 def _to_response(a: Asset) -> AssetResponse:
     return AssetResponse(
         id=a.id,
-        type=a.type.value,
+        type=a.type.value if isinstance(a.type, AssetType) else a.type,
         name=a.name,
         url=a.url,
         thumbnail_url=a.thumbnail_url,
         metadata=a.meta_data or {},
-        category=a.category.value if a.category else None,
+        category=a.category.value if isinstance(a.category, AssetCategory) else a.category,
         tags=a.tags or [],
         is_starred=a.is_starred,
         workflow_snapshot=a.workflow_snapshot,
@@ -139,7 +138,7 @@ async def create_asset(
         version=data.version,
         source_node_id=data.source_node_id,
         workflow_id=data.workflow_id,
-        parent_asset_id=UUID(data.parent_asset_id) if data.parent_asset_id else None,
+        parent_asset_id=_safe_uuid(data.parent_asset_id),
     )
     db.add(asset)
     await db.commit()
@@ -180,7 +179,8 @@ async def list_assets(
                 Asset.name.ilike(search_term),
                 Asset.meta_data["prompt"].astext.ilike(search_term),
                 Asset.meta_data["params"]["scriptTitle"].astext.ilike(search_term),
-            )
+            ),
+            Asset.meta_data.isnot(None),
         )
 
     # Count total
@@ -232,8 +232,8 @@ async def update_asset(
 
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
-        if key == "category" and value:
-            value = AssetCategory(value)
+        if key == "category":
+            value = AssetCategory(value) if value else None
         setattr(asset, key, value)
 
     await db.commit()
@@ -292,8 +292,9 @@ async def batch_delete(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import update
-    ids = [UUID(i) for i in data.ids]
+    ids = [_safe_uuid(i) for i in data.ids if _safe_uuid(i)]
+    if not ids:
+        return {"deleted": 0}
     result = await db.execute(
         update(Asset)
         .where(Asset.id.in_(ids), Asset.user_id == current_user.id)
@@ -314,8 +315,9 @@ async def batch_update(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import update
-    ids = [UUID(i) for i in data.ids]
+    ids = [_safe_uuid(i) for i in data.ids if _safe_uuid(i)]
+    if not ids:
+        return {"updated": 0}
     values = {}
     if data.category:
         values["category"] = AssetCategory(data.category)

@@ -103,6 +103,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
     if (!token) return
 
     autoSaveRef.current = true
+    let cancelled = false
 
     const savedIds: string[] = []
     let savedCount = 0
@@ -113,6 +114,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
       setSaveStates(initialStates)
 
       for (let i = 0; i < displayImages.length; i++) {
+        if (cancelled) return
         try {
           const shot = shots[i]
           const result = await createImageAssetApi({
@@ -153,6 +155,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
     }
 
     saveAll()
+    return () => { cancelled = true }
   }, [displayImages, resultData?.savedToAsset])
 
   // === 从资产库回载已保存的分镜资产 ===

@@ -60,6 +60,13 @@ export { default as OutputNode } from './OutputNode';
 // 故事板分镜节点
 export { StoryboardShotANode } from './StoryboardShotANode';
 
+// 故事板分镜V2版节点
+export { StoryboardV2Node } from './StoryboardV2Node';
+export { default as ShotRefImageNode } from './ShotRefImageNode';
+export { default as CharacterDesignImageNode } from './CharacterDesignImageNode';
+export { default as SceneDesignImageNode } from './SceneDesignImageNode';
+export { default as StoryboardScriptTableNode } from './StoryboardScriptTableNode';
+
 // 类型导出
 export type { ScriptGeneratorData } from './ScriptGeneratorNode';
 export type { StoryboardGeneratorData } from './StoryboardGeneratorNode';
@@ -133,4 +140,11 @@ export const nodeTypes = {
 
   // 故事板分镜节点
   storyboard_shot_a: lazy(() => import('./StoryboardShotANode').then(m => ({ default: m.StoryboardShotANode }))),
+
+  // 故事板分镜V2版节点
+  storyboard_v2: lazy(() => import('./StoryboardV2Node').then(m => ({ default: m.StoryboardV2Node }))),
+  shot_ref_image: lazy(() => import('./ShotRefImageNode').then(m => ({ default: m.ShotRefImageNode }))),
+  character_design_image: lazy(() => import('./CharacterDesignImageNode').then(m => ({ default: m.CharacterDesignImageNode }))),
+  scene_design_image: lazy(() => import('./SceneDesignImageNode').then(m => ({ default: m.SceneDesignImageNode }))),
+  script_table: lazy(() => import('./StoryboardScriptTableNode').then(m => ({ default: m.StoryboardScriptTableNode }))),
 };

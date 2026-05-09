@@ -402,8 +402,162 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 );
               })()}
 
+              {/* 故事板分镜V2版 专属配置 */}
+              {selectedNode.type === 'storyboard_v2' && (() => {
+                const p = { inputText: '', shotCount: 6, style: 'realistic', quality: 'hd', temperature: 0.7, model: 'glm-4.5-air', ...(editData.params || {}) };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>剧本参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">分镜头数量</Label>
+                        <input type="number" min={4} max={12} value={p.shotCount} onChange={e => setP({ shotCount: Math.max(4, Math.min(12, Number(e.target.value) || 6)) })} className={selectCls} />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">风格预设</Label>
+                        <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实</option>
+                          <option value="anime">动画</option>
+                          <option value="comic">漫画</option>
+                          <option value="watercolor">水彩</option>
+                          <option value="oil_painting">油画</option>
+                          <option value="chinese">中国风</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">画质</Label>
+                        <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                          <option value="standard">标准</option>
+                          <option value="hd">高清</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">Temperature: {p.temperature}</Label>
+                        <input type="range" min={0.1} max={1} step={0.1} value={p.temperature} onChange={e => setP({ temperature: Number(e.target.value) })} className="w-full" />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">模型</Label>
+                        <select value={p.model} onChange={e => setP({ model: e.target.value })} className={selectCls}>
+                          <option value="glm-4.5-air">GLM-4.5-Air</option>
+                          <option value="glm-4.7-flash">GLM-4.7-Flash</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 分镜头参考图 专属配置 */}
+              {selectedNode.type === 'shot_ref_image' && (() => {
+                const p = { gridSize: '4', quality: 'hd', style: 'realistic', ...(editData.params || {}) };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                const images = selectedNode.data.result?.images || [];
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>生成参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">宫格模式</Label>
+                        <select value={p.gridSize} onChange={e => setP({ gridSize: e.target.value })} className={selectCls}>
+                          <option value="4">四宫格 (2x2)</option>
+                          <option value="6">六宫格 (2x3)</option>
+                          <option value="9">九宫格 (3x3)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">画质</Label>
+                        <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                          <option value="standard">标准</option>
+                          <option value="hd">高清</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">风格</Label>
+                        <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实</option>
+                          <option value="anime">动画</option>
+                          <option value="comic">漫画</option>
+                          <option value="watercolor">水彩</option>
+                        </select>
+                      </div>
+                    </div>
+                    {images.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>生成结果</h3>
+                        <div className="flex items-center gap-1.5 text-xs"><FileImage className="w-3.5 h-3.5 text-orange-400" /><span className="text-muted-foreground">数量：</span><span>{images.length} 张</span></div>
+                        <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                          {images.map((url: string, i: number) => (
+                            <img key={i} src={url} alt={`shot-${i}`} className="w-full aspect-square object-cover rounded border border-white/10" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* 人物角色设计图 / 场景设计图 专属配置 */}
+              {(selectedNode.type === 'character_design_image' || selectedNode.type === 'scene_design_image') && (() => {
+                const p = { quality: 'hd', style: 'realistic', ...(editData.params || {}) };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                const images = selectedNode.data.result?.images || [];
+                const isChar = selectedNode.type === 'character_design_image';
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>生成参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">画质</Label>
+                        <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                          <option value="standard">标准</option>
+                          <option value="hd">高清</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">风格</Label>
+                        <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实</option>
+                          <option value="anime">动画</option>
+                          <option value="comic">漫画</option>
+                          <option value="watercolor">水彩</option>
+                        </select>
+                      </div>
+                      {isChar && <div className="text-[10px] text-muted-foreground">每个角色：站姿3 + 特写2 + 服饰2 = 7 张图</div>}
+                      {!isChar && <div className="text-[10px] text-muted-foreground">场景图：16:9 比例，无人物</div>}
+                    </div>
+                    {images.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>生成结果</h3>
+                        <div className="flex items-center gap-1.5 text-xs"><FileImage className="w-3.5 h-3.5 text-orange-400" /><span className="text-muted-foreground">数量：</span><span>{images.length} 张</span></div>
+                        <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                          {images.map((url: string, i: number) => (
+                            <img key={i} src={url} alt={`${isChar ? 'char' : 'scene'}-${i}`} className="w-full aspect-video object-cover rounded border border-white/10" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* 节点参数（已有专属配置的节点跳过通用区域） */}
-              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && (
+              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',

@@ -24,6 +24,11 @@ export enum WorkflowNodeType {
 
   // 故事板分镜节点
   STORYBOARD_SHOT_A = 'storyboard_shot_a',
+  STORYBOARD_V2 = 'storyboard_v2',
+  SHOT_REF_IMAGE = 'shot_ref_image',
+  CHARACTER_DESIGN_IMAGE = 'character_design_image',
+  SCENE_DESIGN_IMAGE = 'scene_design_image',
+  SCRIPT_TABLE = 'script_table',
 
   // AI 生成节点
   SCRIPT_GENERATOR = 'script_generator',
@@ -390,6 +395,138 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
   },
   // 18 个 Skills 工作流模板
   ...skillsWorkflowTemplates,
+  // ==================== 故事板分镜V2版 工作流（1→4 扇出） ====================
+  {
+    id: 'storyboard-v2-workflow',
+    name: '故事板分镜V2版',
+    description: '剧本生成→分镜头参考图+人物角色设计+场景设计+脚本表格 并行执行',
+    category: 'storyboard',
+    tags: ['分镜', '故事板', 'V2', '并行', '推荐'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    nodes: [
+      {
+        id: 'node-v2-storyboard',
+        type: 'storyboard_v2',
+        position: { x: 100, y: 350 },
+        data: {
+          label: '故事板分镜V2版',
+          params: {
+            inputText: '',
+            shotCount: 6,
+            style: 'realistic',
+            quality: 'hd',
+            temperature: 0.7,
+            model: 'glm-4.5-air',
+          },
+          inputs: [
+            { id: 'text-in', name: '文本', type: 'text', required: false },
+          ],
+          outputs: [
+            { id: 'shots-out', name: '分镜头', type: 'array', required: false },
+            { id: 'characters-out', name: '角色', type: 'array', required: false },
+            { id: 'scenes-out', name: '场景', type: 'array', required: false },
+            { id: 'script-out', name: '脚本', type: 'object', required: false },
+          ],
+          status: NodeStatus.IDLE,
+        },
+      },
+      {
+        id: 'node-v2-shot-ref',
+        type: 'shot_ref_image',
+        position: { x: 500, y: 50 },
+        data: {
+          label: '分镜头参考图',
+          params: { gridSize: '4', quality: 'hd', style: 'realistic' },
+          inputs: [{ id: 'shots-in', name: '分镜头', type: 'array', required: true }],
+          outputs: [{ id: 'images-out', name: '图片', type: 'image', required: false }],
+          status: NodeStatus.IDLE,
+        },
+      },
+      {
+        id: 'node-v2-character',
+        type: 'character_design_image',
+        position: { x: 500, y: 250 },
+        data: {
+          label: '人物角色设计图',
+          params: { quality: 'hd', style: 'realistic' },
+          inputs: [{ id: 'chars-in', name: '角色', type: 'array', required: true }],
+          outputs: [{ id: 'chars-out', name: '角色图', type: 'image', required: false }],
+          status: NodeStatus.IDLE,
+        },
+      },
+      {
+        id: 'node-v2-scene',
+        type: 'scene_design_image',
+        position: { x: 500, y: 450 },
+        data: {
+          label: '场景设计图',
+          params: { quality: 'hd', style: 'realistic' },
+          inputs: [{ id: 'scenes-in', name: '场景', type: 'array', required: true }],
+          outputs: [{ id: 'scenes-out', name: '场景图', type: 'image', required: false }],
+          status: NodeStatus.IDLE,
+        },
+      },
+      {
+        id: 'node-v2-script-table',
+        type: 'script_table',
+        position: { x: 500, y: 630 },
+        data: {
+          label: '分镜头脚本表格',
+          params: {},
+          inputs: [{ id: 'script-in', name: '脚本', type: 'object', required: true }],
+          outputs: [{ id: 'table-out', name: '表格', type: 'object', required: false }],
+          status: NodeStatus.IDLE,
+        },
+      },
+    ],
+    edges: [
+      {
+        id: 'edge-v2-shots',
+        source: 'node-v2-storyboard',
+        target: 'node-v2-shot-ref',
+        sourceHandle: 'shots-out',
+        targetHandle: 'shots-in',
+        type: 'custom',
+        animated: true,
+        style: { stroke: '#3ecf8e', strokeWidth: 2 },
+        data: { type: 'auto' },
+      },
+      {
+        id: 'edge-v2-chars',
+        source: 'node-v2-storyboard',
+        target: 'node-v2-character',
+        sourceHandle: 'characters-out',
+        targetHandle: 'chars-in',
+        type: 'custom',
+        animated: true,
+        style: { stroke: '#f59e0b', strokeWidth: 2 },
+        data: { type: 'auto' },
+      },
+      {
+        id: 'edge-v2-scenes',
+        source: 'node-v2-storyboard',
+        target: 'node-v2-scene',
+        sourceHandle: 'scenes-out',
+        targetHandle: 'scenes-in',
+        type: 'custom',
+        animated: true,
+        style: { stroke: '#6366f1', strokeWidth: 2 },
+        data: { type: 'auto' },
+      },
+      {
+        id: 'edge-v2-script',
+        source: 'node-v2-storyboard',
+        target: 'node-v2-script-table',
+        sourceHandle: 'script-out',
+        targetHandle: 'script-in',
+        type: 'custom',
+        animated: true,
+        style: { stroke: '#ec4899', strokeWidth: 2 },
+        data: { type: 'auto' },
+      },
+    ],
+  },
   // ==================== 故事板分镜V1版 工作流（2节点双面） ====================
   {
     id: 'storyboard-shot-a-workflow',
@@ -976,6 +1113,52 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
               }
               if (get()._globalAbortController?.signal.aborted) break;
               if (!result?.imageUrl) throw new Error('生成超时，请重试');
+              break;
+            }
+
+            // ==================== 故事板分镜V2版 + 下游节点 ====================
+
+            case 'storyboard_v2': {
+              // V2 剧本生成节点由组件自身执行（handleExecute），此处仅透传上游文本
+              const { edges: v2Edges } = get();
+              const v2Incoming = v2Edges.find(e => e.target === nodeId);
+              let v2Text = node.data.params?.inputText || '';
+              if (v2Incoming) {
+                const v2Src = nodes.find(n => n.id === v2Incoming.source);
+                if (v2Src?.data?.result?.text) v2Text = v2Src.data.result.text;
+              }
+              result = { text: v2Text };
+              break;
+            }
+
+            case 'shot_ref_image':
+            case 'character_design_image':
+            case 'scene_design_image': {
+              // 下游生图节点由组件自身执行（handleExecute），store 仅透传上游剧本
+              const { edges: imgEdges } = get();
+              const imgIncoming = imgEdges.find(e => e.target === nodeId);
+              if (imgIncoming) {
+                const imgSrc = nodes.find(n => n.id === imgIncoming.source);
+                result = imgSrc?.data?.result || { message: '等待上游数据' };
+              } else {
+                result = { message: '未连接上游节点' };
+              }
+              break;
+            }
+
+            case 'script_table': {
+              // 脚本表格：从上游获取 screenplay 数据展示
+              const { edges: tblEdges } = get();
+              const tblIncoming = tblEdges.find(e => e.target === nodeId);
+              if (tblIncoming) {
+                const tblSrc = nodes.find(n => n.id === tblIncoming.source);
+                const screenplay = tblSrc?.data?.result?.screenplay;
+                result = screenplay
+                  ? { scriptTable: screenplay.script_table || [], screenplay }
+                  : { message: '等待上游数据' };
+              } else {
+                result = { message: '未连接上游节点' };
+              }
               break;
             }
 

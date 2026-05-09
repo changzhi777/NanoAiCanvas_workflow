@@ -54,6 +54,10 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
   const abortRef = useRef<AbortController | null>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
 
+  // 用 ref 持有最新 result，避免闭包过期
+  const resultRef = useRef(data.result)
+  resultRef.current = data.result
+
   const upstreamText = useMemo(() => {
     const incomingEdge = edges.find(e => e.target === id)
     if (incomingEdge) {
@@ -117,7 +121,6 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
 
       emitStep('screenplay_parsed', 80, `剧本完成: ${screenplay.characters?.length || 0} 角色, ${screenplay.shots?.length || 0} 分镜头`)
 
-      // 实时推送剧本到下游节点
       updateNode(id, {
         result: {
           screenplay,
