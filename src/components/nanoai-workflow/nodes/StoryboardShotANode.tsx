@@ -200,7 +200,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
       emitStep('shot_parsing', 10, `已解析 ${shots.length} 个分镜头`)
 
-      // ===== 阶段2：逐镜头串行生成图片 =====
+      // ===== 阶段2：逐镜头串行生成图片（实时推送每张） =====
       const adapter = getSkillQueueAdapter()
       const totalShots = shots.length
       const completedShots: StoryboardShot[] = []
@@ -235,9 +235,20 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
           if (images[0]) {
             completedShots.push({ ...shot, imageUrl: images[0] })
             allImages.push(images[0])
+
+            // 每完成一个镜头立即推送到预览
+            updateNode(id, {
+              result: {
+                ...data.result,
+                images: [...allImages],
+                imageUrl: allImages[0],
+                shots: [...completedShots],
+                scriptTitle: script.title,
+                startedAt,
+              },
+            })
           }
         } catch (shotErr: any) {
-          // 单个镜头失败不中断整体流程
           console.warn(`Shot P${idx + 1} failed:`, shotErr.message)
         }
       }
