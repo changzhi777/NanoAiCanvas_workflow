@@ -66,7 +66,7 @@ export async function createImageAssetApi(asset: {
 
   // Transform frontend format to backend format
   const backendAsset = {
-    type: 'IMAGE',
+    type: 'image',
     name: asset.prompt?.slice(0, 50) || 'Generated Image',
     url: asset.imageUrl || '',
     tags: ['generated'],

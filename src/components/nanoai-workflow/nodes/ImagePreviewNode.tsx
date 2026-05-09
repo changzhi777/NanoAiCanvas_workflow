@@ -97,7 +97,6 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
   // === 自动保存到资产库 ===
   useEffect(() => {
     if (!displayImages.length) return
-    if (data.status !== NodeStatus.SUCCESS) return
     if (resultData?.savedToAsset) return
     if (autoSaveRef.current) return
     const token = localStorage.getItem('nanoai_token')
@@ -153,7 +152,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
     }
 
     saveAll()
-  }, [displayImages, data.status, resultData?.savedToAsset])
+  }, [displayImages, resultData?.savedToAsset])
 
   // === 从资产库回载已保存的分镜资产 ===
   useEffect(() => {
