@@ -130,6 +130,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   });
   const [showProgress, setShowProgress] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [userDismissedProgress, setUserDismissedProgress] = useState(false);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -323,17 +324,22 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     }
   }, [onNodesChange]);
 
-  // 监听节点状态变化，自动显示进度面板
+  // 监听节点状态变化，自动显示进度面板（用户手动关闭后不再自动弹出）
   useEffect(() => {
     const hasRunningNode = nodes.some(n => n.data.status === 'running');
 
-    if (hasRunningNode && !showProgress) {
+    if (hasRunningNode && !showProgress && !userDismissedProgress) {
       setShowProgress(true);
+      setIsExecuting(true);
+    }
+
+    if (hasRunningNode && !isExecuting) {
       setIsExecuting(true);
     }
 
     if (!hasRunningNode && isExecuting) {
       setIsExecuting(false);
+      setUserDismissedProgress(false);
     }
 
     // 更新连线动画状态
@@ -669,7 +675,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
               </h3>
             </div>
             <button
-              onClick={() => setShowProgress(false)}
+              onClick={() => { setShowProgress(false); setUserDismissedProgress(true); }}
               className={cn(
                 'p-1 rounded transition-colors',
                 isDark
@@ -693,7 +699,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
 
       {/* 进度面板切换按钮 */}
       <button
-        onClick={() => setShowProgress(!showProgress)}
+        onClick={() => { setShowProgress(!showProgress); if (!showProgress) setUserDismissedProgress(false); }}
         className={cn(
           'fixed bottom-4 right-4 z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
           'hover:scale-110 active:scale-95',
