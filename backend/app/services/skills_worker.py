@@ -198,8 +198,8 @@ class SkillsWorker:
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(
                         f"{WUYIN_BASE}/api/async/image_gpt",
-                        headers={"Authorization": WUYIN_KEY, "Content-Type": "application/json"},
-                        json={"prompt": prompt, "size": wuyin_size},
+                        headers={"Content-Type": "application/json"},
+                        json={"key": WUYIN_KEY, "prompt": prompt, "size": wuyin_size},
                     )
 
                     if resp.status_code >= 500:
@@ -274,12 +274,27 @@ class SkillsWorker:
 
     @staticmethod
     def _convert_size(size: str) -> str:
-        """将 OpenAI 格式 size 转换为速创格式"""
+        """将 OpenAI 格式 size 转换为速创比例格式"""
         size_map = {
-            "1024x1024": "1K",
-            "1024x1536": "1K",
-            "1536x1024": "1K",
-            "2048x2048": "2K",
+            "1024x1024": "1:1",
+            "1024x1536": "2:3",
+            "1536x1024": "3:2",
+            "1536x1536": "1:1",
+            "2048x2048": "1:1",
+            "912x512": "16:9",
+            "1024x576": "16:9",
+            "1280x720": "16:9",
+            "1920x1080": "16:9",
+            "512x912": "9:16",
+            "576x1024": "9:16",
+            "720x1280": "9:16",
+            "1080x1920": "9:16",
+            "680x512": "4:3",
+            "1024x768": "4:3",
+            "2048x1536": "4:3",
+            "512x680": "3:4",
+            "768x1024": "3:4",
+            "1536x2048": "3:4",
             "auto": "auto",
         }
         return size_map.get(size, "auto")
