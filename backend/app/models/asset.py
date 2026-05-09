@@ -51,5 +51,7 @@ class Asset(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = Column(DateTime, nullable=True)
 
+    category_ref = Column(UUID(as_uuid=True), nullable=True, index=True)
+
     user = relationship("User", back_populates="assets")
     team_assets = relationship("TeamAsset", back_populates="asset")

@@ -5,13 +5,14 @@
 
 import { memo, useMemo } from 'react'
 import { Handle, Position } from 'reactflow'
-import { Table, Circle, CheckCircle2, Ban, Timer } from 'lucide-react'
+import { Table } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { type ScriptTableEntry, type ScreenplayData } from './StoryboardV2.shared'
+import { statusConfig } from './nodeStatusConfig'
 
 export interface ScriptTableData extends WorkflowNodeData {
   params: Record<string, any>
@@ -25,16 +26,9 @@ export interface ScriptTableData extends WorkflowNodeData {
   error?: string
 }
 
-const statusConfig = {
-  [NodeStatus.IDLE]: { icon: Circle, label: '未开始', cls: 'not-started' },
-  [NodeStatus.RUNNING]: { icon: Timer, label: '加载中', cls: 'in-progress' },
-  [NodeStatus.SUCCESS]: { icon: CheckCircle2, label: '已完成', cls: 'completed' },
-  [NodeStatus.ERROR]: { icon: Ban, label: '已阻塞', cls: 'blocked' },
-  [NodeStatus.DISABLED]: { icon: Circle, label: '禁用', cls: 'not-started' },
-}
-
 export const StoryboardScriptTableNode = memo(({ id, data }: { id: string; data: ScriptTableData }) => {
-  const { nodes, edges } = useNanoaiWorkflowStore()
+  const nodes = useNanoaiWorkflowStore(s => s.nodes)
+  const edges = useNanoaiWorkflowStore(s => s.edges)
 
   const upstreamData = useMemo(() => {
     const incomingEdge = edges.find(e => e.target === id)

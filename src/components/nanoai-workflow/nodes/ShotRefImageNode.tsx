@@ -5,7 +5,7 @@
 
 import { memo, useCallback, useMemo } from 'react'
 import { Handle, Position } from 'reactflow'
-import { Image, Play, Circle, Timer, CheckCircle2, Ban } from 'lucide-react'
+import { Image, Play } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,7 @@ import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter } from '@/lib/api/adapters/SkillQueueAdapter'
 import { type ScreenplayShot, type ScreenplayData, prefixResolution } from './StoryboardV2.shared'
 import { useImageGeneration } from './useImageGeneration'
+import { statusConfig } from './nodeStatusConfig'
 
 export interface ShotRefImageData extends WorkflowNodeData {
   params: { gridSize: '4' | '6' | '9'; quality: string; style: string }
@@ -32,16 +33,9 @@ export interface ShotRefImageData extends WorkflowNodeData {
   _stepInfo?: { step: string; progress: number; message: string }
 }
 
-const statusConfig = {
-  [NodeStatus.IDLE]: { icon: Circle, label: '未开始', cls: 'not-started' },
-  [NodeStatus.RUNNING]: { icon: Timer, label: '生成中', cls: 'in-progress' },
-  [NodeStatus.SUCCESS]: { icon: CheckCircle2, label: '已完成', cls: 'completed' },
-  [NodeStatus.ERROR]: { icon: Ban, label: '已阻塞', cls: 'blocked' },
-  [NodeStatus.DISABLED]: { icon: Circle, label: '禁用', cls: 'not-started' },
-}
-
 export const ShotRefImageNode = memo(({ id, data }: { id: string; data: ShotRefImageData }) => {
-  const { nodes, edges } = useNanoaiWorkflowStore()
+  const nodes = useNanoaiWorkflowStore(s => s.nodes)
+  const edges = useNanoaiWorkflowStore(s => s.edges)
   const {
     localError, currentStep, stepProgress, stepMessage, setStepMessage, stopExecution,
     emitStep, startGeneration, finishGeneration, handleError,

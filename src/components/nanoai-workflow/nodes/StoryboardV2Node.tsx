@@ -5,7 +5,7 @@
 
 import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { Handle, Position } from 'reactflow'
-import { ClipboardList, Play, Circle, Timer, CheckCircle2, Ban } from 'lucide-react'
+import { ClipboardList, Play } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
 import { cn } from '@/lib/utils'
@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { generateScreenplay, DEFAULT_V2_PARAMS, type ScreenplayData } from './StoryboardV2.shared'
+import { statusConfig } from './nodeStatusConfig'
 
 export interface StoryboardV2Data extends WorkflowNodeData {
   params: {
@@ -36,14 +37,6 @@ export interface StoryboardV2Data extends WorkflowNodeData {
   _stepInfo?: { step: string; progress: number; message: string }
 }
 
-const statusConfig = {
-  [NodeStatus.IDLE]: { icon: Circle, label: '未开始', cls: 'not-started' },
-  [NodeStatus.RUNNING]: { icon: Timer, label: '生成中', cls: 'in-progress' },
-  [NodeStatus.SUCCESS]: { icon: CheckCircle2, label: '已完成', cls: 'completed' },
-  [NodeStatus.ERROR]: { icon: Ban, label: '已阻塞', cls: 'blocked' },
-  [NodeStatus.DISABLED]: { icon: Circle, label: '禁用', cls: 'not-started' },
-}
-
 export const StoryboardV2Node = memo(({ id, data }: { id: string; data: StoryboardV2Data }) => {
   const { updateNode, nodes, edges } = useNanoaiWorkflowStore()
   const stopExecution = useNanoaiWorkflowStore(s => s.stopExecution)
@@ -53,10 +46,6 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
   const [stepMessage, setStepMessage] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
-
-  // 用 ref 持有最新 result，避免闭包过期
-  const resultRef = useRef(data.result)
-  resultRef.current = data.result
 
   const upstreamText = useMemo(() => {
     const incomingEdge = edges.find(e => e.target === id)
