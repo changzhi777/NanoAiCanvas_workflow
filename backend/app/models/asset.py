@@ -39,6 +39,8 @@ class Asset(Base):
 
     workflow_snapshot = Column(JSONB, nullable=True)  # Snapshot of workflow at creation time
 
+    version = Column(String(10), nullable=True)  # 版本标识，如 'v1'
+
     is_starred = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)  # Soft delete
 

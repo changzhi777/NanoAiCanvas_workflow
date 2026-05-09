@@ -56,6 +56,7 @@ export async function createImageAssetApi(asset: {
   enhancedPrompt?: string
   params?: Record<string, any>
   referenceImages?: string[]
+  version?: string
 }): Promise<{
   success: boolean
   asset?: ImageAsset
@@ -74,7 +75,8 @@ export async function createImageAssetApi(asset: {
       enhancedPrompt: asset.enhancedPrompt,
       params: asset.params,
       referenceImages: asset.referenceImages,
-    }
+    },
+    version: asset.version || undefined,
   }
 
   try {
@@ -114,4 +116,40 @@ export async function deleteImageAssetApi(id: string): Promise<{
     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
   })
   return response.json()
+}
+
+/**
+ * 按版本查询故事板分镜资产
+ */
+export async function getStoryboardShotAssetsApi(options?: {
+  version?: string
+  scriptTitle?: string
+  page?: number
+  pageSize?: number
+}): Promise<{
+  success: boolean
+  items?: any[]
+  total?: number
+  error?: string
+}> {
+  const params = new URLSearchParams()
+  params.set('type_filter', 'storyboard_shot')
+  if (options?.version) params.set('version', options.version)
+  if (options?.page) params.set('page', String(options.page))
+  if (options?.pageSize) params.set('page_size', String(options.pageSize))
+  if (options?.scriptTitle) params.set('search', options.scriptTitle)
+
+  const token = localStorage.getItem('nanoai_token')
+  try {
+    const response = await fetch(`${API_BASE}/assets?${params.toString()}`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    })
+    if (!response.ok) {
+      return { success: false, error: await response.text() }
+    }
+    const data = await response.json()
+    return { success: true, items: data.items, total: data.total }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
 }

@@ -92,22 +92,26 @@ export const DEFAULT_PARAMS = {
   aspectRatio: '1:1' as AspectRatio,
 }
 
-export async function optimizePromptWithGLM(rawPrompt: string, opts: { temperature: number; systemPromptTemplate: string; model: string }): Promise<string> {
+export async function optimizePromptWithGLM(rawPrompt: string, opts: { temperature: number; systemPromptTemplate: string; model: string; style?: string; quality?: string }): Promise<string> {
   const data = await client.post<{ optimized_prompt: string }>('/glm/optimize', {
     prompt: rawPrompt,
     model: opts.model,
     temperature: opts.temperature,
     system_prompt_template: opts.systemPromptTemplate,
+    style: opts.style || 'realistic',
+    quality: opts.quality || 'standard',
   })
   return data.optimized_prompt
 }
 
-export async function generateStoryboardScript(prompt: string, opts: { shotCount: number; model: string; temperature: number }): Promise<StoryboardScript> {
+export async function generateStoryboardScript(prompt: string, opts: { shotCount: number; model: string; temperature: number; style?: string; quality?: string }): Promise<StoryboardScript> {
   const data = await client.post<{ script: StoryboardScript }>('/glm/storyboard-script', {
     prompt,
     shot_count: opts.shotCount,
     model: opts.model,
     temperature: opts.temperature,
+    style: opts.style || 'realistic',
+    quality: opts.quality || 'standard',
   })
   return data.script
 }

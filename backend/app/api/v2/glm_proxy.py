@@ -21,6 +21,8 @@ class OptimizeRequest(BaseModel):
     model: str = "glm-4.5-air"
     temperature: float = 0.8
     system_prompt_template: str = "storyboard"
+    style: Optional[str] = "realistic"
+    quality: Optional[str] = "standard"
 
 
 class StoryboardScriptRequest(BaseModel):
@@ -28,6 +30,23 @@ class StoryboardScriptRequest(BaseModel):
     shot_count: int = 6
     model: str = "glm-4.5-air"
     temperature: float = 0.7
+    style: Optional[str] = "realistic"
+    quality: Optional[str] = "standard"
+
+
+STYLE_MAP = {
+    "realistic": "写实风格，真实照片级，电影级光影",
+    "anime": "日系动画风格，赛璐璐上色，鲜明色彩",
+    "comic": "美式漫画风格，粗犷线条，动态构图",
+    "watercolor": "水彩画风格，柔和晕染，轻盈通透",
+    "oil_painting": "油画风格，厚涂质感，丰富肌理，经典艺术",
+    "chinese": "中国水墨画风格，留白意境，淡雅笔触",
+}
+
+QUALITY_MAP = {
+    "standard": "",
+    "hd": "超高清画质，极致细节，锐利对焦，专业级品质，8K分辨率",
+}
 
 
 SYSTEM_PROMPTS = {
@@ -71,6 +90,13 @@ async def optimize_prompt(
         raise HTTPException(status_code=500, detail="GLM API Key 未配置")
 
     system_prompt = SYSTEM_PROMPTS.get(req.system_prompt_template, SYSTEM_PROMPTS["storyboard"])
+    # 注入风格和画质约束
+    style_instruction = STYLE_MAP.get(req.style or "realistic", "")
+    quality_instruction = QUALITY_MAP.get(req.quality or "standard", "")
+    if style_instruction or quality_instruction:
+        system_prompt += f"\n\n画面要求：{style_instruction}"
+        if quality_instruction:
+            system_prompt += f"。{quality_instruction}"
     # For reasoning models, append direct output instruction
     if req.model.startswith("glm-4.7"):
         system_prompt += "\n\n重要：请将最终优化结果放在 <output> 标签中，格式：<output>优化后的提示词</output>"
@@ -138,6 +164,13 @@ async def generate_storyboard_script(
         raise HTTPException(status_code=500, detail="GLM API Key 未配置")
 
     system_prompt = STORYBOARD_SCRIPT_PROMPT.format(shot_count=req.shot_count)
+    # 注入风格和画质约束到分镜头提示词
+    style_instruction = STYLE_MAP.get(req.style or "realistic", "")
+    quality_instruction = QUALITY_MAP.get(req.quality or "standard", "")
+    if style_instruction or quality_instruction:
+        system_prompt += f"\n\n所有分镜头的 visual_prompt 必须体现以下画面要求：{style_instruction}"
+        if quality_instruction:
+            system_prompt += f"。{quality_instruction}"
     if req.model.startswith("glm-4.7"):
         system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中，格式：<output>{...}</output>"
 

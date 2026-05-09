@@ -254,6 +254,8 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       temperature={p.temperature}
                       systemPromptTemplate={p.systemPromptTemplate}
                       model={p.model}
+                      style={p.style}
+                      quality={p.quality}
                       isDark={isDark}
                     />
 
@@ -273,6 +275,25 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           <option value="3:4">3:4 竖屏</option>
                         </select>
                       </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">批量生成数量</Label>
+                        <input type="number" min={1} max={8} value={p.batchCount || 1} onChange={e => setP({ batchCount: Math.max(1, Math.min(8, Number(e.target.value) || 1)) })} className={selectCls} />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">分镜头数量</Label>
+                        <input type="number" min={4} max={8} value={p.shotCount || 6} onChange={e => setP({ shotCount: Math.max(4, Math.min(8, Number(e.target.value) || 6)) })} className={selectCls} />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">预览布局</Label>
+                        <select value={p.layoutDirection || 'horizontal'} onChange={e => setP({ layoutDirection: e.target.value as any })} className={selectCls}>
+                          <option value="horizontal">横向网格</option>
+                          <option value="vertical">纵向排列</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>优化参数</h3>
+                    <div className="space-y-3">
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">图片尺寸</Label>
                         <select
@@ -304,25 +325,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         </select>
                       </div>
                       <div>
-                        <Label className="text-xs mb-1.5 block text-muted-foreground">批量生成数量</Label>
-                        <input type="number" min={1} max={8} value={p.batchCount || 1} onChange={e => setP({ batchCount: Math.max(1, Math.min(8, Number(e.target.value) || 1)) })} className={selectCls} />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1.5 block text-muted-foreground">分镜头数量</Label>
-                        <input type="number" min={4} max={8} value={p.shotCount || 6} onChange={e => setP({ shotCount: Math.max(4, Math.min(8, Number(e.target.value) || 6)) })} className={selectCls} />
-                      </div>
-                      <div>
-                        <Label className="text-xs mb-1.5 block text-muted-foreground">预览布局</Label>
-                        <select value={p.layoutDirection || 'horizontal'} onChange={e => setP({ layoutDirection: e.target.value as any })} className={selectCls}>
-                          <option value="horizontal">横向网格</option>
-                          <option value="vertical">纵向排列</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>优化参数</h3>
-                    <div className="space-y-3">
-                      <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">提示词模板</Label>
                         <select value={p.systemPromptTemplate || 'storyboard'} onChange={e => setP({ systemPromptTemplate: e.target.value })} className={selectCls}>
                           <option value="storyboard">故事板分镜</option>
@@ -335,10 +337,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <Label className="text-xs mb-1.5 block text-muted-foreground">Temperature: {p.temperature ?? 0.8}</Label>
                         <input type="range" min={0.1} max={1} step={0.1} value={p.temperature ?? 0.8} onChange={e => setP({ temperature: Number(e.target.value) })} className="w-full" />
                       </div>
-                    </div>
-
-                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>高级设置</h3>
-                    <div className="space-y-3">
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">优化模型</Label>
                         <select value={p.model || 'glm-4.5-air'} onChange={e => setP({ model: e.target.value })} className={selectCls}>
@@ -678,7 +676,7 @@ WorkflowPropertiesPanel.displayName = 'WorkflowPropertiesPanel';
 
 function StoryboardPromptOptimizer({
   rawPrompt, optimizedPrompt, editablePrompt, onOptimizedChange, onReset,
-  temperature, systemPromptTemplate, model, isDark,
+  temperature, systemPromptTemplate, model, style, quality, isDark,
 }: {
   rawPrompt: string
   optimizedPrompt: string
@@ -688,6 +686,8 @@ function StoryboardPromptOptimizer({
   temperature: number
   systemPromptTemplate: string
   model: string
+  style?: string
+  quality?: string
   isDark: boolean
 }) {
   const [isOptimizing, setIsOptimizing] = useState(false)
@@ -700,7 +700,7 @@ function StoryboardPromptOptimizer({
     setIsOptimizing(true)
     setError(null)
     try {
-      const optimized = await optimizePromptWithGLM(rawPrompt, { temperature, systemPromptTemplate, model })
+      const optimized = await optimizePromptWithGLM(rawPrompt, { temperature, systemPromptTemplate, model, style, quality })
       onOptimizedChange(optimized, optimized)
       toast.success('提示词优化完成')
     } catch (err: any) {

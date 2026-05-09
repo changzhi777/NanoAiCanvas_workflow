@@ -177,6 +177,8 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
         shotCount: params.shotCount,
         model: params.model,
         temperature: params.temperature,
+        style: params.style,
+        quality: params.quality,
       })
 
       if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
@@ -203,7 +205,7 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
         try {
           const images = await adapter.generateImage(
-            { prompt: shotPrompt, size: params.aspectRatio, aspectRatio: params.aspectRatio, signal: abortController.signal },
+            { prompt: shotPrompt, size: "auto", aspectRatio: params.aspectRatio, signal: abortController.signal },
             (progress) => {
               const overall = startProg + Math.floor((progress / 100) * (85 / totalShots))
               setStepProgress(overall)

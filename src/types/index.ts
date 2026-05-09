@@ -188,6 +188,10 @@ export interface ImageParams {
   technical?: string
   cameraModel?: string
   atmosphere?: string
+  version?: string
+  shotNumber?: number
+  mood?: string
+  scriptTitle?: string
 }
 
 // API types

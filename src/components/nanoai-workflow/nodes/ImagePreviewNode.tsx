@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/useToast'
-import { createImageAssetApi } from '@/lib/api/image-assets'
+import { createImageAssetApi, getStoryboardShotAssetsApi } from '@/lib/api/image-assets'
 import { type AspectRatio, type LayoutDirection, type StoryboardShot } from './StoryboardShotA.shared'
 
 export interface ImagePreviewNodeData extends WorkflowNodeData {
@@ -120,6 +120,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             imageUrl: displayImages[i],
             prompt: shot?.visual_prompt || resultData?.prompt || '',
             enhancedPrompt: shot?.scene_description || '',
+            version: 'v1',
             params: {
               type: 'storyboard_shot',
               shotNumber: i + 1,
@@ -153,6 +154,58 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
     saveAll()
   }, [displayImages, data.status, resultData?.savedToAsset])
+
+  // === 从资产库回载已保存的分镜资产 ===
+  useEffect(() => {
+    if (displayImages.length > 0) return
+    if (data.status === NodeStatus.RUNNING) return
+    const token = localStorage.getItem('nanoai_token')
+    if (!token) return
+
+    const sourceNodeId = data.params.sourceNodeId
+    const sourceNode = nodes.find(n => n.id === sourceNodeId)
+    const scriptTitle = sourceNode?.data?.result?.scriptTitle || resultData?.scriptTitle
+    if (!scriptTitle) return
+
+    let cancelled = false
+
+    const loadAssets = async () => {
+      const res = await getStoryboardShotAssetsApi({ version: 'v1', scriptTitle, page: 1, pageSize: 50 })
+      if (cancelled || !res.success || !res.items?.length) return
+
+      // 按 shotNumber 排序
+      const sorted = [...res.items].sort((a: any, b: any) => {
+        const na = (a.metadata?.params?.shotNumber as number) || 0
+        const nb = (b.metadata?.params?.shotNumber as number) || 0
+        return na - nb
+      })
+
+      const images = sorted.map((a: any) => a.url)
+      const loadedShots: StoryboardShot[] = sorted.map((a: any, i: number) => ({
+        shot_number: a.metadata?.params?.shotNumber || i + 1,
+        scene_description: a.metadata?.enhancedPrompt || '',
+        visual_prompt: a.metadata?.prompt || '',
+        camera_angle: a.metadata?.params?.cameraAngle || '',
+        mood: a.metadata?.params?.mood || '',
+        imageUrl: a.url,
+      }))
+
+      updateNode(id, {
+        result: {
+          ...resultData,
+          images,
+          shots: loadedShots,
+          savedToAsset: true,
+          savedAssetIds: sorted.map((a: any) => String(a.id)),
+          scriptTitle,
+        },
+        status: NodeStatus.SUCCESS,
+      } as any)
+    }
+
+    loadAssets()
+    return () => { cancelled = true }
+  }, [data.status, displayImages.length, data.params.sourceNodeId])
 
   // === 下载单张 ===
   const handleDownload = useCallback(async (imageUrl: string, index: number) => {

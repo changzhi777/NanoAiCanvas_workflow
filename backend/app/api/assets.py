@@ -21,6 +21,7 @@ class AssetCreate(BaseModel):
     category: Optional[str] = None
     tags: Optional[List[str]] = []
     workflow_snapshot: Optional[dict] = None
+    version: Optional[str] = None
 
 
 class AssetUpdate(BaseModel):
@@ -43,6 +44,7 @@ class AssetResponse(BaseModel):
     tags: List[str]
     is_starred: bool
     workflow_snapshot: Optional[dict]
+    version: Optional[str] = None
     created_at: str
 
     class Config:
@@ -72,6 +74,7 @@ async def create_asset(
         category=AssetCategory(data.category) if data.category else None,
         tags=data.tags or [],
         workflow_snapshot=data.workflow_snapshot,
+        version=data.version,
     )
     db.add(asset)
     await db.commit()
@@ -88,6 +91,7 @@ async def create_asset(
         tags=asset.tags or [],
         is_starred=asset.is_starred,
         workflow_snapshot=asset.workflow_snapshot,
+        version=asset.version,
         created_at=asset.created_at.isoformat() if asset.created_at else "",
     )
 
@@ -100,6 +104,7 @@ async def list_assets(
     category: Optional[str] = None,
     starred: Optional[bool] = None,
     search: Optional[str] = None,
+    version: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -114,6 +119,8 @@ async def list_assets(
         query = query.where(Asset.category == AssetCategory(category))
     if starred is not None:
         query = query.where(Asset.is_starred == starred)
+    if version:
+        query = query.where(Asset.version == version)
     if search:
         query = query.where(
             or_(
@@ -144,6 +151,7 @@ async def list_assets(
             tags=a.tags or [],
             is_starred=a.is_starred,
             workflow_snapshot=a.workflow_snapshot,
+            version=a.version,
             created_at=a.created_at.isoformat() if a.created_at else "",
         )
         for a in assets
@@ -177,6 +185,7 @@ async def get_asset(
         tags=asset.tags or [],
         is_starred=asset.is_starred,
         workflow_snapshot=asset.workflow_snapshot,
+        version=asset.version,
         created_at=asset.created_at.isoformat() if asset.created_at else "",
     )
 
@@ -216,6 +225,7 @@ async def update_asset(
         tags=asset.tags or [],
         is_starred=asset.is_starred,
         workflow_snapshot=asset.workflow_snapshot,
+        version=asset.version,
         created_at=asset.created_at.isoformat() if asset.created_at else "",
     )
 

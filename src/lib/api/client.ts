@@ -300,6 +300,7 @@ export interface Asset {
   tags: string[];
   is_starred: boolean;
   workflow_snapshot?: any;
+  version?: string;
   created_at: string;
 }
 
