@@ -28,7 +28,7 @@ settings = get_settings()
 
 # 速创 API 配置
 WUYIN_BASE = "https://api.wuyinkeji.com"
-WUYIN_KEY = os.getenv("WUYINKEJI_API_KEY", "BQQPSV2KBlJsUSfoBGByekjs2s")
+WUYIN_KEY = os.getenv("WUYINKEJI_API_KEY", "eLGzPZw0935TCJm0fn890TsvAN")
 
 
 class SkillsWorker:
