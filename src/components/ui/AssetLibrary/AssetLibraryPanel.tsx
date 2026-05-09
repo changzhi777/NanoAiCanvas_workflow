@@ -36,7 +36,7 @@ const SYSTEM_CATEGORIES: Category[] = [
   { id: 'REFERENCE', name: '参考图', is_system: true, created_at: '' },
 ];
 
-const TYPE_ICONS: Record<string, string> = { IMAGE: '🖼️', VIDEO: '🎬', AUDIO: '🎵', TEXT: '📝' };
+const TYPE_ICONS: Record<string, string> = { IMAGE: '🖼️', VIDEO: '🎬', AUDIO: '🎵', TEXT: '📝', image: '🖼️', video: '🎬', audio: '🎵', text: '📝' };
 
 interface AssetLibraryPanelProps {
   open: boolean;
@@ -141,7 +141,7 @@ export default function AssetLibraryPanel({
       } else {
         const db = await getDB();
         let localAssets = await db.getAll('assets');
-        if (typeFilter !== 'ALL') localAssets = localAssets.filter((a: Asset) => a.type === typeFilter);
+        if (typeFilter !== 'ALL') localAssets = localAssets.filter((a: Asset) => a.type?.toLowerCase() === typeFilter.toLowerCase());
         if (folderFilter) localAssets = localAssets.filter((a: Asset) => a.folder_id === folderFilter);
         if (starredOnly) localAssets = localAssets.filter((a: Asset) => a.is_starred);
         if (searchQuery) {
@@ -777,7 +777,7 @@ function AssetCard({
       )}
 
       {/* 缩略图 */}
-      {asset.type === 'IMAGE' && !imageError ? (
+      {asset.type?.toLowerCase() === 'image' && !imageError ? (
         <img src={asset.thumbnail_url || asset.url} alt={asset.name} loading="lazy" className="w-full h-full object-cover" onError={() => setImageError(true)} />
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">{TYPE_ICONS[asset.type] || '📄'}</div>
@@ -852,11 +852,11 @@ function AssetListView({
             </div>
           )}
           <div className="w-16 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
-            {asset.type === 'IMAGE' ? (
+            {asset.type?.toLowerCase() === 'image' ? (
               <img src={asset.thumbnail_url || asset.url} alt={asset.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-2xl">
-                {asset.type === 'VIDEO' ? '🎬' : asset.type === 'AUDIO' ? '🎵' : '📝'}
+                {asset.type?.toLowerCase() === 'video' ? '🎬' : asset.type?.toLowerCase() === 'audio' ? '🎵' : '📝'}
               </div>
             )}
           </div>

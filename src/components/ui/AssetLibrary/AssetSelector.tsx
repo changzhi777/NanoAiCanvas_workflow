@@ -74,6 +74,10 @@ export default function AssetSelector({
     VIDEO: <Video className="h-5 w-5" />,
     AUDIO: <Music className="h-5 w-5" />,
     TEXT: <FileText className="h-5 w-5" />,
+    image: <Image className="h-5 w-5" />,
+    video: <Video className="h-5 w-5" />,
+    audio: <Music className="h-5 w-5" />,
+    text: <FileText className="h-5 w-5" />,
   };
 
   const handleConfirm = () => {
@@ -126,7 +130,7 @@ export default function AssetSelector({
                   }`}
                   onClick={() => setSelectedAsset(asset)}
                 >
-                  {asset.type === 'IMAGE' ? (
+                  {asset.type?.toLowerCase() === 'image' ? (
                     <img
                       src={asset.thumbnail_url || asset.url}
                       alt={asset.name}

@@ -65,9 +65,19 @@ const navigation = [
         href: '/nanoaicanvas/admin/mcp',
         icon: Plug,
       },
+    ],
+  },
+  {
+    title: '应用管理',
+    items: [
       {
-        title: '应用管理',
-        href: '/nanoaicanvas/admin/apps',
+        title: 'Workflow 管理',
+        href: '/nanoaicanvas/admin/apps/workflow',
+        icon: LayoutGrid,
+      },
+      {
+        title: 'Nano 2 管理',
+        href: '/nanoaicanvas/admin/apps/nano2',
         icon: LayoutGrid,
       },
     ],

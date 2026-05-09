@@ -16,7 +16,7 @@ class CategoryCreate(BaseModel):
     name: str
     icon: Optional[str] = None
     color: Optional[str] = None
-    team_id: Optional[UUID] = None  # 可选：创建团队类型
+    team_id: Optional[int] = None
 
 
 class CategoryUpdate(BaseModel):
@@ -26,9 +26,9 @@ class CategoryUpdate(BaseModel):
 
 
 class CategoryResponse(BaseModel):
-    id: UUID
+    id: str
     user_id: UUID
-    team_id: Optional[UUID]
+    team_id: Optional[int]
     name: str
     icon: Optional[str]
     color: Optional[str]
@@ -39,13 +39,25 @@ class CategoryResponse(BaseModel):
         from_attributes = True
 
 
+def _to_response(c: Category) -> CategoryResponse:
+    return CategoryResponse(
+        id=str(c.id),
+        user_id=c.user_id,
+        team_id=c.team_id,
+        name=c.name,
+        icon=c.icon,
+        color=c.color,
+        is_system=c.is_system,
+        created_at=c.created_at.isoformat() if c.created_at else "",
+    )
+
+
 @router.post("", response_model=CategoryResponse)
 async def create_category(
     data: CategoryCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # 检查重名：user_id + name 或 team_id + name
     query = select(Category).where(
         Category.user_id == current_user.id,
         Category.name == data.name,
@@ -69,58 +81,36 @@ async def create_category(
     await db.commit()
     await db.refresh(category)
 
-    return CategoryResponse(
-        id=category.id,
-        user_id=category.user_id,
-        team_id=category.team_id,
-        name=category.name,
-        icon=category.icon,
-        color=category.color,
-        is_system=category.is_system,
-        created_at=category.created_at.isoformat() if category.created_at else "",
-    )
+    return _to_response(category)
 
 
 @router.get("", response_model=List[CategoryResponse])
 async def list_categories(
-    team_id: Optional[UUID] = None,
+    team_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # 获取用户个人类型 + 团队类型（如果指定了 team_id）
     query = select(Category).where(Category.user_id == current_user.id)
 
     if team_id:
         query = query.where(
             or_(
-                Category.team_id == None,  # 个人类型
-                Category.team_id == team_id,  # 指定团队类型
+                Category.team_id == None,
+                Category.team_id == team_id,
             )
         )
     else:
-        query = query.where(Category.team_id == None)  # 仅个人类型
+        query = query.where(Category.team_id == None)
 
     result = await db.execute(query.order_by(Category.created_at.desc()))
     categories = result.scalars().all()
 
-    return [
-        CategoryResponse(
-            id=c.id,
-            user_id=c.user_id,
-            team_id=c.team_id,
-            name=c.name,
-            icon=c.icon,
-            color=c.color,
-            is_system=c.is_system,
-            created_at=c.created_at.isoformat() if c.created_at else "",
-        )
-        for c in categories
-    ]
+    return [_to_response(c) for c in categories]
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)
 async def get_category(
-    category_id: UUID,
+    category_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -135,21 +125,12 @@ async def get_category(
     if not category:
         raise HTTPException(status_code=404, detail="类型不存在")
 
-    return CategoryResponse(
-        id=category.id,
-        user_id=category.user_id,
-        team_id=category.team_id,
-        name=category.name,
-        icon=category.icon,
-        color=category.color,
-        is_system=category.is_system,
-        created_at=category.created_at.isoformat() if category.created_at else "",
-    )
+    return _to_response(category)
 
 
 @router.patch("/{category_id}", response_model=CategoryResponse)
 async def update_category(
-    category_id: UUID,
+    category_id: str,
     data: CategoryUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -168,7 +149,6 @@ async def update_category(
     if category.is_system:
         raise HTTPException(status_code=400, detail="系统类型不可修改")
 
-    # 检查重名
     if data.name and data.name != category.name:
         check_query = select(Category).where(
             Category.user_id == current_user.id,
@@ -186,21 +166,12 @@ async def update_category(
     await db.commit()
     await db.refresh(category)
 
-    return CategoryResponse(
-        id=category.id,
-        user_id=category.user_id,
-        team_id=category.team_id,
-        name=category.name,
-        icon=category.icon,
-        color=category.color,
-        is_system=category.is_system,
-        created_at=category.created_at.isoformat() if category.created_at else "",
-    )
+    return _to_response(category)
 
 
 @router.delete("/{category_id}")
 async def delete_category(
-    category_id: UUID,
+    category_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -227,11 +198,10 @@ async def delete_category(
 @router.get("/check/{name}", response_model=dict)
 async def check_category_name(
     name: str,
-    team_id: Optional[UUID] = None,
+    team_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """检查类型名是否可用（用于去重提示）"""
     query = select(Category).where(
         Category.user_id == current_user.id,
         Category.name == name,

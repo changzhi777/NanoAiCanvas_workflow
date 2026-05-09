@@ -5,7 +5,6 @@
 
 import { useCallback, useRef, useState, useEffect } from 'react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
-import type { TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
 
 interface UseImageGenerationOptions {
   nodeId: string
@@ -19,7 +18,6 @@ export function useImageGeneration({ nodeId }: UseImageGenerationOptions) {
   const [stepProgress, setStepProgress] = useState(0)
   const [stepMessage, setStepMessage] = useState('')
   const abortRef = useRef<AbortController | null>(null)
-  const lastSyncedProgRef = useRef(0)
 
   useEffect(() => {
     const handler = () => { abortRef.current?.abort() }
@@ -27,17 +25,10 @@ export function useImageGeneration({ nodeId }: UseImageGenerationOptions) {
     return () => window.removeEventListener('workflow:abort-all', handler)
   }, [])
 
-  const syncStepToStore = useCallback((step: string, progress: number, message: string) => {
-    if (Math.abs(progress - lastSyncedProgRef.current) < 2) return
-    lastSyncedProgRef.current = progress
-    updateNode(nodeId, { _stepInfo: { step, progress, message } })
-  }, [nodeId, updateNode])
-
   const emitStep = useCallback((step: string, progress: number, message: string) => {
     setCurrentStep(step)
     setStepProgress(progress)
     setStepMessage(message)
-    lastSyncedProgRef.current = progress
     updateNode(nodeId, { _stepInfo: { step, progress, message } })
   }, [nodeId, updateNode])
 
@@ -83,22 +74,45 @@ export function useImageGeneration({ nodeId }: UseImageGenerationOptions) {
     return false
   }, [nodeId, updateNode, handleAbort])
 
-  /** 为单张图生成进度回调 */
-  const createProgressCallbacks = useCallback((startProg: number, totalItems: number, label: string) => {
-    return {
-      onProgress: (progress: number) => {
-        const overall = startProg + Math.floor((progress / 100) * (90 / totalItems))
-        setStepProgress(overall)
-        syncStepToStore('generating', overall, `${label} 生成中 ${progress}%`)
-      },
-      onStep: (stepInfo: TaskStepInfo) => {
-        const overall = startProg + Math.floor((stepInfo.progress / 100) * (90 / totalItems))
-        setStepProgress(overall)
-        setStepMessage(`${label} ${stepInfo.message}`)
-        syncStepToStore('generating', overall, `${label} ${stepInfo.message}`)
-      },
+  /**
+   * 并行执行多个生图任务，实时汇报总体进度
+   * 使用 index-based 数组避免并发 push 竞态
+   */
+  const runParallel = useCallback(async <T>(tasks: Array<{ label: string; execute: () => Promise<T | null> }>): Promise<T[]> => {
+    const total = tasks.length
+    let failCount = 0
+    let doneCount = 0
+    const slots: (T | null)[] = new Array(total).fill(null)
+
+    const reportProgress = () => {
+      const overallProg = 5 + Math.floor((doneCount / total) * 90)
+      emitStep('generating', overallProg, `${doneCount}/${total} 完成`)
     }
-  }, [syncStepToStore])
+
+    const promises = tasks.map((task, idx) =>
+      task.execute()
+        .then((result) => {
+          slots[idx] = result
+          if (result === null) failCount++
+          doneCount++
+          reportProgress()
+        })
+        .catch(() => {
+          failCount++
+          doneCount++
+          reportProgress()
+        })
+    )
+
+    await Promise.allSettled(promises)
+
+    const results = slots.filter((r): r is T => r !== null)
+    if (results.length === 0) {
+      throw new Error(`所有任务失败 (${failCount}/${total})`)
+    }
+
+    return results
+  }, [emitStep])
 
   return {
     localError, setLocalError,
@@ -106,8 +120,7 @@ export function useImageGeneration({ nodeId }: UseImageGenerationOptions) {
     abortRef, stopExecution,
     emitStep, startGeneration, finishGeneration,
     handleError, handleAbort,
-    createProgressCallbacks,
-    // 暴露 updateNode 的引用用于实时推送
+    runParallel,
     updateNode,
   }
 }

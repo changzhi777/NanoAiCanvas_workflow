@@ -545,14 +545,16 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
           label: '故事板分镜V1版',
           params: {
             inputText: '',
-            size: '1024x1024',
+            size: '1024x576',
             quality: 'standard',
             style: 'realistic',
             batchCount: 1,
+            shotCount: 3,
+            layoutDirection: 'vertical',
             temperature: 0.8,
             systemPromptTemplate: 'storyboard',
             model: 'glm-4.5-air',
-            aspectRatio: '1:1',
+            aspectRatio: '16:9',
           },
           inputs: [
             { id: 'text-in', name: '文本', type: 'text', required: true },

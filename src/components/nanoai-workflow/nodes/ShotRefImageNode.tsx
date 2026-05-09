@@ -1,6 +1,6 @@
 /**
  * ShotRefImageNode — 分镜头参考图节点
- * 从上游 StoryboardV2Node 读取 shots[] → 逐镜头生图（1:1 四/六/九宫格）
+ * 从上游 StoryboardV2Node 读取 shots[] → 并行生图（1:1 四/六/九宫格）
  */
 
 import { memo, useCallback, useMemo } from 'react'
@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter } from '@/lib/api/adapters/SkillQueueAdapter'
-import { type ScreenplayShot, type ScreenplayData, prefixResolution } from './StoryboardV2.shared'
+import { type ScreenplayShot, type ScreenplayData } from './StoryboardV2.shared'
 import { useImageGeneration } from './useImageGeneration'
 import { statusConfig } from './nodeStatusConfig'
+import { buildImagePrompt } from './promptBuilder'
 
 export interface ShotRefImageData extends WorkflowNodeData {
   params: { gridSize: '4' | '6' | '9'; quality: string; style: string }
@@ -38,8 +39,8 @@ export const ShotRefImageNode = memo(({ id, data }: { id: string; data: ShotRefI
   const edges = useNanoaiWorkflowStore(s => s.edges)
   const {
     localError, currentStep, stepProgress, stepMessage, setStepMessage, stopExecution,
-    emitStep, startGeneration, finishGeneration, handleError,
-    createProgressCallbacks, updateNode,
+    startGeneration, finishGeneration, handleError,
+    runParallel, updateNode,
   } = useImageGeneration({ nodeId: id })
 
   const upstreamShots = useMemo(() => {
@@ -58,46 +59,40 @@ export const ShotRefImageNode = memo(({ id, data }: { id: string; data: ShotRefI
 
     const { abortController, startedAt } = startGeneration()
     const adapter = getSkillQueueAdapter()
-    const totalShots = upstreamShots.length
-    const completedShots: Array<ScreenplayShot & { imageUrl?: string }> = []
-    const allImages: string[] = []
-    const resolutionPrefix = prefixResolution(data.params?.quality || 'hd')
+    const quality = data.params?.quality || 'hd'
+    const style = data.params?.style || 'realistic'
 
-    try {
-      for (let idx = 0; idx < totalShots; idx++) {
+    const tasks = upstreamShots.map((shot, idx) => ({
+      label: `P${idx + 1}/${upstreamShots.length}`,
+      execute: async (): Promise<{ shot: ScreenplayShot & { imageUrl?: string }; image: string } | null> => {
         if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
 
-        const shot = upstreamShots[idx]
-        const shotPrompt = `${resolutionPrefix}${shot.visual_prompt || shot.description}`
-        const startProg = 5 + Math.floor((idx / totalShots) * 90)
-        const label = `P${idx + 1}/${totalShots}`
+        const shotPrompt = buildImagePrompt(shot.visual_prompt || shot.description, {
+          quality, style, aspectRatio: '1:1', camera: shot.camera_angle, mood: shot.mood,
+        })
+        const images = await adapter.generateImage(
+          { prompt: shotPrompt, size: '2K' as const, aspectRatio: '1:1', signal: abortController.signal },
+          () => {},
+        )
 
-        emitStep('shot_generating', startProg, `镜头 ${label}: ${shot.description?.substring(0, 30)}...`)
-
-        try {
-          const { onProgress, onStep } = createProgressCallbacks(startProg, totalShots, label)
-          const images = await adapter.generateImage(
-            { prompt: shotPrompt, size: '2K' as const, aspectRatio: '1:1', signal: abortController.signal },
-            onProgress, onStep,
-          )
-
-          if (images[0]) {
-            completedShots.push({ ...shot, imageUrl: images[0] })
-            allImages.push(images[0])
-            updateNode(id, { result: { shots: [...completedShots], images: [...allImages], startedAt } })
-          }
-        } catch (shotErr: any) {
-          console.warn(`Shot P${idx + 1} failed:`, shotErr.message)
+        if (images[0]) {
+          return { shot: { ...shot, imageUrl: images[0] }, image: images[0] }
         }
-      }
+        return null
+      },
+    }))
 
-      if (allImages.length === 0) throw new Error('所有镜头生成失败')
+    try {
+      const results = await runParallel(tasks)
+      const completedShots = results.map(r => r!.shot)
+      const allImages = results.map(r => r!.image)
+
       finishGeneration({ shots: completedShots, images: allImages, startedAt })
-      setStepMessage(`完成！${allImages.length}/${totalShots} 个镜头`)
+      setStepMessage(`完成！${allImages.length}/${upstreamShots.length} 个镜头`)
     } catch (err: any) {
       handleError(err)
     }
-  }, [upstreamShots, data.params, startGeneration, emitStep, createProgressCallbacks, finishGeneration, handleError, updateNode, id])
+  }, [upstreamShots, data.params, startGeneration, runParallel, finishGeneration, handleError, updateNode, id])
 
   const completedCount = data.result?.images?.length || 0
   const totalCount = upstreamShots.length

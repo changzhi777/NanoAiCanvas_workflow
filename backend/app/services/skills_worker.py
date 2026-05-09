@@ -384,7 +384,7 @@ class WorkerManager:
             skill_ids = ["gpt_image_2"]
 
         for skill_id in skill_ids:
-            worker = SkillsWorker(skill_id, concurrency=1)
+            worker = SkillsWorker(skill_id, concurrency=5)
             await worker.start()
             self._workers[skill_id] = worker
 

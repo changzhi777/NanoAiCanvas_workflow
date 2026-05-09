@@ -28,9 +28,11 @@ const AdminApiKeyPoolPage = lazy(() => import('./app/admin/api-key-pool/page'))
 const AdminMCPPage = lazy(() => import('./app/admin/mcp/page'))
 const AdminKevinPage = lazy(() => import('./app/admin/kevin/page'))
 const AdminAppsPage = lazy(() => import('./app/admin/apps/page'))
+const AdminAppsWorkflowPage = lazy(() => import('./app/admin/apps/workflow/page'))
+const AdminAppsNano2Page = lazy(() => import('./app/admin/apps/nano2/page'))
 import { AdminSidebar } from './components/admin/AdminSidebar'
 
-type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps'
+type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps' | 'admin-apps-workflow' | 'admin-apps-nano2'
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -117,8 +119,12 @@ function AppContent() {
       setCurrentPage('admin-mcp')
     } else if (path.startsWith('/nanoaicanvas/admin/kevin')) {
       setCurrentPage('admin-kevin')
+    } else if (path.startsWith('/nanoaicanvas/admin/apps/workflow')) {
+      setCurrentPage('admin-apps-workflow')
+    } else if (path.startsWith('/nanoaicanvas/admin/apps/nano2')) {
+      setCurrentPage('admin-apps-nano2')
     } else if (path.startsWith('/nanoaicanvas/admin/apps')) {
-      setCurrentPage('admin-apps')
+      setCurrentPage('admin-apps-workflow')
     } else if (path.startsWith('/nanoaicanvas/admin/api-key-pool')) {
       setCurrentPage('admin-api-key-pool')
     } else if (path.startsWith('/nanoaicanvas/admin/providers')) {
@@ -158,8 +164,12 @@ function AppContent() {
         setCurrentPage('admin-mcp')
       } else if (path.startsWith('/nanoaicanvas/admin/kevin')) {
         setCurrentPage('admin-kevin')
+      } else if (path.startsWith('/nanoaicanvas/admin/apps/workflow')) {
+        setCurrentPage('admin-apps-workflow')
+      } else if (path.startsWith('/nanoaicanvas/admin/apps/nano2')) {
+        setCurrentPage('admin-apps-nano2')
       } else if (path.startsWith('/nanoaicanvas/admin/apps')) {
-        setCurrentPage('admin-apps')
+        setCurrentPage('admin-apps-workflow')
       } else if (path.startsWith('/nanoaicanvas/admin/api-key-pool')) {
         setCurrentPage('admin-api-key-pool')
       } else if (path.startsWith('/nanoaicanvas/admin/providers')) {
@@ -217,6 +227,8 @@ function AppContent() {
         {currentPage === 'admin-mcp' && <AdminLayout><AdminMCPPage /></AdminLayout>}
         {currentPage === 'admin-kevin' && <AdminLayout><AdminKevinPage /></AdminLayout>}
         {currentPage === 'admin-apps' && <AdminLayout><AdminAppsPage /></AdminLayout>}
+        {currentPage === 'admin-apps-workflow' && <AdminLayout><AdminAppsWorkflowPage /></AdminLayout>}
+        {currentPage === 'admin-apps-nano2' && <AdminLayout><AdminAppsNano2Page /></AdminLayout>}
       </Suspense>
     </div>
   )

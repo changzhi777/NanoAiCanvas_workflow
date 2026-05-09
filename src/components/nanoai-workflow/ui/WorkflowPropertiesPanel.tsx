@@ -92,17 +92,17 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
             }
           }}
           className={cn(
-            'p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-            'hover:scale-110 active:scale-95',
+            'p-1.5 rounded-md transition-all duration-150',
+            'active:scale-95',
             isDark
-              ? 'bg-slate-900/80 border border-white/10 text-slate-300 hover:bg-white/10'
-              : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
+              ? 'bg-slate-900/60 border border-white/[0.06] text-slate-500 hover:text-slate-300 hover:bg-white/[0.06]'
+              : 'bg-white border border-gray-100 text-gray-400 hover:text-gray-600 hover:bg-gray-50'
           )}
           title={selectedNode ? '显示属性面板' : '请先选择节点'}
         >
           <ChevronLeft
             className={cn(
-              'w-5 h-5 transition-transform duration-300',
+              'w-3.5 h-3.5 transition-transform duration-300',
               selectedNode ? 'rotate-180' : ''
             )}
           />
@@ -124,25 +124,25 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
       {/* 面板内容 */}
       <div
         className={cn(
-          'w-80 h-full flex flex-col backdrop-blur-xl border-l shadow-2xl',
+          'w-64 h-full flex flex-col border-l',
           'transition-all duration-300',
           isDark
-            ? 'bg-slate-900/95 border-white/10'
-            : 'bg-white/95 border-gray-200'
+            ? 'bg-slate-900/60 border-white/[0.06]'
+            : 'bg-white border-gray-100'
         )}
       >
         {/* 头部 */}
         <div
           className={cn(
-            'flex items-center justify-between p-4 border-b',
-            isDark ? 'border-white/10' : 'border-gray-200'
+            'flex items-center justify-between px-3 py-2.5 border-b',
+            isDark ? 'border-white/[0.04]' : 'border-gray-50'
           )}
         >
           <div className="flex items-center gap-2">
             <h2
               className={cn(
-                'text-lg font-bold',
-                isDark ? 'text-slate-100' : 'text-gray-900'
+                'text-xs font-semibold',
+                isDark ? 'text-slate-300' : 'text-gray-700'
               )}
             >
               节点属性
@@ -150,10 +150,10 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
             {!selectedNode && (
               <span
                 className={cn(
-                  'text-xs px-2 py-1 rounded-full',
+                  'text-[10px] px-1.5 py-[1px] rounded',
                   isDark
-                    ? 'bg-slate-800 text-slate-400'
-                    : 'bg-gray-100 text-gray-500'
+                    ? 'bg-white/[0.04] text-slate-500'
+                    : 'bg-gray-50 text-gray-400'
                 )}
               >
                 未选中
@@ -170,7 +170,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   className="h-8 w-8 p-0"
                   title="取消"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </Button>
                 <Button
                   size="sm"
@@ -178,7 +178,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   className="h-8 w-8 p-0 bg-green-500 hover:bg-green-600 text-white"
                   title="保存"
                 >
-                  <Save className="w-4 h-4" />
+                  <Save className="w-3 h-3" />
                 </Button>
               </>
             ) : (
@@ -191,7 +191,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   title="编辑"
                   disabled={!selectedNode}
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-3 h-3" />
                 </Button>
                 <Button
                   size="sm"
@@ -201,7 +201,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   title="删除"
                   disabled={!selectedNode}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3 h-3" />
                 </Button>
               </>
             )}
@@ -218,18 +218,18 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
         </div>
 
         {/* 内容区域 */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-3 py-2.5 space-y-3">
           {!selectedNode ? (
             <div
               className={cn(
-                'text-center py-12 px-4 rounded-lg',
+                'text-center py-10 px-4 rounded-lg',
                 isDark
-                  ? 'bg-slate-800/50 text-slate-400'
-                  : 'bg-gray-100 text-gray-500'
+                  ? 'text-slate-500'
+                  : 'text-gray-400'
               )}
             >
-              <div className="text-4xl mb-3">🎯</div>
-              <p className="text-sm">点击节点查看属性</p>
+              <div className="w-8 h-8 mx-auto mb-2 rounded-full bg-slate-700/30 flex items-center justify-center"><ChevronLeft className="w-3.5 h-3.5 text-slate-500 rotate-180" /></div>
+              <p className="text-[11px]">点击节点查看属性</p>
             </div>
           ) : (
             <>
@@ -241,7 +241,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   handleInputChange('params', newParams);
                   if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
                 };
-                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                const selectCls = cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-white/[0.02] border-white/[0.06] text-slate-300' : 'bg-gray-50/50 border-gray-100 text-gray-700');
                 return (
                   <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
                     {/* 提示词优化 */}
@@ -281,7 +281,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">分镜头数量</Label>
-                        <input type="number" min={4} max={8} value={p.shotCount || 6} onChange={e => setP({ shotCount: Math.max(4, Math.min(8, Number(e.target.value) || 6)) })} className={selectCls} />
+                        <input type="number" min={1} max={8} value={p.shotCount || 3} onChange={e => setP({ shotCount: Math.max(1, Math.min(8, Number(e.target.value) || 3)) })} className={selectCls} />
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">预览布局</Label>

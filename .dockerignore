@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.zcf
+*.md
+!README.md
+.vscode
+.idea
+*.log
+.playwright-mcp
+backend/venv
+backend/__pycache__
+cli-agent
+docs

@@ -21,6 +21,8 @@ from app.models.prompt_restrictions import (
     PromptRestrictionCategory,
     PromptRestrictionWord,
 )
+from app.models.tag import Tag
+from app.models.folder import Folder
 from app.models.api_key import (
     ApiKeyConfig,
     BackendKeyMapping,
@@ -72,4 +74,6 @@ __all__ = [
     "ModelUsageLog",
     "APIKey",
     "ModelRoute",
+    "Tag",
+    "Folder",
 ]

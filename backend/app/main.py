@@ -1,8 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.routing import Route
 from contextlib import asynccontextmanager
 import os
 
@@ -10,14 +8,14 @@ from app.config import get_settings
 from app.api import (
     auth, assets, workflows, sync, points, points_admin,
     prompt_restrictions, categories, teams, assets_export,
-    admin_users, notifications
+    admin_users, notifications, tags, folders
 )
 from app.api import chat
 from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
 from app.api.v2 import admin as v2_admin
 from app.api.v2 import glm_proxy as v2_glm
-from app.api.websocket import websocket_routes
+from app.api.v2 import app_visibility as v2_app_visibility
 from app.services.skills_worker import WorkerManager
 
 settings = get_settings()
@@ -25,21 +23,15 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     print("🚀 NanoAI Backend starting up...")
-
-    # 启动 Skills Worker
     worker_mgr = WorkerManager()
     await worker_mgr.start_all(["gpt_image_2"])
     print("✅ Skills Workers started")
-
-    # 启动聊天 Redis pub/sub 订阅者
     await chat.manager.start_subscriber()
     print("✅ Chat Redis subscriber started")
 
     yield
 
-    # Shutdown
     await chat.manager.stop_subscriber()
     print("👋 Chat Redis subscriber stopped")
     print("👋 Stopping Skills Workers...")
@@ -49,12 +41,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="NanoAI Canvas API",
-    description="Backend API for NanoAI Canvas - Workflow & Asset Management",
+    description="Backend API for NanoAi Canvas - Workflow & Asset Management",
     version="0.1.0",
     lifespan=lifespan,
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -76,32 +67,56 @@ app.include_router(teams.router, prefix="/api")
 app.include_router(assets_export.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(tags.router, prefix="/api")
+app.include_router(folders.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 
-# V2 Image generation routers (new unified routes)
+# V2 routers
 app.include_router(v2_image.router)
-
-# V2 Skills routers (AI skill-based image generation)
 app.include_router(v2_skills.router)
-
-# V2 Admin routers (provider/model/key management)
 app.include_router(v2_admin.router)
-
-# V2 GLM proxy (prompt optimization)
 app.include_router(v2_glm.router)
-
-# V2 Generation task logs
+app.include_router(v2_app_visibility.router)
 from app.api.v2 import generation_log as v2_genlog
 app.include_router(v2_genlog.router)
 
-# WebSocket routes for real-time task status
-for route in websocket_routes:
-    app.add_route(route.path, route.endpoint, methods=["GET"])
+
+@app.websocket("/ws/tasks/{task_id}")
+async def ws_task_status(websocket: WebSocket, task_id: str):
+    from app.services.pubsub import TaskSubscriber
+    await websocket.accept()
+    subscriber = TaskSubscriber()
+    subscriber_id = await subscriber.subscribe(task_id)
+    try:
+        await websocket.send_json({"type": "connected", "task_id": task_id, "message": "已连接到任务状态更新"})
+        while True:
+            message = await subscriber.get_message(timeout=30.0)
+            if message:
+                await websocket.send_json(message)
+            try:
+                await websocket.send_json({"type": "ping"})
+            except Exception:
+                break
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        subscriber.close()
+
 
 # 静态文件：聊天上传文件
 upload_dir = os.environ.get("CHAT_UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "..", "chat-uploads"))
 os.makedirs(upload_dir, exist_ok=True)
 app.mount("/chat-uploads", StaticFiles(directory=upload_dir), name="chat-uploads")
+
+# 静态文件：资产本地存储（下载的外部图片）
+asset_upload_dir = os.environ.get(
+    "ASSET_UPLOAD_DIR",
+    os.path.join(upload_dir, "assets"),
+)
+os.makedirs(asset_upload_dir, exist_ok=True)
+app.mount("/asset-uploads", StaticFiles(directory=asset_upload_dir), name="asset-uploads")
 
 
 @app.get("/")

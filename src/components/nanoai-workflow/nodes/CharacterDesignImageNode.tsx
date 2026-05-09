@@ -1,6 +1,6 @@
 /**
  * CharacterDesignImageNode — 人物角色设计图节点
- * 从上游 StoryboardV2Node 读取 characters[] → 逐角色生成图片（16:9, 站姿3+特写2+服饰2）
+ * 从上游 StoryboardV2Node 读取 characters[] → 并行生成图片（16:9, 站姿3+特写2+服饰2）
  */
 
 import { memo, useCallback, useMemo } from 'react'
@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter } from '@/lib/api/adapters/SkillQueueAdapter'
-import { type CharacterDesign, type ScreenplayData, prefixResolution } from './StoryboardV2.shared'
+import { type CharacterDesign, type ScreenplayData } from './StoryboardV2.shared'
 import { useImageGeneration } from './useImageGeneration'
 import { statusConfig } from './nodeStatusConfig'
+import { buildCharacterPrompt } from './promptBuilder'
 
 export interface CharDesignResultItem {
   characterName: string
@@ -41,24 +42,24 @@ export interface CharacterDesignImageData extends WorkflowNodeData {
   _stepInfo?: { step: string; progress: number; message: string }
 }
 
-function buildCharacterPrompts(char: CharacterDesign, resolutionPrefix: string) {
+function buildCharacterPrompts(char: CharacterDesign, quality: string, style: string) {
   const tasks: Array<{ type: CharDesignResultItem['type']; index: number; prompt: string }> = []
-  const desc = char.description ? `, ${char.description}` : ''
+  const desc = char.description || ''
 
   char.pose_prompts?.forEach((p, i) => {
-    tasks.push({ type: 'pose', index: i, prompt: `${resolutionPrefix}${p}, character full body standing${desc}` })
+    tasks.push({ type: 'pose', index: i, prompt: buildCharacterPrompt(desc, p, { quality, style, type: 'pose' }) })
   })
   char.expression_prompts?.forEach((p, i) => {
-    tasks.push({ type: 'expression', index: i, prompt: `${resolutionPrefix}${p}, character face close-up${desc}` })
+    tasks.push({ type: 'expression', index: i, prompt: buildCharacterPrompt(desc, p, { quality, style, type: 'expression' }) })
   })
   char.outfit_prompts?.forEach((p, i) => {
-    tasks.push({ type: 'outfit', index: i, prompt: `${resolutionPrefix}${p}, character outfit detail${desc}` })
+    tasks.push({ type: 'outfit', index: i, prompt: buildCharacterPrompt(desc, p, { quality, style, type: 'outfit' }) })
   })
 
   if (tasks.length === 0) {
-    tasks.push({ type: 'pose', index: 0, prompt: `${resolutionPrefix}${char.description}, full body standing pose, front view, 16:9` })
-    tasks.push({ type: 'pose', index: 1, prompt: `${resolutionPrefix}${char.description}, full body standing pose, side view, 16:9` })
-    tasks.push({ type: 'pose', index: 2, prompt: `${resolutionPrefix}${char.description}, full body standing pose, back view, 16:9` })
+    tasks.push({ type: 'pose', index: 0, prompt: buildCharacterPrompt(desc, '正面全身站姿', { quality, style, type: 'pose' }) })
+    tasks.push({ type: 'pose', index: 1, prompt: buildCharacterPrompt(desc, '侧面全身站姿', { quality, style, type: 'pose' }) })
+    tasks.push({ type: 'pose', index: 2, prompt: buildCharacterPrompt(desc, '背面全身站姿', { quality, style, type: 'pose' }) })
   }
 
   return tasks
@@ -69,8 +70,8 @@ export const CharacterDesignImageNode = memo(({ id, data }: { id: string; data: 
   const edges = useNanoaiWorkflowStore(s => s.edges)
   const {
     localError, currentStep, stepProgress, stepMessage, setStepMessage, stopExecution,
-    emitStep, startGeneration, finishGeneration, handleError,
-    createProgressCallbacks, updateNode,
+    startGeneration, finishGeneration, handleError,
+    runParallel,
   } = useImageGeneration({ nodeId: id })
 
   const upstreamCharacters = useMemo(() => {
@@ -88,54 +89,41 @@ export const CharacterDesignImageNode = memo(({ id, data }: { id: string; data: 
 
     const { abortController, startedAt } = startGeneration()
     const adapter = getSkillQueueAdapter()
-    const resolutionPrefix = prefixResolution(data.params?.quality || 'hd')
+    const quality = data.params?.quality || 'hd'
+    const style = data.params?.style || 'realistic'
 
-    const allTasks: Array<{ characterName: string; type: CharDesignResultItem['type']; index: number; prompt: string }> = []
+    const allTasks: Array<{ label: string; execute: () => Promise<CharDesignResultItem | null> }> = []
     upstreamCharacters.forEach(char => {
-      buildCharacterPrompts(char, resolutionPrefix).forEach(p => {
-        allTasks.push({ characterName: char.name, ...p })
+      buildCharacterPrompts(char, quality, style).forEach(p => {
+        const typeLabel = p.type === 'pose' ? '站姿' : p.type === 'expression' ? '表情' : '服饰'
+        const label = `${char.name} ${typeLabel}${p.index + 1}`
+        allTasks.push({
+          label,
+          execute: async (): Promise<CharDesignResultItem | null> => {
+            if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
+            const images = await adapter.generateImage(
+              { prompt: p.prompt, size: '2K' as const, aspectRatio: '16:9', signal: abortController.signal },
+              () => {},
+            )
+            if (images[0]) {
+              return { characterName: char.name, type: p.type, index: p.index, prompt: p.prompt, imageUrl: images[0] }
+            }
+            return null
+          },
+        })
       })
     })
 
-    const totalTasks = allTasks.length
-    const completedItems: CharDesignResultItem[] = []
-    const allImages: string[] = []
-
     try {
-      for (let idx = 0; idx < totalTasks; idx++) {
-        if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
+      const results = await runParallel(allTasks)
+      const allImages = results.map(r => r!.imageUrl!)
 
-        const task = allTasks[idx]
-        const startProg = 5 + Math.floor((idx / totalTasks) * 90)
-        const typeLabel = task.type === 'pose' ? '站姿' : task.type === 'expression' ? '表情' : '服饰'
-        const label = `${task.characterName} ${typeLabel}${task.index + 1}`
-
-        emitStep('char_generating', startProg, `${label} (${idx + 1}/${totalTasks})`)
-
-        try {
-          const { onProgress, onStep } = createProgressCallbacks(startProg, totalTasks, label)
-          const images = await adapter.generateImage(
-            { prompt: task.prompt, size: '2K' as const, aspectRatio: '16:9', signal: abortController.signal },
-            onProgress, onStep,
-          )
-
-          if (images[0]) {
-            completedItems.push({ characterName: task.characterName, type: task.type, index: task.index, prompt: task.prompt, imageUrl: images[0] })
-            allImages.push(images[0])
-            updateNode(id, { result: { items: [...completedItems], images: [...allImages], startedAt } })
-          }
-        } catch (taskErr: any) {
-          console.warn(`Char design task failed:`, taskErr.message)
-        }
-      }
-
-      if (allImages.length === 0) throw new Error('所有角色图生成失败')
-      finishGeneration({ items: completedItems, images: allImages, startedAt })
+      finishGeneration({ items: results as CharDesignResultItem[], images: allImages, startedAt })
       setStepMessage(`完成！${allImages.length} 张角色设计图`)
     } catch (err: any) {
       handleError(err)
     }
-  }, [upstreamCharacters, data.params, startGeneration, emitStep, createProgressCallbacks, finishGeneration, handleError, updateNode, id])
+  }, [upstreamCharacters, data.params, startGeneration, runParallel, finishGeneration, handleError, id])
 
   const charCount = upstreamCharacters.length
   const completedCount = data.result?.images?.length || 0

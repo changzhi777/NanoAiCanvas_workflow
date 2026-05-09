@@ -3,16 +3,22 @@ from sqlalchemy import pool
 from sqlalchemy import engine_from_config
 from alembic import context
 import sys
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.models import User, Asset, Workflow, WorkflowVersion, Operation, Template
+from app.models import User, Asset, Workflow, WorkflowVersion, Operation, Template, Category, Tag, Folder, GenerationLog
 from app.database import Base
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Docker环境: 用环境变量构建DB URL
+db_url = os.environ.get("SYNC_DATABASE_URL") or os.environ.get("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
+import { useAppVisibilityStore } from '@/stores/appVisibilityStore'
 import {
   Settings2,
   ChevronUp,
@@ -99,6 +100,7 @@ function getLabel(options: readonly { value: string; label: string }[], value: s
 
 export function GenerationPanel() {
   const { user } = useAuthStore()
+  const nano2Visibility = useAppVisibilityStore(state => state.nano2Modules)
   const {
     currentSession,
     loadSessions,
@@ -560,7 +562,8 @@ export function GenerationPanel() {
           {/* ---- Action Buttons Row ---- */}
           {/* 第一行：提示词优化相关 */}
           <div className="flex-shrink-0 flex items-center gap-1 flex-wrap">
-            {/* Enhance mode selector - Dropdown Menu */}
+            {/* Enhance mode selector */}
+            {nano2Visibility['prompt-enhance'] !== 'hidden' && (
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -611,8 +614,10 @@ export function GenerationPanel() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
 
             {/* Enhance prompt */}
+            {nano2Visibility['prompt-enhance'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -631,8 +636,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>优化提示词 ({enhanceMode})</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Prompt Template */}
+            {nano2Visibility['prompt-template'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -646,8 +653,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>提示词模板</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Prompt Wizard */}
+            {nano2Visibility['prompt-wizard'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -662,8 +671,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>智能生成</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Batch Task */}
+            {nano2Visibility['batch-task'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -677,12 +688,14 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>批量任务</TooltipContent>
             </Tooltip>
+            )}
           </div>
 
           {/* 第二行：辅助工具 */}
           <div className="flex-shrink-0 flex items-center gap-1 flex-wrap">
 
             {/* Knowledge Card */}
+            {nano2Visibility['knowledge-card'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -696,8 +709,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>知识卡片</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Character Design */}
+            {nano2Visibility['character-design'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -711,8 +726,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>人物角色</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Ecommerce Product */}
+            {nano2Visibility['ecommerce-product'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -726,8 +743,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>电商产品</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Architecture */}
+            {nano2Visibility['architecture'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -741,8 +760,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>建筑效果图</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Voice Dialog */}
+            {nano2Visibility['voice'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -757,8 +778,10 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>语音对话</TooltipContent>
             </Tooltip>
+            )}
 
             {/* Storyboard */}
+            {nano2Visibility['storyboard'] !== 'hidden' && (
             <Tooltip>
               <TooltipTrigger>
                 <Button
@@ -773,6 +796,7 @@ export function GenerationPanel() {
               </TooltipTrigger>
               <TooltipContent>故事板</TooltipContent>
             </Tooltip>
+            )}
           </div>
 
           {/* ---- Advanced Params (collapsible) ---- */}

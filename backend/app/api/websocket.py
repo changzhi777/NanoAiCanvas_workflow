@@ -7,7 +7,7 @@ import json
 from typing import Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
-from starlette.routing import Route
+from starlette.routing import WebSocketRoute
 
 from app.services.pubsub import TaskSubscriber, TaskPublisher
 
@@ -96,5 +96,5 @@ async def websocket_task_status(websocket: WebSocket, task_id: str) -> None:
 
 # 用于 FastAPI 路由注册
 websocket_routes = [
-    Route("/ws/tasks/{task_id}", websocket_task_status, methods=["GET"]),
+    WebSocketRoute("/ws/tasks/{task_id}", websocket_task_status),
 ]

@@ -1,6 +1,6 @@
 /**
  * SceneDesignImageNode — 场景设计图节点
- * 从上游 StoryboardV2Node 读取 scenes[] → 逐场景生图（16:9，无人物）
+ * 从上游 StoryboardV2Node 读取 scenes[] → 并行生图（16:9，无人物）
  */
 
 import { memo, useCallback, useMemo } from 'react'
@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { getSkillQueueAdapter } from '@/lib/api/adapters/SkillQueueAdapter'
-import { type SceneDesign, type ScreenplayData, prefixResolution } from './StoryboardV2.shared'
+import { type SceneDesign, type ScreenplayData } from './StoryboardV2.shared'
 import { useImageGeneration } from './useImageGeneration'
 import { statusConfig } from './nodeStatusConfig'
+import { buildScenePrompt } from './promptBuilder'
 
 export interface SceneDesignImageData extends WorkflowNodeData {
   params: { quality: string; style: string }
@@ -38,8 +39,8 @@ export const SceneDesignImageNode = memo(({ id, data }: { id: string; data: Scen
   const edges = useNanoaiWorkflowStore(s => s.edges)
   const {
     localError, currentStep, stepProgress, stepMessage, setStepMessage, stopExecution,
-    emitStep, startGeneration, finishGeneration, handleError,
-    createProgressCallbacks, updateNode,
+    startGeneration, finishGeneration, handleError,
+    runParallel,
   } = useImageGeneration({ nodeId: id })
 
   const upstreamScenes = useMemo(() => {
@@ -57,46 +58,40 @@ export const SceneDesignImageNode = memo(({ id, data }: { id: string; data: Scen
 
     const { abortController, startedAt } = startGeneration()
     const adapter = getSkillQueueAdapter()
-    const resolutionPrefix = prefixResolution(data.params?.quality || 'hd')
-    const totalScenes = upstreamScenes.length
-    const completedScenes: Array<SceneDesign & { imageUrl?: string }> = []
-    const allImages: string[] = []
+    const quality = data.params?.quality || 'hd'
+    const style = data.params?.style || 'realistic'
 
-    try {
-      for (let idx = 0; idx < totalScenes; idx++) {
+    const tasks = upstreamScenes.map((scene, idx) => ({
+      label: `S${idx + 1}/${upstreamScenes.length}`,
+      execute: async (): Promise<{ scene: SceneDesign & { imageUrl?: string }; image: string } | null> => {
         if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
 
-        const scene = upstreamScenes[idx]
-        const scenePrompt = `${resolutionPrefix}${scene.visual_prompt || scene.description}, no people, no characters, environment only, 16:9 cinematic`
-        const startProg = 5 + Math.floor((idx / totalScenes) * 90)
-        const label = `S${idx + 1}/${totalScenes}`
+        const scenePrompt = buildScenePrompt(scene.visual_prompt || scene.description, {
+          quality, style, aspectRatio: '16:9', mood: scene.mood,
+        })
+        const images = await adapter.generateImage(
+          { prompt: scenePrompt, size: '2K' as const, aspectRatio: '16:9', signal: abortController.signal },
+          () => {},
+        )
 
-        emitStep('scene_generating', startProg, `场景 ${label}: ${scene.location?.substring(0, 25)}...`)
-
-        try {
-          const { onProgress, onStep } = createProgressCallbacks(startProg, totalScenes, label)
-          const images = await adapter.generateImage(
-            { prompt: scenePrompt, size: '2K' as const, aspectRatio: '16:9', signal: abortController.signal },
-            onProgress, onStep,
-          )
-
-          if (images[0]) {
-            completedScenes.push({ ...scene, imageUrl: images[0] })
-            allImages.push(images[0])
-            updateNode(id, { result: { scenes: [...completedScenes], images: [...allImages], startedAt } })
-          }
-        } catch (sceneErr: any) {
-          console.warn(`Scene S${idx + 1} failed:`, sceneErr.message)
+        if (images[0]) {
+          return { scene: { ...scene, imageUrl: images[0] }, image: images[0] }
         }
-      }
+        return null
+      },
+    }))
 
-      if (allImages.length === 0) throw new Error('所有场景图生成失败')
+    try {
+      const results = await runParallel(tasks)
+      const completedScenes = results.map(r => r!.scene)
+      const allImages = results.map(r => r!.image)
+
       finishGeneration({ scenes: completedScenes, images: allImages, startedAt })
-      setStepMessage(`完成！${allImages.length}/${totalScenes} 张场景图`)
+      setStepMessage(`完成！${allImages.length}/${upstreamScenes.length} 张场景图`)
     } catch (err: any) {
       handleError(err)
     }
-  }, [upstreamScenes, data.params, startGeneration, emitStep, createProgressCallbacks, finishGeneration, handleError, updateNode, id])
+  }, [upstreamScenes, data.params, startGeneration, runParallel, finishGeneration, handleError, id])
 
   const sceneCount = upstreamScenes.length
   const completedCount = data.result?.images?.length || 0

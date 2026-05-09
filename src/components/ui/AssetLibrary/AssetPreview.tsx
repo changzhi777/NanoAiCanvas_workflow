@@ -50,7 +50,7 @@ export default function AssetPreview({ open, onClose, asset }: AssetPreviewProps
 
           {/* Content */}
           <div className="flex-1 flex items-center justify-center bg-black/95 relative min-h-[400px]">
-            {asset.type === 'IMAGE' ? (
+            {asset.type?.toLowerCase() === 'image' ? (
               <>
                 <img
                   src={currentUrl}
@@ -81,14 +81,14 @@ export default function AssetPreview({ open, onClose, asset }: AssetPreviewProps
                   </>
                 )}
               </>
-            ) : asset.type === 'VIDEO' ? (
+            ) : asset.type?.toLowerCase() === 'video' ? (
               <video
                 src={currentUrl}
                 controls
                 autoPlay
                 className="max-w-full max-h-[60vh]"
               />
-            ) : asset.type === 'AUDIO' ? (
+            ) : asset.type?.toLowerCase() === 'audio' ? (
               <div className="flex flex-col items-center gap-4">
                 <div className="w-24 h-24 rounded-full bg-primary/20 flex items-center justify-center text-4xl">
                   🎵

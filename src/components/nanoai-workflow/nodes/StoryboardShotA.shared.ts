@@ -80,16 +80,16 @@ export const NODE_DIMENSIONS: Record<AspectRatio, { width: number; height: numbe
 
 export const DEFAULT_PARAMS = {
   inputText: '',
-  size: '1024x1024',
+  size: '1024x576',
   quality: 'standard',
   style: 'realistic',
   batchCount: 1,
-  shotCount: 6,
-  layoutDirection: 'horizontal' as LayoutDirection,
+  shotCount: 3,
+  layoutDirection: 'vertical' as LayoutDirection,
   temperature: 0.8,
   systemPromptTemplate: 'storyboard',
   model: 'glm-4.5-air',
-  aspectRatio: '1:1' as AspectRatio,
+  aspectRatio: '16:9' as AspectRatio,
 }
 
 export async function optimizePromptWithGLM(rawPrompt: string, opts: { temperature: number; systemPromptTemplate: string; model: string; style?: string; quality?: string }): Promise<string> {

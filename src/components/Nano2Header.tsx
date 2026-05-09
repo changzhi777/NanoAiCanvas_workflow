@@ -2,12 +2,16 @@
 
 import { Images, Package, Workflow } from 'lucide-react'
 import { LoginButton } from '@/components/ui/LoginButton'
+import { useAppVisibilityStore } from '@/stores/appVisibilityStore'
 
 interface Nano2HeaderProps {
   onSwitchToAssets?: () => void
 }
 
 export function Nano2Header({ onSwitchToAssets }: Nano2HeaderProps) {
+  const nano2Visibility = useAppVisibilityStore(state => state.nano2Modules)
+  const bananaVisible = nano2Visibility['banana-brother'] !== 'hidden'
+
   return (
     <header className="flex items-center justify-between px-4 py-3 bg-card/80 backdrop-blur-xl border-b border-white/10">
       <div className="flex items-center gap-3">
@@ -20,12 +24,14 @@ export function Nano2Header({ onSwitchToAssets }: Nano2HeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {bananaVisible && (
         <button
           disabled
           className="px-3 py-1.5 rounded-full text-sm bg-primary/10 text-primary/50 cursor-not-allowed opacity-50"
         >
           🍌 香蕉哥哥
         </button>
+        )}
         <button
           disabled
           className="px-3 py-1.5 rounded-full text-sm bg-muted text-muted-foreground cursor-not-allowed opacity-50"

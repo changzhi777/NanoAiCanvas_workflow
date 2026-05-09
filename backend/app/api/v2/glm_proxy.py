@@ -65,6 +65,36 @@ def _repair_json(raw: str) -> str:
     return ''.join(result)
 
 
+def _find_balanced(text: str, open_ch: str, close_ch: str) -> str | None:
+    """Bracket-count to find first complete balanced JSON structure."""
+    start = text.find(open_ch)
+    if start < 0:
+        return None
+    depth = 0
+    in_str = False
+    escape = False
+    for i in range(start, len(text)):
+        c = text[i]
+        if escape:
+            escape = False
+            continue
+        if c == '\\' and in_str:
+            escape = True
+            continue
+        if c == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if c == open_ch:
+            depth += 1
+        elif c == close_ch:
+            depth -= 1
+            if depth == 0:
+                return text[start:i+1]
+    return None
+
+
 def _extract_shots_from_content(content: str) -> list:
     """Extract shots from GLM output, handling multiple formats:
     1. {"title":..., "shots":[...]}  (standard)
@@ -73,42 +103,22 @@ def _extract_shots_from_content(content: str) -> list:
     """
     import json, re
 
-    # Try extracting JSON blocks in order of specificity
     json_str = None
 
-    # 1. Code block with object
-    m = re.search(r'```(?:json)?\s*(\{[\s\S]*?\})\s*```', content)
+    # 1. Code block — capture content, then bracket-count
+    m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
     if m:
-        json_str = m.group(1)
-    else:
-        # 2. Code block with array
-        m = re.search(r'```(?:json)?\s*(\[[\s\S]*?\])\s*```', content)
-        if m:
-            json_str = m.group(1)
+        json_str = _find_balanced(m.group(1), '{', '}') or _find_balanced(m.group(1), '[', ']')
 
-    # 3. Bare <output> tag with object
+    # 2. <output> tag
     if not json_str:
-        m = re.search(r'<output>\s*(\{[\s\S]*?\})\s*</output>', content)
+        m = re.search(r'<output>([\s\S]*?)</output>', content)
         if m:
-            json_str = m.group(1)
+            json_str = _find_balanced(m.group(1), '{', '}') or _find_balanced(m.group(1), '[', ']')
 
-    # 4. Bare <output> tag with array
+    # 3. Raw content fallback
     if not json_str:
-        m = re.search(r'<output>\s*(\[[\s\S]*?\])\s*</output>', content)
-        if m:
-            json_str = m.group(1)
-
-    # 5. Greedy object match
-    if not json_str:
-        m = re.search(r'\{[\s\S]*\}', content)
-        if m:
-            json_str = m.group()
-
-    # 6. Greedy array match (GLM sometimes returns bare array)
-    if not json_str:
-        m = re.search(r'\[[\s\S]*\]', content)
-        if m:
-            json_str = m.group()
+        json_str = _find_balanced(content, '{', '}') or _find_balanced(content, '[', ']')
 
     if not json_str:
         return []
@@ -211,25 +221,35 @@ SYSTEM_PROMPTS = {
     "custom": "【应用场景：通用】你是一个专业的AI图片提示词优化专家。根据用户的描述，生成高质量的图片生成提示词。规则：1.保留用户原始意图 2.添加画面细节描述 3.使用中文输出 4.只输出优化后的提示词",
 }
 
-STORYBOARD_SCRIPT_PROMPT = """你是一个专业的电影分镜头脚本编剧。根据用户提供的故事描述，将其拆分为{shot_count}个连续的分镜头，形成一个完整的故事板。
+STORYBOARD_SCRIPT_PROMPT = """你是一个专业的电影分镜师和AI图片提示词专家。根据用户提供的故事描述，将其拆分为{shot_count}个连续的分镜头。
 
-要求：
-1. 每个分镜头必须包含：场景描述、图片生成提示词、镜头角度、氛围
-2. 图片生成提示词要详细具体，包含角色外貌、动作、表情、服装、场景细节、光影、构图
-3. 所有分镜头必须形成连续叙事，前后衔接自然
-4. 镜头角度多样化：特写、中景、全景、俯拍、仰拍等
-5. 提示词使用中文
-6. 严格按以下JSON格式输出，不要添加任何其他文字：
+## visual_prompt 编写规则（最重要）
+每个 shot 的 visual_prompt 是直接喂给AI图片生成器的提示词，必须遵循以下规则：
+1. 开头描述画面主体（角色外貌、服装、动作、表情）
+2. 描述场景背景（环境、建筑、自然元素、天气）
+3. 指定光影效果（自然光/人造光、光源方向、色温）
+4. 指定构图方式（三分法/对称/引导线、前景/中景/背景层次）
+5. 指定镜头语言（景别+角度，如"低角度仰拍全景"、"特写"）
+6. 描述色调和氛围（暖色调/冷色调、高对比/柔和）
+7. 使用中文，50-100字
+
+## 示例 visual_prompt
+"一位身穿深蓝色风衣的男性站在雨后的城市天台上，右手握着一把伞，低头俯瞰灯火通明的街道。背景是现代都市的摩天大楼群，霓虹灯在湿漉漉的地面反射出斑斓色彩。暖色调路灯与冷色调天空形成冷暖对比，低角度仰拍，三分法构图，电影质感"
+
+## 其他要求
+1. 所有分镜头必须形成连续叙事，前后衔接自然
+2. 镜头角度多样化：特写、中景、全景、俯拍、仰拍、跟拍等
+3. 严格按以下JSON格式输出，不要添加任何其他文字：
 
 {{
   "title": "故事标题",
   "shots": [
     {{
       "shot_number": 1,
-      "scene_description": "这个镜头发生了什么，角色的动作和情感",
-      "visual_prompt": "详细的图片生成提示词，包含角色、场景、光影、构图、色调",
+      "scene_description": "这个镜头发生了什么，角色的动作和情感（简短叙述）",
+      "visual_prompt": "按上述规则编写的详细图片生成提示词",
       "camera_angle": "镜头角度和景别",
-      "mood": "氛围和情绪"
+      "mood": "氛围和情绪关键词"
     }}
   ]
 }}"""
@@ -392,7 +412,23 @@ async def generate_storyboard_script(
 
 # ==================== 剧本生成 ====================
 
-SCREENPLAY_PROMPT = """你是一个专业的电影编剧和分镜设计师。根据用户提供的故事梗概，生成一份完整的剧本，包含以下所有内容。
+SCREENPLAY_PROMPT = """你是一个专业的电影编剧和分镜设计师。根据用户提供的故事梗概，生成一份完整的剧本。
+
+## visual_prompt 编写规则（核心要求）
+所有 visual_prompt（shots、scenes、pose/expression/outfit_prompts）是直接喂给AI图片生成器的提示词，必须：
+1. 开头描述画面主体（角色外貌、服装、动作、表情）
+2. 描述场景背景（环境、建筑、天气、时间）
+3. 指定光影效果（光源方向、色温、硬光/柔光）
+4. 指定构图方式（景别+角度+构图法则）
+5. 描述色调和氛围
+6. 使用中文，50-100字
+7. 严禁出现"注意"等元描述词，直接描述画面
+
+## 示例 shot visual_prompt
+"一位身穿深蓝色风衣的男性站在雨后的城市天台上，右手握着伞，俯瞰灯火通明的街道。背景是现代都市摩天大楼群，霓虹灯在湿润地面反射出斑斓色彩。暖色调路灯与冷色调天空形成冷暖对比，低角度仰拍，电影质感"
+
+## 示例 character pose_prompt
+"一位25岁亚洲女性，黑色长发披肩，身穿白色实验室外套，双手抱胸站立。正面全身视角，自然光从左侧照射，面部表情自信从容，简洁纯色背景，锐利对焦，写实风格"
 
 严格按以下JSON格式输出，不要添加任何其他文字：
 
@@ -487,7 +523,7 @@ async def generate_screenplay(
         system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中"
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=300) as client:
             resp = await client.post(
                 f"{settings.GLM_API_BASE_URL}/chat/completions",
                 headers={
@@ -501,7 +537,7 @@ async def generate_screenplay(
                         {"role": "user", "content": f"请根据以下故事梗概生成完整剧本：\n{req.premise}"},
                     ],
                     "temperature": req.temperature,
-                    "max_tokens": 8000,
+                    "max_tokens": 16000,
                 },
             )
 
@@ -511,6 +547,7 @@ async def generate_screenplay(
         data = resp.json()
         msg = data.get("choices", [{}])[0].get("message", {})
         content = msg.get("content", "").strip()
+        finish_reason = data.get("choices", [{}])[0].get("finish_reason", "")
 
         if not content:
             rc = msg.get("reasoning_content", "").strip()
@@ -521,17 +558,23 @@ async def generate_screenplay(
         if not content:
             raise HTTPException(status_code=502, detail="GLM 返回为空")
 
-        # Extract JSON
+        # Extract JSON — bracket counting 提取第一个完整的 JSON object
         json_str = None
-        for pattern in [
-            r'```(?:json)?\s*(\{[\s\S]*?\})\s*```',
-            r'<output>\s*(\{[\s\S]*?\})\s*</output>',
-            r'\{[\s\S]*\}',
-        ]:
-            m = re.search(pattern, content)
+
+        # 1) Markdown code block — capture full content, then bracket-count
+        m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+        if m:
+            json_str = _find_balanced(m.group(1), '{', '}')
+
+        # 2) <output> tag
+        if not json_str:
+            m = re.search(r'<output>([\s\S]*?)</output>', content)
             if m:
-                json_str = m.group(1) if '```' in pattern or '<output>' in pattern else m.group()
-                break
+                json_str = _find_balanced(m.group(1), '{', '}')
+
+        # 3) Raw content fallback
+        if not json_str:
+            json_str = _find_balanced(content, '{', '}')
 
         if not json_str:
             raise HTTPException(status_code=502, detail=f"无法解析剧本: {content[:200]}")
@@ -548,6 +591,8 @@ async def generate_screenplay(
                 raise HTTPException(status_code=502, detail=f"剧本 JSON 解析失败: {e2}")
 
         # Validate and fill defaults
+        if finish_reason == "length":
+            print(f"[GLM] Screenplay output truncated! Characters: {len(screenplay.get('characters', []))}, Scenes: {len(screenplay.get('scenes', []))}, Shots: {len(screenplay.get('shots', []))}")
         screenplay.setdefault("title", "未命名故事")
         screenplay.setdefault("logline", "")
         screenplay.setdefault("characters", [])

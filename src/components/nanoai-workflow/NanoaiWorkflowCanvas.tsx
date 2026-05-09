@@ -34,74 +34,50 @@ import { CompletionAnimation } from './ui/CompletionAnimation';
 import { KeyboardShortcuts } from './ui/KeyboardShortcuts';
 import { NodeSearchFilter } from './ui/NodeSearchFilter';
 import { PerformanceMonitor } from './ui/PerformanceMonitor';
-import { WorkflowTemplates } from './ui/WorkflowTemplates';
+import { WorkflowTemplates, ALL_NODES } from './ui/WorkflowTemplates';
 import { ExportDialog } from './ui/ExportDialog';
 import { DeveloperTools } from './ui/DeveloperTools';
 import { WorkflowPropertiesPanel } from './ui/WorkflowPropertiesPanel';
 import { ImportConfirmDialog } from './ui/ImportConfirmDialog';
 import { useToast } from '@/hooks/useToast';
 import { cn } from '@/lib/utils';
-import { BarChart3, Search, Code, Keyboard, Maximize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X } from 'lucide-react';
+import type { WorkflowNodeType, NodePort } from '@/stores/nanoaiWorkflowStore';
 
-type PageKey = 'canvas' | 'workflow' | 'nano2'
-const PAGES: { key: PageKey; label: string }[] = [
-  { key: 'canvas', label: '无限画布' },
-  { key: 'workflow', label: 'Workflow' },
-  { key: 'nano2', label: 'Nano2' },
+export type PageKey = 'canvas' | 'workflow' | 'nano2'
+export const PAGES: { key: PageKey; label: string; icon: React.ReactNode }[] = [
+  { key: 'canvas', label: '无限画布', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+  { key: 'workflow', label: 'Workflow', icon: <GitBranch className="w-3.5 h-3.5" /> },
+  { key: 'nano2', label: 'Nano2', icon: <FlaskConical className="w-3.5 h-3.5" /> },
 ]
 
-function PageSwitcher() {
+export function PageSwitcher({ isDark }: { isDark: boolean }) {
   const [active, setActive] = useState<PageKey>('workflow')
-  const [panelOpen, setPanelOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [indicator, setIndicator] = useState({ top: 0, height: 0 })
 
   const switchTo = (key: PageKey) => {
     setActive(key)
     window.dispatchEvent(new CustomEvent('switch-page', { detail: key }))
   }
 
-  useEffect(() => {
-    const handler = (e: Event) => setPanelOpen((e as CustomEvent).detail.open)
-    window.addEventListener('properties-panel-toggle', handler)
-    return () => window.removeEventListener('properties-panel-toggle', handler)
-  }, [])
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-    const btns = container.querySelectorAll<HTMLButtonElement>('[data-page]')
-    const idx = PAGES.findIndex(p => p.key === active)
-    const btn = btns[idx]
-    if (btn) {
-      setIndicator({ top: btn.offsetTop, height: btn.offsetHeight })
-    }
-  }, [active])
-
-  if (panelOpen) return null
-
   return (
-    <div
-      ref={containerRef}
-      className="fixed bottom-16 right-4 z-50 flex flex-col rounded-2xl p-1 border backdrop-blur-xl bg-card/90 border-border shadow-lg"
-    >
-      <div
-        className="absolute left-1 right-1 rounded-xl bg-primary/20 border border-primary/40 transition-all duration-300 ease-out"
-        style={{ top: indicator.top, height: indicator.height }}
-      />
-      {PAGES.map(({ key, label }) => (
+    <div className="flex items-center gap-0.5">
+      {PAGES.map(({ key, label, icon }) => (
         <button
           key={key}
-          data-page={key}
           onClick={() => switchTo(key)}
+          title={label}
           className={cn(
-            'relative z-10 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors duration-200 whitespace-nowrap',
+            'p-1.5 rounded-lg transition-all duration-200',
             active === key
-              ? 'text-primary'
-              : 'text-muted-foreground hover:text-foreground'
+              ? isDark
+                ? 'bg-white/15 text-white shadow-sm'
+                : 'bg-gray-200/80 text-gray-900 shadow-sm'
+              : isDark
+                ? 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
           )}
         >
-          {label}
+          {icon}
         </button>
       ))}
     </div>
@@ -128,6 +104,10 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     const saved = localStorage.getItem('sidebar-collapsed');
     return saved ? JSON.parse(saved) : true;
   });
+  const [isZenMode, setIsZenMode] = useState(() => {
+    const saved = localStorage.getItem('zen-mode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [showProgress, setShowProgress] = useState(false);
   const [isExecuting, setIsExecuting] = useState(false);
   const [userDismissedProgress, setUserDismissedProgress] = useState(false);
@@ -139,6 +119,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<{
     id: string;
@@ -278,6 +259,67 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     );
   }, [nodes, setEdges]);
 
+  // MiniMap 定位：注入 CSS 强制覆盖 ReactFlow 内联样式
+  useEffect(() => {
+    if (!showMiniMap) return;
+    const id = 'minimap-override-style';
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('style');
+      el.id = id;
+      document.head.appendChild(el);
+    }
+    el.textContent = `
+      .react-flow__minimap {
+        position: fixed !important;
+        bottom: 92px !important;
+        right: ${propertiesPanelOpen ? 344 : 8}px !important;
+        top: auto !important;
+        left: auto !important;
+        z-index: 50 !important;
+        width: 160px !important;
+        height: 100px !important;
+        border-radius: 10px !important;
+        border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'} !important;
+        background: ${isDark ? 'rgba(15,15,15,0.85)' : 'rgba(255,255,255,0.85)'} !important;
+        backdrop-filter: blur(12px) !important;
+        transition: right 300ms ease, opacity 200ms ease !important;
+        overflow: hidden !important;
+      }
+      .react-flow__minimap svg {
+        width: 160px !important;
+        height: 100px !important;
+      }
+    `;
+
+    // 重算 viewBox 让节点居中
+    const recalc = () => {
+      const svg = document.querySelector('.react-flow__minimap svg');
+      const nodeEls = document.querySelectorAll('.react-flow__minimap-node');
+      if (!svg || nodeEls.length === 0) return;
+
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      nodeEls.forEach(n => {
+        const x = +n.getAttribute('x')!, y = +n.getAttribute('y')!;
+        const w = +n.getAttribute('width')!, h = +n.getAttribute('height')!;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x + w);
+        maxY = Math.max(maxY, y + h);
+      });
+
+      const pad = 60;
+      const vb = `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`;
+      svg.setAttribute('viewBox', vb);
+    };
+
+    const timers = [0, 100, 300].map(t => setTimeout(recalc, t));
+    return () => {
+      el?.remove();
+      timers.forEach(clearTimeout);
+    };
+  }, [showMiniMap, propertiesPanelOpen, isDark, nodes]);
+
   // 同步 store 到 React Flow
   const isDraggingRef = useRef(false);
   const prevNodeCountRef = useRef(0);
@@ -292,27 +334,6 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
       });
     }
   }, [storeNodes, storeEdges, setNodes, setEdges, fitView]);
-
-  // 调整 MiniMap 位置到右下角偏左
-  useEffect(() => {
-    const adjustMiniMapPosition = () => {
-      const miniMap = document.querySelector('.react-flow__minimap');
-      if (miniMap) {
-        const element = miniMap as HTMLElement;
-        // 使用内联样式，确保优先级最高
-        element.style.cssText = 'position: absolute !important; bottom: 80px !important; right: 100px !important; top: auto !important; left: auto !important; z-index: 10 !important;';
-        console.log('MiniMap 位置已调整到右下角偏左');
-      }
-    };
-
-    // 多次尝试确保生效
-    const timers = [
-      setTimeout(adjustMiniMapPosition, 100),
-      setTimeout(adjustMiniMapPosition, 300),
-      setTimeout(adjustMiniMapPosition, 600),
-    ];
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [nodes]);
 
   // 处理节点变化（包括拖拽）
   const handleNodesChange = useCallback((changes: any) => {
@@ -423,6 +444,61 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     };
   }, [nodes.length]);
 
+  // 添加节点到画布
+  const handleAddNode = useCallback((nodeType: WorkflowNodeType) => {
+    const findNodeLabel = (type: WorkflowNodeType) => {
+      const node = ALL_NODES.find(n => n.type === type);
+      return node?.label || type;
+    };
+
+    const getPreviewNodeInputs = (type: WorkflowNodeType): NodePort[] => {
+      switch (type) {
+        case 'image_preview': return [{ id: 'image-in', name: '图片输入', type: 'image' as const, required: false }];
+        case 'video_preview': return [{ id: 'video-in', name: '视频输入', type: 'json' as const, required: false }];
+        case 'audio_preview': return [{ id: 'audio-in', name: '音频输入', type: 'audio' as const, required: false }];
+        case 'text_preview': return [{ id: 'text-in', name: '文本输入', type: 'text' as const, required: false }];
+        case 'output_preview': return [
+          { id: 'image-in', name: '图片输入', type: 'image' as const, required: false },
+          { id: 'video-in', name: '视频输入', type: 'json' as const, required: false },
+          { id: 'audio-in', name: '音频输入', type: 'audio' as const, required: false },
+          { id: 'text-in', name: '文本输入', type: 'text' as const, required: false },
+        ];
+        case 'output_node': return [{ id: 'data-in', name: '数据', type: 'image' as const, required: true }];
+        default: return [];
+      }
+    };
+
+    const getGenerationNodeOutputs = (type: WorkflowNodeType): NodePort[] => {
+      const imageOut: NodePort[] = [{ id: 'image-out', name: '图片输出', type: 'image', required: false }];
+      const videoOut: NodePort[] = [{ id: 'video-out', name: '视频输出', type: 'json', required: false }];
+      const audioOut: NodePort[] = [{ id: 'audio-out', name: '音频输出', type: 'audio', required: false }];
+      const textOut: NodePort[] = [{ id: 'text-out', name: '文本输出', type: 'text', required: false }];
+
+      if (['jimeng_image', 'nano_banana_2', 'nano_banana_pro', 'gpt_image_2', 'minimax_image', 'character_designer', 'scene_designer', 'storyboard_generator'].includes(type)) return imageOut;
+      if (['jimeng_video', 'glm_video', 'minimax_video'].includes(type)) return videoOut;
+      if (['dialogue_generator', 'glm_tts', 'minimax_speech', 'minimax_music'].includes(type)) return audioOut;
+      if (['script_generator', 'director_agent', 'screenwriter_agent', 'glm_text', 'qwen_text', 'kimi_text', 'minimax_text', 'qwen_coding', 'minimax_coding'].includes(type)) return textOut;
+      return [];
+    };
+
+    const newNode = {
+      id: `node-${Date.now()}`,
+      type: nodeType,
+      position: { x: Math.random() * 500 + 100, y: Math.random() * 300 + 100 },
+      data: {
+        label: findNodeLabel(nodeType),
+        params: {},
+        inputs: getPreviewNodeInputs(nodeType),
+        outputs: getGenerationNodeOutputs(nodeType),
+        status: 'idle' as any,
+      },
+      draggable: true,
+      className: 'animate-node-enter',
+    };
+    addNode(newNode);
+    toast.success(`已添加节点：${findNodeLabel(nodeType)}`);
+  }, [addNode, toast]);
+
   // 处理模板加载（带确认对话框）
   const handleLoadTemplate = useCallback((templateId: string) => {
     const template = templates.find(t => t.id === templateId);
@@ -463,6 +539,15 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
       setPendingTemplate(null);
     }
   }, [pendingTemplate, loadTemplate, toast]);
+
+  // 禅模式切换
+  const toggleZen = () => {
+    setIsZenMode((prev: boolean) => {
+      const next = !prev;
+      localStorage.setItem('zen-mode', JSON.stringify(next));
+      return next;
+    });
+  };
 
   // 快捷键
   useEffect(() => {
@@ -593,6 +678,12 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
         setIsSidebarCollapsed(!isSidebarCollapsed);
       }
 
+      // Cmd + \: 切换禅模式
+      if (e.metaKey && e.key === '\\') {
+        e.preventDefault();
+        toggleZen();
+      }
+
       // Cmd + F: 搜索节点
       if (e.metaKey && e.key === 'f') {
         e.preventDefault();
@@ -635,201 +726,35 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   }, [saveTemplate, executeWorkflow, exportWorkflow, selectNode, removeNode, toast]);
 
   return (
-    <div className={cn('h-screen w-screen flex overflow-hidden', className)}>
-      {/* 左侧工具栏 */}
-      <div data-tour="sidebar">
-        <NanoaiWorkflowSidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-      </div>
-
-      {/* 右侧进度面板 */}
-      {showProgress && (
-        <div
-          className={cn(
-            'fixed bottom-16 right-4 z-50 w-80 rounded-2xl shadow-2xl backdrop-blur-xl border',
-            'max-h-[60vh] flex flex-col',
-            'transition-all duration-300',
-            propertiesPanelOpen && 'right-[336px]',
-            isDark
-              ? 'bg-slate-900/95 border-white/10'
-              : 'bg-white/95 border-gray-200'
-          )}
-        >
-          {/* 面板头部 */}
-          <div className={cn(
-            'flex items-center justify-between p-4 border-b',
-            isDark ? 'border-white/10' : 'border-gray-200'
-          )}>
-            <div className="flex items-center gap-2">
-              <BarChart3 className={cn(
-                'w-5 h-5',
-                isDark ? 'text-blue-400' : 'text-blue-600'
-              )} />
-              <h3 className={cn(
-                'font-semibold',
-                isDark ? 'text-slate-200' : 'text-gray-800'
-              )}>
-                执行进度
-              </h3>
-            </div>
-            <button
-              onClick={() => { setShowProgress(false); setUserDismissedProgress(true); }}
-              className={cn(
-                'p-1 rounded transition-colors',
-                isDark
-                  ? 'hover:bg-white/10 text-slate-400 hover:text-slate-200'
-                  : 'hover:bg-gray-100 text-gray-500 hover:text-gray-700'
-              )}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* 进度内容 */}
-          <div className="flex-1 overflow-y-auto p-4">
-            <WorkflowProgress
-              nodes={nodes}
-              isExecuting={isExecuting}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* 进度面板切换按钮 */}
-      <button
-        onClick={() => { setShowProgress(!showProgress); if (!showProgress) setUserDismissedProgress(false); }}
-        className={cn(
-          'fixed bottom-4 right-4 z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        title={showProgress ? '隐藏进度面板' : '显示进度面板'}
-      >
-        <BarChart3 className="w-5 h-5" />
-      </button>
-
-      {/* 左侧按钮组 - 等距分布（每个间距40px） */}
-      {/* 开发者工具 - 最上方 */}
-      <button
-        onClick={() => setShowDevTools(!showDevTools)}
-        className={cn(
-          'fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isSidebarCollapsed ? 'left-16' : 'left-72',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        style={{ bottom: '164px' }}
-        title={showDevTools ? '隐藏开发者工具' : '显示开发者工具 (Cmd+Shift+D)'}
-      >
-        <Code className="w-5 h-5" />
-      </button>
-
-      {/* 适应视图 */}
-      <button
-        onClick={() => {
-          const fitViewEvent = new Event('fitView');
-          window.dispatchEvent(fitViewEvent);
-        }}
-        className={cn(
-          'fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isSidebarCollapsed ? 'left-16' : 'left-72',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        style={{ bottom: '124px' }}
-        title="适应视图 (Cmd+0)"
-      >
-        <Maximize2 className="w-5 h-5" />
-      </button>
-
-      {/* 快捷键帮助 */}
-      <button
-        onClick={() => setShowShortcuts(!showShortcuts)}
-        className={cn(
-          'fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isSidebarCollapsed ? 'left-16' : 'left-72',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        style={{ bottom: '84px' }}
-        title={showShortcuts ? '隐藏快捷键帮助' : '显示快捷键帮助 (?)'}
-      >
-        <Keyboard className="w-5 h-5" />
-      </button>
-
-      {/* 搜索面板 */}
-      <button
-        onClick={() => setShowSearch(!showSearch)}
-        className={cn(
-          'fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isSidebarCollapsed ? 'left-16' : 'left-72',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        style={{ bottom: '44px' }}
-        title={showSearch ? '隐藏搜索面板' : '显示搜索面板 (Cmd+F)'}
-      >
-        <Search className="w-5 h-5" />
-      </button>
-
-      {/* 页面切换按钮 - 滑动指示器 */}
-      <PageSwitcher />
-
-      {/* 折叠/展开侧边栏 */}
-      <button
-        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        className={cn(
-          'fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200',
-          'hover:scale-110 active:scale-95',
-          isSidebarCollapsed ? 'left-16' : 'left-72',
-          isDark
-            ? 'bg-[#171717]/95 border border-white/10 text-slate-300 hover:bg-white/10'
-            : 'bg-white/90 border border-gray-200 text-gray-700 hover:bg-gray-50'
-        )}
-        style={{ bottom: '4px' }}
-        title={isSidebarCollapsed ? '展开侧边栏 (F2)' : '折叠侧边栏 (F2)'}
-      >
-        {isSidebarCollapsed ? (
-          <ChevronRight className="w-5 h-5" />
-        ) : (
-          <ChevronLeft className="w-5 h-5" />
-        )}
-      </button>
-
-      {/* 搜索面板 */}
-      {showSearch && (
-        <div className="fixed top-16 left-4 z-40 animate-in fade-in slide-in-from-top-2 duration-200">
-          <NodeSearchFilter
-            nodes={nodes}
-            onClose={() => setShowSearch(false)}
-          />
-        </div>
-      )}
-
-      {/* 主画布 - Supabase设计系统 */}
-      <div className={cn(
-        'flex-1 flex-col',
-        isDark ? 'bg-[#171717]' : 'bg-white'  /* #171717 - Supabase页面背景 */
-      )}>
-        {/* 顶部工具栏 */}
-        <div className="relative" data-tour="toolbar">
+    <div className={cn('h-screen w-screen flex flex-col overflow-hidden', className)}>
+      {/* 顶部工具栏 - 禅模式下隐藏 */}
+      {!isZenMode && (
+        <div className="relative flex-shrink-0" data-tour="toolbar">
           <NanoaiWorkflowToolbar />
         </div>
+      )}
 
-        {/* React Flow 画布 */}
-        <div className="flex-1 relative canvas-wrapper nanoai-workflow" data-tour="canvas">
+      {/* 下方：侧边栏 + 画布 */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* 左侧模板栏 - 禅模式下隐藏 */}
+        {!isZenMode && (
+          <div data-tour="sidebar">
+            <NanoaiWorkflowSidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              onLoadTemplate={handleLoadTemplate}
+              onShowNodeDialog={() => setShowTemplates(true)}
+            />
+          </div>
+        )}
+
+        {/* 主画布区域 */}
+        <div className={cn(
+          'flex-1 flex flex-col',
+          isDark ? 'bg-[#171717]' : 'bg-white'
+        )}>
+          {/* React Flow 画布 */}
+          <div className="flex-1 relative canvas-wrapper nanoai-workflow" data-tour="canvas">
           {/* 背景装饰光晕 */}
           <div className="bg-orb-top-right" />
           <div className="bg-orb-bottom-left" />
@@ -906,15 +831,19 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
 
               {/* 控制面板 */}
               <Controls
-                className="bg-card border border-border"
+                className={cn('bg-card border border-border', isZenMode && 'hidden')}
                 showZoom={false}
                 showFitView={false}
                 showInteractive={true}
               />
 
               {/* 小地图 */}
+              {showMiniMap && (
               <MiniMap
-                className="bg-card border border-border"
+                pannable
+                zoomable
+                nodeStrokeWidth={3}
+                nodeBorderRadius={8}
                 nodeColor={(node) => {
                   switch (node.data.status) {
                     case 'running':
@@ -924,17 +853,13 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
                     case 'error':
                       return '#ef4444';
                     default:
-                      return '#002FA7';
+                      return isDark ? '#3b82f6' : '#60a5fa';
                   }
                 }}
-                maskColor="hsl(var(--background) / 0.6)"
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  right: '320px',
-                  zIndex: 10,
-                } as React.CSSProperties}
+                nodeStrokeColor={isDark ? '#1e293b' : '#e2e8f0'}
+                maskColor={isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.6)'}
               />
+              )}
             </ReactFlow>
 
             {/* 空状态提示（叠加在画布上） */}
@@ -993,7 +918,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
           <WorkflowTemplates
             show={showTemplates}
             onClose={() => setShowTemplates(false)}
-            onLoadTemplate={handleLoadTemplate}
+            onAddNode={handleAddNode}
           />
 
           {/* 导入确认对话框 */}
@@ -1024,7 +949,132 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
           {/* 属性面板 */}
           <WorkflowPropertiesPanel data-tour="properties" />
         </div>
+        </div>
       </div>
+
+      {/* === 固定定位浮层 === 禅模式下大部分隐藏 === */}
+
+      {/* 进度面板 */}
+      {showProgress && !isZenMode && (
+        <div
+          className={cn(
+            'fixed bottom-16 right-4 z-50 w-72 rounded-xl backdrop-blur-xl border',
+            'max-h-[50vh] flex flex-col',
+            'transition-all duration-300',
+            propertiesPanelOpen && 'right-[336px]',
+            isDark
+              ? 'bg-slate-900/60 border-white/[0.06] shadow-lg shadow-black/20'
+              : 'bg-white/90 border-gray-100 shadow-lg shadow-black/5'
+          )}
+        >
+          <div className={cn(
+            'flex items-center justify-between px-3 py-2.5 border-b',
+            isDark ? 'border-white/[0.04]' : 'border-gray-50'
+          )}>
+            <div className="flex items-center gap-2">
+              <BarChart3 className={cn('w-3.5 h-3.5', isDark ? 'text-blue-400' : 'text-blue-600')} />
+              <h3 className={cn('text-xs font-semibold', isDark ? 'text-slate-300' : 'text-gray-700')}>执行进度</h3>
+              {isExecuting && (
+                <span className={cn('text-[10px] px-1.5 py-[1px] rounded animate-pulse',
+                  isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')}>运行中</span>
+              )}
+            </div>
+            <button onClick={() => { setShowProgress(false); setUserDismissedProgress(true); }}
+              className={cn('p-1 rounded transition-colors', isDark ? 'hover:bg-white/[0.06] text-slate-500' : 'hover:bg-gray-50 text-gray-400')}>
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3">
+            <WorkflowProgress nodes={nodes} isExecuting={isExecuting} />
+          </div>
+        </div>
+      )}
+
+      {/* 右下角按钮 - 小地图切换 + 进度 */}
+      <button onClick={() => setShowMiniMap(!showMiniMap)}
+        className={cn('fixed right-4 z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+          isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+        style={{ bottom: '52px' }}
+        title={showMiniMap ? '隐藏小地图' : '显示小地图'}>
+        <Map className="w-5 h-5" />
+      </button>
+
+      {!isZenMode && (
+      <button onClick={() => { setShowProgress(!showProgress); if (!showProgress) setUserDismissedProgress(false); }}
+        className={cn('fixed bottom-4 right-4 z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+          isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+        title={showProgress ? '隐藏进度面板' : '显示进度面板'}>
+        <BarChart3 className="w-5 h-5" />
+      </button>
+      )}
+
+      {/* 常规模式浮动按钮组（左侧栏边缘） */}
+      {!isZenMode && (
+        <>
+          <button onClick={() => setShowDevTools(!showDevTools)}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-16' : 'left-72',
+              isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '164px' }} title="开发者工具 (Cmd+Shift+D)">
+            <Code className="w-5 h-5" />
+          </button>
+
+          <button onClick={() => fitView({ padding: 0.2, duration: 400 })}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-16' : 'left-72',
+              isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '124px' }} title="适应视图 (Cmd+0)">
+            <Focus className="w-5 h-5" />
+          </button>
+
+          <button onClick={() => setShowShortcuts(!showShortcuts)}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-16' : 'left-72',
+              isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '84px' }} title="快捷键帮助 (?)">
+            <Keyboard className="w-5 h-5" />
+          </button>
+
+          <button onClick={() => setShowSearch(!showSearch)}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-16' : 'left-72',
+              isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '44px' }} title="搜索面板 (Cmd+F)">
+            <Search className="w-5 h-5" />
+          </button>
+
+          <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-16' : 'left-72',
+              isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '4px' }} title={isSidebarCollapsed ? '展开侧边栏 (F2)' : '折叠侧边栏 (F2)'}>
+            {isSidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+          </button>
+        </>
+      )}
+
+      {/* 禅模式切换按钮 - 始终显示，位于左侧栏边缘、开发者工具上方 */}
+      <button onClick={toggleZen}
+        className={cn(
+          'fixed z-[60] p-2 rounded-lg backdrop-blur-xl shadow-lg',
+          'transition-all duration-300 hover:scale-110 active:scale-95',
+          isZenMode ? 'left-4 opacity-30 hover:opacity-80' : (isSidebarCollapsed ? 'left-16' : 'left-72'),
+          isDark
+            ? 'bg-[#171717]/95 border border-white/10 text-slate-400 hover:text-slate-200'
+            : 'bg-white/90 border border-gray-200 text-gray-500 hover:text-gray-700'
+        )}
+        style={{ bottom: '204px' }}
+        title={isZenMode ? '退出禅模式 (Cmd+\\)' : '禅模式 (Cmd+\\)'}>
+        {isZenMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+      </button>
+
+      {/* 搜索面板 */}
+      {showSearch && !isZenMode && (
+        <div className="fixed left-4 z-40 animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{ top: 'calc(64px + 16px)' }}>
+          <NodeSearchFilter nodes={nodes} onClose={() => setShowSearch(false)} />
+        </div>
+      )}
 
       {/* 新手引导 */}
       <OnboardingTour />

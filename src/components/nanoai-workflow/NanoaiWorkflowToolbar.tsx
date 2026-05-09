@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import logoCanvas from '@/../public/logo-canvas-minimal.png';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useAuthStore, useSyncStore } from '@/stores/remoteStore';
 import {
@@ -48,8 +49,11 @@ import { AssetLibraryPanel, SyncStatusIndicator } from '@/components/ui/AssetLib
 import { LoginButton } from '@/components/ui/LoginButton';
 import { ChatDialog } from '@/components/ui/ChatDialog';
 import { MessageSquare } from 'lucide-react';
+import { PageSwitcher } from './NanoaiWorkflowCanvas';
 import { useChatStore } from '@/stores/chatStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+
+declare const __APP_VERSION__: string;
 
 export function NanoaiWorkflowToolbar() {
   const { isDark, toggleTheme } = useTheme();
@@ -201,45 +205,56 @@ export function NanoaiWorkflowToolbar() {
   return (
     <>
       <div className={cn(
-        'h-16 flex items-center justify-between px-4 shadow-sm border-b backdrop-blur-xl',
-        'gap-2 md:gap-4',
+        'h-11 flex items-center justify-between px-3 border-b backdrop-blur-xl',
         isDark
-          ? 'bg-slate-900/80 border-white/10'
-          : 'bg-white border-gray-200'
+          ? 'bg-slate-900/60 border-white/[0.04]'
+          : 'bg-white/90 border-gray-100'
       )}>
-        {/* 左侧：标题和统计 */}
-        <div className="flex items-center gap-4">
-          {/* Logo */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-lg">N</span>
-          </div>
-
-          {/* 标题 */}
-          <div>
+        {/* 左侧：品牌标识 */}
+        <div className="flex items-center gap-2">
+          <img
+            src={logoCanvas}
+            alt="Infinite Canvas Studio"
+            className={cn(
+              'w-6 h-6 rounded-full object-cover flex-shrink-0',
+              isDark ? 'ring-1 ring-white/10' : 'ring-1 ring-gray-200'
+            )}
+          />
+          <div className="flex items-center gap-2">
             <h1 className={cn(
-              'text-lg font-bold bg-gradient-to-r bg-clip-text text-transparent',
-              isDark
-                ? 'from-blue-400 to-cyan-400'
-                : 'from-blue-600 to-cyan-600'
+              'text-xs font-semibold tracking-wide',
+              isDark ? 'text-slate-200' : 'text-gray-800'
             )}>
               {t('workflow.title')}
             </h1>
-            <div className={cn(
-              'flex items-center gap-2 text-xs',
-              isDark ? 'text-slate-400' : 'text-gray-500'
+            <span className={cn(
+              'text-[9px] font-mono px-1 py-[1px] rounded',
+              isDark
+                ? 'bg-white/[0.04] text-slate-500'
+                : 'bg-gray-50 text-gray-400'
             )}>
-              <span>{nodes.length} {t('workflow.nodes')}</span>
-              <span>•</span>
-              <span>{edges.length} {t('workflow.edges')}</span>
-              {nodes.length > 0 && (
-                <>
-                  <span>•</span>
-                  <span className={cn(
-                    isDark ? 'text-green-400' : 'text-green-600'
-                  )}>
-                    {nodes.filter(n => n.data.status === 'success').length} {t('workflow.completed')}
-                  </span>
-                </>
+              v{__APP_VERSION__}
+            </span>
+            <div className="flex items-center gap-1 text-[10px]">
+              <span className={cn(
+                'px-1 py-[1px] rounded',
+                isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-gray-50 text-gray-400'
+              )}>
+                {nodes.length} 节点
+              </span>
+              <span className={cn(
+                'px-1 py-[1px] rounded',
+                isDark ? 'bg-white/[0.04] text-slate-500' : 'bg-gray-50 text-gray-400'
+              )}>
+                {edges.length} 连线
+              </span>
+              {nodes.length > 0 && completedCount > 0 && (
+                <span className={cn(
+                  'px-1 py-[1px] rounded',
+                  isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
+                )}>
+                  {completedCount} 完成
+                </span>
               )}
             </div>
           </div>
@@ -247,26 +262,26 @@ export function NanoaiWorkflowToolbar() {
 
         {/* 右侧：操作按钮组 */}
         <div className={cn(
-          'flex items-center gap-2',
+          'flex items-center gap-1.5',
           'overflow-x-auto',
           'flex-nowrap',
           'scrollbar-hide'
         )}>
-          {/* 资产库 - 仅已登录用户，在用户按钮左边 */}
+          {/* 资产库 */}
           {token && (
             <Button
               onClick={() => setAssetLibraryOpen(true)}
-              variant="outline"
+              variant="ghost"
               size="sm"
               className={cn(
-                'shadow-sm hover:shadow transition-all duration-200',
+                'h-7 text-[11px] gap-1',
                 isDark
-                  ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               )}
               title="资产库"
             >
-              <Image className="w-4 h-4 mr-1" />
+              <Image className="w-3.5 h-3.5" />
               资产库
             </Button>
           )}
@@ -277,12 +292,15 @@ export function NanoaiWorkflowToolbar() {
               onClick={() => setChatOpen(true)}
               variant="ghost"
               size="icon"
-              className="relative"
+              className={cn(
+                'relative h-7 w-7',
+                isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700'
+              )}
               title="消息"
             >
-              <MessageSquare className="w-4 h-4" />
+              <MessageSquare className="w-3.5 h-3.5" />
               {combinedUnread > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center">
                   {combinedUnread > 99 ? '99+' : combinedUnread}
                 </span>
               )}
@@ -296,72 +314,63 @@ export function NanoaiWorkflowToolbar() {
           {/* 已登录用户：显示同步状态 */}
           {token && <SyncStatusIndicator />}
 
+          {/* 页面切换 */}
+          <PageSwitcher isDark={isDark} />
+
           {/* 分隔线 */}
           <div className={cn(
-            'w-px h-6',
-            isDark ? 'bg-white/10' : 'bg-gray-200'
+            'w-px h-4',
+            isDark ? 'bg-white/[0.06]' : 'bg-gray-200'
           )} />
 
-          {/* 1. 主题切换按钮 */}
+          {/* 主题切换 */}
           <Button
             onClick={toggleTheme}
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             className={cn(
-              'shadow-sm hover:shadow transition-all duration-200',
-              'relative overflow-hidden',
-              isDark
-                ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+              'h-7 w-7',
+              isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700'
             )}
             title={isDark ? '切换到浅色主题' : '切换到深色主题'}
           >
-            <span className="relative z-10 flex items-center justify-center">
-              {isDark ? (
-                <Moon className="w-4 h-4 text-blue-400" />
-              ) : (
-                <Sun className="w-4 h-4 text-yellow-500" />
-              )}
-            </span>
+            {isDark ? (
+              <Moon className="w-3.5 h-3.5 text-blue-400" />
+            ) : (
+              <Sun className="w-3.5 h-3.5 text-yellow-500" />
+            )}
           </Button>
 
-          {/* 2. 主要操作：执行/终止 */}
+          {/* 执行/终止 */}
           {hasNodes && (
             <Button
               onClick={handleExecute}
               data-tour="execute-btn"
               className={cn(
-                'shadow-lg transition-all duration-200',
-                'active:scale-95',
-                'button-click-feedback relative overflow-hidden',
+                'h-7 text-[11px] gap-1.5 transition-all duration-200 active:scale-95',
                 isExecuting
                   ? 'bg-gradient-to-r from-red-600 to-orange-500 hover:from-red-700 hover:to-orange-600'
                   : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600',
               )}
             >
               {isExecuting ? (
-                <>
-                  {/* 流动光效 */}
-                  <span className="absolute inset-0 animate-flow-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent bg-[length:200%_100%]" />
-                  <span className="relative flex items-center gap-2 text-white">
-                    <Square className="w-3.5 h-3.5 fill-current" />
-                    终止工作流
-                  </span>
-                </>
+                <span className="flex items-center gap-1.5 text-white">
+                  <Square className="w-3 h-3 fill-current" />
+                  终止
+                </span>
               ) : (
-                <span className="flex items-center gap-2">
-                  <Play className="w-4 h-4" />
-                  执行工作流
+                <span className="flex items-center gap-1.5">
+                  <Play className="w-3.5 h-3.5" />
+                  执行
                 </span>
               )}
             </Button>
           )}
 
-          {/* 空画布时显示添加模板提示 */}
+          {/* 空画布提示 */}
           {isEmpty && (
             <Button
               onClick={() => {
-                // 打开快捷键面板显示 Cmd+T
                 window.dispatchEvent(new KeyboardEvent('keydown', {
                   key: 't',
                   metaKey: true,
@@ -369,23 +378,22 @@ export function NanoaiWorkflowToolbar() {
                 }));
               }}
               className={cn(
+                'h-7 text-[11px] gap-1.5',
                 'bg-gradient-to-r from-blue-500 to-cyan-500',
                 'hover:from-blue-600 hover:to-cyan-600',
-                'shadow-lg hover:shadow-xl transition-all duration-200',
-                'active:scale-95',
-                'text-white'
+                'active:scale-95 text-white'
               )}
-              title="按 ⌘T 或 Ctrl+T 快速添加模板"
+              title="按 ⌘T 快速添加模板"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              添加节点开始创作
+              <Plus className="w-3.5 h-3.5" />
+              添加节点
             </Button>
           )}
 
-                    <DropdownMenu>
+          <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="shadow-sm hover:shadow transition-all duration-200">
-                <Download className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className={cn('h-7 w-7', isDark ? 'text-slate-400' : 'text-gray-500')}>
+                <Download className="w-3.5 h-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 dropdown-glass">
@@ -407,20 +415,16 @@ export function NanoaiWorkflowToolbar() {
           </DropdownMenu>
 
           
-          {/* 更多操作（下拉菜单收纳其他6个按钮） */}
+          {/* 更多操作 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                size="sm"
-                className={cn(
-                  'transition-all duration-200',
-                  isDark ? 'hover:bg-slate-800' : 'hover:bg-gray-100'
-                )}
+                size="icon"
+                className={cn('h-7 w-7', isDark ? 'text-slate-400' : 'text-gray-500')}
                 title="更多操作"
               >
-                <MoreHorizontal className="w-4 h-4" />
-                <span className="ml-1 text-xs opacity-60">▼</span>
+                <MoreHorizontal className="w-3.5 h-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

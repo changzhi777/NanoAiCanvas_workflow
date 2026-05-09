@@ -91,12 +91,26 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
   // === 动态宽度 + 自适应列数 ===
   const count = displayImages.length
-  const previewWidth = count <= 1 ? 520 : count <= 4 ? 520 : count <= 9 ? 560 : 600
-  const gridCols = count <= 1 ? 1 : count <= 4 ? 2 : count <= 9 ? 3 : 4
+  const previewWidth = layoutDir === 'vertical' ? 480 : (count <= 1 ? 520 : count <= 4 ? 520 : count <= 9 ? 560 : 600)
+  const gridCols = layoutDir === 'vertical' ? 1 : (count <= 1 ? 1 : count <= 4 ? 2 : count <= 9 ? 3 : 4)
 
-  // === 自动保存到资产库 ===
+  // === 自动保存到资产库（等上游节点全部完成后再保存） ===
+  const sourceNodeCompleted = useMemo(() => {
+    if (data.params.sourceNodeId) {
+      const sn = nodes.find(n => n.id === data.params.sourceNodeId)
+      return sn?.data?.status === NodeStatus.SUCCESS
+    }
+    const incomingEdge = edges.find(e => e.target === id)
+    if (incomingEdge) {
+      const sn = nodes.find(n => n.id === incomingEdge.source)
+      return sn?.data?.status === NodeStatus.SUCCESS
+    }
+    return false
+  }, [nodes, edges, id, data.params.sourceNodeId])
+
   useEffect(() => {
     if (!displayImages.length) return
+    if (!sourceNodeCompleted) return
     if (resultData?.savedToAsset) return
     if (autoSaveRef.current) return
     const token = localStorage.getItem('nanoai_token')
@@ -156,7 +170,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
 
     saveAll()
     return () => { cancelled = true }
-  }, [displayImages, resultData?.savedToAsset])
+  }, [displayImages, sourceNodeCompleted, resultData?.savedToAsset])
 
   // === 从资产库回载已保存的分镜资产 ===
   useEffect(() => {
@@ -349,15 +363,13 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           )}
 
           {/* === 多图网格模式 === */}
-          {data.status !== NodeStatus.RUNNING && count > 1 && displayImages.length > 0 && (
+          {data.status !== NodeStatus.RUNNING && count > 1 && displayImages.length > 0 && layoutDir !== 'vertical' && (
             <div
               className="grid gap-2"
               style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
             >
-              {displayImages.map((img: string, idx: number) => {
-                const shot = shots[idx]
-                return (
-                  <button
+              {displayImages.map((img: string, idx: number) => (
+                    <button
                     key={idx}
                     onClick={() => openFullscreen(idx)}
                     className={cn(
@@ -393,13 +405,64 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
                         </div>
                       </div>
                     </div>
-                    {/* 场景描述（纵向布局） */}
-                    {shot && layoutDir === 'vertical' && (
-                      <div className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-sm px-1.5 py-1">
-                        <p className="text-[9px] text-white/90 line-clamp-2">{shot.scene_description}</p>
+                  </button>
+                ))}
+
+            </div>
+          )}
+
+          {/* === 纵向卡片布局 === */}
+          {data.status !== NodeStatus.RUNNING && count > 1 && displayImages.length > 0 && layoutDir === 'vertical' && (
+            <div className="flex flex-col gap-2.5">
+              {displayImages.map((img: string, idx: number) => {
+                const shot = shots[idx]
+                return (
+                  <div
+                    key={idx}
+                    className={cn(
+                      'group rounded-lg overflow-hidden border-2 transition-all duration-200',
+                      'hover:border-primary',
+                      idx === currentIndex ? 'border-primary' : 'border-white/10'
+                    )}
+                  >
+                    <button
+                      onClick={() => openFullscreen(idx)}
+                      className="relative w-full group/img block"
+                      style={{ aspectRatio: aspectCSS }}
+                    >
+                      <img src={img} alt={`P${idx + 1}`} className="w-full h-full object-cover" />
+                      <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-black/70 text-white backdrop-blur-sm">
+                        P{idx + 1}
+                      </span>
+                      {saveStates[idx] === 'saving' && (
+                        <span className="absolute top-1.5 right-1.5">
+                          <Loader2 className="w-3 h-3 text-blue-400 animate-spin" />
+                        </span>
+                      )}
+                      {saveStates[idx] === 'saved' && (
+                        <span className="absolute top-1.5 right-1.5">
+                          <ShieldCheck className="w-3 h-3 text-green-400" />
+                        </span>
+                      )}
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1">
+                          <div className="p-1.5 rounded-full bg-black/50 hover:bg-black/60">
+                            <ZoomIn className="w-3.5 h-3.5 text-white" />
+                          </div>
+                          <div className="p-1.5 rounded-full bg-black/50 hover:bg-black/60" onClick={(e) => { e.stopPropagation(); handleDownload(img, idx) }}>
+                            <Download className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                    {shot && (
+                      <div className="px-2 py-1.5 bg-white/5">
+                        <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                          {shot.scene_description}
+                        </p>
                       </div>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>

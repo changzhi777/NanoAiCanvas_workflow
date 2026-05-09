@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models import User, Asset, AssetType, AssetCategory
 from app.api.auth import get_current_user
+from app.services.image_downloader import download_image
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -125,12 +126,22 @@ async def create_asset(
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Metadata validation error: {e}")
 
+    # 下载外部URL图片/视频到本地存储
+    local_url = data.url
+    local_thumbnail = data.thumbnail_url
+    if data.type in ("image", "video", "storyboard_shot") and data.url:
+        local_url, thumb = await download_image(data.url, data.type)
+        local_thumbnail = thumb
+    if data.type in ("image", "storyboard_shot") and data.thumbnail_url and data.thumbnail_url != data.url:
+        _, thumb = await download_image(data.thumbnail_url, data.type)
+        local_thumbnail = thumb
+
     asset = Asset(
         user_id=current_user.id,
         type=AssetType(data.type),
         name=data.name,
-        url=data.url,
-        thumbnail_url=data.thumbnail_url,
+        url=local_url,
+        thumbnail_url=local_thumbnail or local_url,
         meta_data=data.metadata or {},
         category=AssetCategory(data.category) if data.category else None,
         tags=data.tags or [],

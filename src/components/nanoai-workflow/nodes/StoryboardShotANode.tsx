@@ -1,12 +1,12 @@
 /**
  * 故事板分镜V1版 节点 — 分镜头流水线版
- * 流程：提示词 → GLM生成分镜头脚本 → 逐镜头生图 → 汇总输出到预览节点
+ * 流程：提示词 → GLM生成分镜头脚本 → 并行生图 → 汇总输出到预览节点
  */
 
 import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react'
 import { Handle, Position } from 'reactflow'
 import {
-  ClipboardList, Play, Circle, Timer, CheckCircle2, Ban,
+  ClipboardList, Play,
 } from 'lucide-react'
 import { useNanoaiWorkflowStore, NodeStatus } from '@/stores/nanoaiWorkflowStore'
 import type { WorkflowNodeData, NodePort } from '@/stores/nanoaiWorkflowStore'
@@ -15,14 +15,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
-import { getSkillQueueAdapter, type TaskStepInfo } from '@/lib/api/adapters/SkillQueueAdapter'
+import { getSkillQueueAdapter } from '@/lib/api/adapters/SkillQueueAdapter'
 import {
   DEFAULT_PARAMS, NODE_DIMENSIONS,
   type AspectRatio, type LayoutDirection, type StoryboardShot,
   generateStoryboardScript,
 } from './StoryboardShotA.shared'
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+import { useImageGeneration } from './useImageGeneration'
+import { statusConfig } from './nodeStatusConfig'
+import { buildImagePrompt } from './promptBuilder'
 
 // ==================== 类型定义 ====================
 
@@ -63,28 +64,19 @@ export interface StoryboardShotAData extends WorkflowNodeData {
   _stepInfo?: { step: string; progress: number; message: string }
 }
 
-// ==================== 状态映射 ====================
-
-const statusConfig = {
-  [NodeStatus.IDLE]: { icon: Circle, label: '未开始', cls: 'not-started' },
-  [NodeStatus.RUNNING]: { icon: Timer, label: '进行中', cls: 'in-progress' },
-  [NodeStatus.SUCCESS]: { icon: CheckCircle2, label: '已完成', cls: 'completed' },
-  [NodeStatus.ERROR]: { icon: Ban, label: '已阻塞', cls: 'blocked' },
-  [NodeStatus.DISABLED]: { icon: Circle, label: '禁用', cls: 'not-started' },
-}
-
 // ==================== 主组件 ====================
 
 export const StoryboardShotANode = memo(({ id, data }: { id: string; data: StoryboardShotAData }) => {
   const { updateNode, nodes, edges } = useNanoaiWorkflowStore()
   const stopExecution = useNanoaiWorkflowStore(s => s.stopExecution)
-  const [localError, setLocalError] = useState<string | null>(null)
-  const [currentStep, setCurrentStep] = useState('idle')
-  const [stepProgress, setStepProgress] = useState(0)
-  const [stepMessage, setStepMessage] = useState('')
-  const abortRef = useRef<AbortController | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
+
+  const {
+    localError, currentStep, stepProgress, stepMessage, setStepMessage,
+    startGeneration, finishGeneration, handleError,
+    runParallel,
+  } = useImageGeneration({ nodeId: id })
 
   const optimizedPrompt = data.params?._optimizedPrompt || ''
   const editablePrompt = data.params?._editablePrompt || ''
@@ -102,8 +94,6 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
   }, [edges, nodes, id])
 
   const rawPrompt = upstreamText || inputText
-  const statusInfo = statusConfig[data.status] || statusConfig[NodeStatus.IDLE]
-  const StatusIcon = statusInfo.icon
   const params = useMemo(() => ({ ...DEFAULT_PARAMS, ...data.params }), [data.params])
 
   const prompt = editablePrompt || optimizedPrompt || rawPrompt
@@ -116,185 +106,70 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
 
   useEffect(() => { autoResize(textareaRef.current) }, [editablePrompt, inputText, autoResize])
 
-  // 监听全局终止事件
-  useEffect(() => {
-    const handler = () => { abortRef.current?.abort() }
-    window.addEventListener('workflow:abort-all', handler)
-    return () => window.removeEventListener('workflow:abort-all', handler)
-  }, [])
-
-  const lastSyncedProgRef = useRef(0)
-
-  const syncStepToStore = useCallback((step: string, progress: number, message: string) => {
-    // 节流：进度变化 < 2% 时跳过 store 更新
-    if (Math.abs(progress - lastSyncedProgRef.current) < 2) return
-    lastSyncedProgRef.current = progress
-    updateNode(id, { _stepInfo: { step, progress, message } })
-  }, [id, updateNode])
-
-  const emitStep = useCallback((step: string, progress: number, message: string) => {
-    setCurrentStep(step)
-    setStepProgress(progress)
-    setStepMessage(message)
-    lastSyncedProgRef.current = progress
-    updateNode(id, { _stepInfo: { step, progress, message } })
-  }, [id, updateNode])
-
-  const logGenerationTask = useCallback(async (info: { startedAt: string; status: string; error?: string }) => {
-    try {
-      const token = localStorage.getItem('nanoai_token')
-      await fetch(`${API_BASE}/v2/generation-logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          node_id: id,
-          skill_id: 'gpt_image_2',
-          prompt: prompt.substring(0, 500),
-          status: info.status,
-          error_message: info.error || null,
-          started_at: info.startedAt,
-          completed_at: new Date().toISOString(),
-        }),
-      })
-    } catch {}
-  }, [id, prompt])
-
   const handleExecute = useCallback(async () => {
-    if (!prompt) { setLocalError('请先输入故事描述'); return }
+    if (!prompt) { return }
 
-    setLocalError(null)
-    window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open: false } }))
-    const startedAt = new Date().toISOString()
-    updateNode(id, { status: NodeStatus.RUNNING, error: undefined, result: { ...data.result, startedAt }, _stepInfo: undefined })
-
-    const abortController = new AbortController()
-    abortRef.current = abortController
+    const { abortController } = startGeneration()
 
     try {
       // ===== 阶段1：生成分镜头脚本 =====
-      emitStep('script_generating', 5, '正在生成分镜头脚本...')
-      let script
-      try {
-        script = await generateStoryboardScript(prompt, {
-          shotCount: params.shotCount,
-          model: params.model,
-          temperature: params.temperature,
-          style: params.style,
-          quality: params.quality,
-        })
-      } catch (scriptErr: any) {
-        const msg = scriptErr?.message || ''
-        if (msg.includes('504') || msg.includes('超时') || msg.includes('Timeout')) {
-          throw new Error('GLM API 超时，请重试')
-        }
-        if (msg.includes('JSON') || msg.includes('解析失败')) {
-          throw new Error('GLM 返回格式异常，请重试')
-        }
-        throw new Error('分镜头脚本生成失败: ' + (msg || '未知错误'))
-      }
+      const script = await generateStoryboardScript(prompt, {
+        shotCount: params.shotCount,
+        model: params.model,
+        temperature: params.temperature,
+        style: params.style,
+        quality: params.quality,
+      })
 
       if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
 
       const shots = script.shots || []
       if (shots.length === 0) throw new Error('GLM 未返回有效的分镜头脚本')
 
-      emitStep('shot_parsing', 10, `已解析 ${shots.length} 个分镜头`)
-
-      // ===== 阶段2：逐镜头串行生成图片（实时推送每张） =====
+      // ===== 阶段2：并行生成所有镜头图片 =====
       const adapter = getSkillQueueAdapter()
-      const totalShots = shots.length
-      const completedShots: StoryboardShot[] = []
-      const allImages: string[] = []
-
-      for (let idx = 0; idx < totalShots; idx++) {
-        if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
-
-        const shot = shots[idx]
-        const shotPrompt = shot.visual_prompt || shot.scene_description
-        const startProg = 10 + Math.floor((idx / totalShots) * 85)
-
-        emitStep('shot_generating', startProg, `镜头 P${idx + 1}/${totalShots}: ${shot.scene_description?.substring(0, 30)}...`)
-
-        try {
+      const tasks = shots.map((shot, idx) => ({
+        label: `P${idx + 1}/${shots.length}`,
+        execute: async (): Promise<{ shot: StoryboardShot; imageUrl: string } | null> => {
+          if (abortController.signal.aborted) throw new DOMException('Task aborted', 'AbortError')
+          const shotPrompt = buildImagePrompt(shot.visual_prompt || shot.scene_description, {
+            quality: params.quality,
+            style: params.style,
+            aspectRatio: params.aspectRatio,
+            camera: shot.camera_angle,
+            mood: shot.mood,
+          })
           const images = await adapter.generateImage(
-            { prompt: shotPrompt, size: "auto", aspectRatio: params.aspectRatio, signal: abortController.signal },
-            (progress) => {
-              const overall = startProg + Math.floor((progress / 100) * (85 / totalShots))
-              setStepProgress(overall)
-              syncStepToStore('shot_generating', overall, `P${idx + 1}/${totalShots} 生成中 ${progress}%`)
-            },
-            (stepInfo: TaskStepInfo) => {
-              const overall = startProg + Math.floor((stepInfo.progress / 100) * (85 / totalShots))
-              const msg = `P${idx + 1}/${totalShots} ${stepInfo.message}`
-              setStepProgress(overall)
-              setStepMessage(msg)
-              syncStepToStore('shot_generating', overall, msg)
-            },
+            { prompt: shotPrompt, size: '2K' as const, aspectRatio: params.aspectRatio, signal: abortController.signal },
+            () => {},
           )
-
-          if (images[0]) {
-            completedShots.push({ ...shot, imageUrl: images[0] })
-            allImages.push(images[0])
-
-            // 每完成一个镜头立即推送到预览
-            updateNode(id, {
-              result: {
-                ...data.result,
-                images: [...allImages],
-                imageUrl: allImages[0],
-                shots: [...completedShots],
-                scriptTitle: script.title,
-                startedAt,
-              },
-            })
-          }
-        } catch (shotErr: any) {
-          console.warn(`Shot P${idx + 1} failed:`, shotErr.message)
-        }
-      }
-
-      if (allImages.length === 0) throw new Error('所有镜头生成失败')
-
-      updateNode(id, {
-        status: NodeStatus.SUCCESS,
-        _stepInfo: undefined,
-        result: {
-          images: allImages,
-          imageUrl: allImages[0],
-          rawPrompt,
-          optimizedPrompt,
-          prompt,
-          shots: completedShots,
-          scriptTitle: script.title,
-          startedAt,
-          completedAt: new Date().toISOString(),
+          if (images[0]) return { shot: { ...shot, imageUrl: images[0] }, imageUrl: images[0] }
+          return null
         },
+      }))
+
+      const results = await runParallel(tasks)
+      const completedShots = results.map(r => r!.shot)
+      const allImages = results.map(r => r!.imageUrl)
+
+      finishGeneration({
+        images: allImages,
+        imageUrl: allImages[0],
+        rawPrompt,
+        optimizedPrompt,
+        prompt,
+        shots: completedShots,
+        scriptTitle: script.title,
       })
-      setCurrentStep('completed')
-      setStepProgress(100)
-      setStepMessage(`完成！${allImages.length}/${totalShots} 个镜头`)
-      logGenerationTask({ startedAt, status: 'success' })
-
+      setStepMessage(`完成！${allImages.length}/${shots.length} 个镜头`)
     } catch (err: any) {
-      if (err.name === 'AbortError') {
-        logGenerationTask({ startedAt, status: 'aborted', error: '用户终止' })
-        setCurrentStep('cancelled')
-        setStepMessage('已终止')
-        setStepProgress(0)
-        updateNode(id, { _stepInfo: undefined })
-        return
-      }
-      const errorMsg = err.message || '生成失败'
-      setLocalError(errorMsg)
-      setCurrentStep('failed')
-      setStepMessage(errorMsg)
-      updateNode(id, { status: NodeStatus.ERROR, error: errorMsg, _stepInfo: undefined })
-      logGenerationTask({ startedAt, status: 'failed', error: errorMsg })
+      handleError(err)
     }
-  }, [id, updateNode, prompt, rawPrompt, optimizedPrompt, params, emitStep])
-
+  }, [id, prompt, rawPrompt, optimizedPrompt, params, startGeneration, runParallel, finishGeneration, handleError, setStepMessage])
 
   const dims = NODE_DIMENSIONS[params.aspectRatio] || NODE_DIMENSIONS['1:1']
+  const statusInfo = statusConfig[data.status] || statusConfig[NodeStatus.IDLE]
+  const StatusIcon = statusInfo.icon
 
   return (
     <>

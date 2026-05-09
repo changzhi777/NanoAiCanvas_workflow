@@ -22,9 +22,13 @@ pydantic==2.6.1
 pydantic-settings==2.1.0
 email-validator==2.1.0
 
+# Image processing
+Pillow==10.2.0
+
 # Utils
 python-dotenv==1.0.1
 httpx==0.26.0
+aiofiles==23.2.1
 
 # Testing
 pytest==8.0.0
