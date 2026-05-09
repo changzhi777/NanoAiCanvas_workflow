@@ -57,6 +57,8 @@ export async function createImageAssetApi(asset: {
   params?: Record<string, any>
   referenceImages?: string[]
   version?: string
+  sourceNodeId?: string
+  workflowId?: string
 }): Promise<{
   success: boolean
   asset?: ImageAsset
@@ -64,7 +66,6 @@ export async function createImageAssetApi(asset: {
 }> {
   const token = localStorage.getItem('nanoai_token')
 
-  // Transform frontend format to backend format
   const backendAsset = {
     type: 'image',
     name: asset.prompt?.slice(0, 50) || 'Generated Image',
@@ -77,6 +78,8 @@ export async function createImageAssetApi(asset: {
       referenceImages: asset.referenceImages,
     },
     version: asset.version || undefined,
+    source_node_id: asset.sourceNodeId || undefined,
+    workflow_id: asset.workflowId || undefined,
   }
 
   try {

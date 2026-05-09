@@ -120,6 +120,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             prompt: shot?.visual_prompt || resultData?.prompt || '',
             enhancedPrompt: shot?.scene_description || '',
             version: 'v1',
+            sourceNodeId: data.params.sourceNodeId || id,
             params: {
               type: 'storyboard_shot',
               shotNumber: i + 1,

@@ -290,7 +290,7 @@ export const auth = {
 // Assets API
 export interface Asset {
   id: string;
-  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT';
+  type: string;
   name: string;
   url: string;
   thumbnail_url?: string;
@@ -301,6 +301,8 @@ export interface Asset {
   is_starred: boolean;
   workflow_snapshot?: any;
   version?: string;
+  source_node_id?: string;
+  workflow_id?: string;
   created_at: string;
 }
 
@@ -313,6 +315,9 @@ export interface AssetCreate {
   category?: string;
   tags?: string[];
   workflow_snapshot?: any;
+  version?: string;
+  source_node_id?: string;
+  workflow_id?: string;
 }
 
 export const assets = {

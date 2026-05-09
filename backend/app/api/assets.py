@@ -22,6 +22,8 @@ class AssetCreate(BaseModel):
     tags: Optional[List[str]] = []
     workflow_snapshot: Optional[dict] = None
     version: Optional[str] = None
+    source_node_id: Optional[str] = None
+    workflow_id: Optional[str] = None
 
 
 class AssetUpdate(BaseModel):
@@ -45,6 +47,8 @@ class AssetResponse(BaseModel):
     is_starred: bool
     workflow_snapshot: Optional[dict]
     version: Optional[str] = None
+    source_node_id: Optional[str] = None
+    workflow_id: Optional[str] = None
     created_at: str
 
     class Config:
@@ -71,6 +75,8 @@ def _to_response(a: Asset) -> AssetResponse:
         is_starred=a.is_starred,
         workflow_snapshot=a.workflow_snapshot,
         version=a.version,
+        source_node_id=a.source_node_id,
+        workflow_id=str(a.workflow_id) if a.workflow_id else None,
         created_at=a.created_at.isoformat() if a.created_at else "",
     )
 
@@ -92,6 +98,8 @@ async def create_asset(
         tags=data.tags or [],
         workflow_snapshot=data.workflow_snapshot,
         version=data.version,
+        source_node_id=data.source_node_id,
+        workflow_id=data.workflow_id,
     )
     db.add(asset)
     await db.commit()

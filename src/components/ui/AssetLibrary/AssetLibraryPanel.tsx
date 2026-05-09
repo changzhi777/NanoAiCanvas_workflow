@@ -787,7 +787,15 @@ function AssetCard({
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="absolute bottom-0 left-0 right-0 p-2">
           <p className="text-white text-sm font-medium truncate">{asset.name}</p>
-          <p className="text-white/60 text-xs">{asset.category || asset.type}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-white/60 text-xs">{asset.category || asset.type}</p>
+            {asset.version && (
+              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/60 text-white">{asset.version}</span>
+            )}
+            {asset.source_node_id && (
+              <span className="text-[9px] text-white/40">from {asset.source_node_id.slice(0, 8)}</span>
+            )}
+          </div>
         </div>
       </div>
 
