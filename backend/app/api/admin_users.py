@@ -97,8 +97,8 @@ async def approve_user(
             description="New user registration bonus",
         )
     except Exception as e:
-        # Non-critical: user is approved even if points fail
-        print(f"Failed to grant initial points for {user.id}: {e}")
+        await db.rollback()
+        print(f"Failed to grant initial points for approved user: {e}")
 
     return ApproveResponse(
         id=user.id,
