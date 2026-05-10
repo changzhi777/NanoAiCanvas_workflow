@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { useAppVisibilityStore, NANO2_MODULE_META } from '@/stores/appVisibilityStore'
 import { getAppVisibility, saveAppVisibility } from '@/lib/api/app-visibility-api'
-import { VisibilityTable, VisibilityLegend } from '@/components/admin/apps/shared'
+import { VisibilityDataTable, VisibilityLegend } from '@/components/admin/apps/shared'
 import { toast } from 'sonner'
-import { Save, RotateCcw, Loader2, Eye, EyeOff, Lock } from 'lucide-react'
+import { Save, RotateCcw, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function Nano2AppsPage() {
@@ -18,6 +18,7 @@ export default function Nano2AppsPage() {
   } = useAppVisibilityStore()
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const load = async () => {
@@ -106,12 +107,25 @@ export default function Nano2AppsPage() {
         </div>
       </div>
 
-      <VisibilityTable
+      <VisibilityDataTable
         title="模块列表"
         description="控制 Nano 2 页面中各功能模块的显示状态"
         items={NANO2_MODULE_META}
         visibility={nano2Modules}
         onChange={setNano2ModuleVisibility}
+        selectedIds={selectedIds}
+        onToggleSelect={(id) => {
+          setSelectedIds(prev => {
+            const next = new Set(prev)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+          })
+        }}
+        onSelectAll={() => {
+          const allIds = NANO2_MODULE_META.map(i => i.id)
+          const allSelected = allIds.every(id => selectedIds.has(id))
+          setSelectedIds(allSelected ? new Set() : new Set(allIds))
+        }}
         fallbackState="active"
       />
 

@@ -23,6 +23,7 @@ from app.models.prompt_restrictions import (
 )
 from app.models.tag import Tag
 from app.models.folder import Folder
+from app.models.app_visibility import AppVisibilityItem, VisibilityAuditLog
 from app.models.api_key import (
     ApiKeyConfig,
     BackendKeyMapping,
@@ -76,4 +77,6 @@ __all__ = [
     "ModelRoute",
     "Tag",
     "Folder",
+    "AppVisibilityItem",
+    "VisibilityAuditLog",
 ]
