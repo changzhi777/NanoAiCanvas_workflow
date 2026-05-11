@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -80,7 +80,7 @@ export default function ApiKeyPoolPage() {
     priority: 0,
   })
 
-  const loadData = useCallback(async () => {
+  const loadData = async () => {
     setLoading(true)
     try {
       const [keyList, providerList, healthData] = await Promise.all([
@@ -96,9 +96,9 @@ export default function ApiKeyPoolPage() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => { loadData() }, [])
 
   const handleAdd = async () => {
     if (!newKey.provider_id || !newKey.name || !newKey.api_key) {

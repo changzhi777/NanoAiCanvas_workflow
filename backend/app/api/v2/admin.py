@@ -353,6 +353,31 @@ async def list_api_keys(
     return [_apikey_to_out(k) for k in result.scalars().all()]
 
 
+@router.get("/api-keys/health-summary")
+async def health_summary(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    stmt = select(
+        APIKey.health_status,
+        func.count().label("count"),
+    ).group_by(APIKey.health_status)
+    result = await db.execute(stmt)
+    counts = {r[0] or "unknown": r[1] for r in result.all()}
+
+    total_stmt = select(func.count()).select_from(APIKey)
+    total = (await db.execute(total_stmt)).scalar() or 0
+
+    active_stmt = select(func.count()).where(APIKey.status == "active")
+    active = (await db.execute(active_stmt)).scalar() or 0
+
+    return {
+        "total": total,
+        "active": active,
+        "healthy": counts.get("healthy", 0),
+        "degraded": counts.get("degraded", 0),
+        "down": counts.get("down", 0),
+        "unknown": counts.get("unknown", 0),
+    }
+
+
 @router.get("/api-keys/{key_id}", response_model=APIKeyOut)
 async def get_api_key(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     k = await db.get(APIKey, key_id)
@@ -454,31 +479,6 @@ async def heartbeat_api_key(key_id: int, admin: User = Depends(require_admin), d
         k.health_status = "healthy"
     await db.commit()
     return {"ok": True, "last_heartbeat_at": k.last_heartbeat_at.isoformat()}
-
-
-@router.get("/api-keys/health-summary")
-async def health_summary(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    stmt = select(
-        APIKey.health_status,
-        func.count().label("count"),
-    ).group_by(APIKey.health_status)
-    result = await db.execute(stmt)
-    counts = {r[0] or "unknown": r[1] for r in result.all()}
-
-    total_stmt = select(func.count()).select_from(APIKey)
-    total = (await db.execute(total_stmt)).scalar() or 0
-
-    active_stmt = select(func.count()).where(APIKey.status == "active")
-    active = (await db.execute(active_stmt)).scalar() or 0
-
-    return {
-        "total": total,
-        "active": active,
-        "healthy": counts.get("healthy", 0),
-        "degraded": counts.get("degraded", 0),
-        "down": counts.get("down", 0),
-        "unknown": counts.get("unknown", 0),
-    }
 
 
 @router.post("/api-keys/{key_id}/load-balance")

@@ -10,7 +10,7 @@ from .base import BaseImageProvider
 class CaohuaJimengProvider(BaseImageProvider):
     """草花互动即梦 Provider — 支持图片和视频生成"""
 
-    BASE_URL = "https://api.jimeng.jike.com/v1"
+    BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 
     def __init__(self, api_key: str, config: Dict[str, Any] = None):
         super().__init__(api_key, config)

@@ -49,17 +49,22 @@ async def _check_one_key(http: httpx.AsyncClient, key: APIKey, provider: Provide
         return {"success": False, "error": str(e)[:200], "ms": elapsed}
 
 
-async def _check_batch(rows: list) -> int:
-    """并行检查一批 Key，返回健康数量"""
-    sf = _get_session_factory()
+async def _fetch_active_keys(sf) -> list:
     async with sf() as db:
-        async with httpx.AsyncClient(timeout=15) as http:
-            tasks = [_check_one_key(http, key, provider) for key, provider in rows]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+        stmt = (
+            select(APIKey.id, APIKey, Provider)
+            .join(Provider, APIKey.provider_id == Provider.id)
+            .where(APIKey.status == "active", Provider.is_active == True)
+        )
+        result = await db.execute(stmt)
+        return [(kid, key, provider) for kid, key, provider in result.all()]
 
+
+async def _save_results(sf, rows: list, results: list):
+    async with sf() as db:
         now = datetime.utcnow()
         healthy = 0
-        for (key, _), r in zip(rows, results):
+        for (_, key, _), r in zip(rows, results):
             if isinstance(r, Exception):
                 r = {"success": False, "error": str(r)[:200], "ms": 0}
 
@@ -77,31 +82,27 @@ async def _check_batch(rows: list) -> int:
             else:
                 key.health_status = "down"
 
+            db.add(key)
         await db.commit()
     return healthy
 
 
 async def run_health_check():
     sf = _get_session_factory()
-    # 启动后先等 30 秒，让主服务初始化完成
     await asyncio.sleep(30)
 
     while True:
         try:
-            async with sf() as db:
-                stmt = (
-                    select(APIKey, Provider)
-                    .join(Provider, APIKey.provider_id == Provider.id)
-                    .where(APIKey.status == "active", Provider.is_active == True)
-                )
-                result = await db.execute(stmt)
-                rows = result.all()
-
+            rows = await _fetch_active_keys(sf)
             if not rows:
                 logger.debug("No active keys to check")
             else:
-                healthy = await _check_batch(rows)
-                down = sum(1 for k, _ in rows if k.health_status == "down")
+                async with httpx.AsyncClient(timeout=15) as http:
+                    tasks = [_check_one_key(http, key, provider) for _, key, provider in rows]
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                healthy = await _save_results(sf, rows, results)
+                down = sum(1 for _, k, _ in rows if k.health_status == "down")
                 logger.info(f"Health check: {len(rows)} keys, {healthy} healthy, {down} down")
 
         except Exception as e:
