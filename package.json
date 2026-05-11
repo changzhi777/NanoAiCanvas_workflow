@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.12.232",
+  "version": "2.12.235",
   "private": false,
   "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
