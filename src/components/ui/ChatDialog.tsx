@@ -30,7 +30,7 @@ import { useTheme } from '@/components/nanoai-workflow/ui/Theme'
 import {
   Send, Check, CheckCheck, MessageSquare, Bell,
   Paperclip, X, Download, Bookmark, Image, Film, Music,
-  Loader2, FolderOpen, Trash2, Search, ArrowUp,
+  Loader2, FolderOpen, Trash2, Search, ArrowUp, RefreshCw,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { AssetPicker } from '@/components/ui/AssetPicker'
@@ -73,6 +73,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
   const [tab, setTab] = useState<'chat' | 'notifications'>('chat')
   const [inputText, setInputText] = useState('')
   const [showNewChat, setShowNewChat] = useState(false)
+  const [refreshingUsers, setRefreshingUsers] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [convSearch, setConvSearch] = useState('')
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
@@ -117,11 +118,21 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     } catch {}
   }, [user?.id, setNotifications])
 
+  const refreshUsers = useCallback(async () => {
+    setRefreshingUsers(true)
+    try {
+      const d = await getChatUsers()
+      setUsers(d.users)
+    } catch {} finally {
+      setRefreshingUsers(false)
+    }
+  }, [setUsers])
+
   useEffect(() => {
     if (open) {
       loadConversations()
       loadNotifications()
-      getChatUsers().then((d) => setUsers(d.users)).catch(() => {})
+      refreshUsers()
     }
   }, [open])
 
@@ -556,12 +567,25 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
                 {showNewChat && (
                   <div className="px-2 pb-2">
-                    <Input
-                      placeholder="搜索用户..."
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      className={cn('h-8 text-xs', isDark && 'bg-white/[0.03] border-white/[0.06] text-slate-300')}
-                    />
+                    <div className="flex items-center gap-1">
+                      <Input
+                        placeholder="搜索用户..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        className={cn('h-8 text-xs flex-1', isDark && 'bg-white/[0.03] border-white/[0.06] text-slate-300')}
+                      />
+                      <button
+                        onClick={refreshUsers}
+                        disabled={refreshingUsers}
+                        className={cn(
+                          'flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-md transition-colors',
+                          isDark ? 'hover:bg-white/[0.06] text-slate-400' : 'hover:bg-accent text-muted-foreground',
+                        )}
+                        title="刷新用户列表"
+                      >
+                        <RefreshCw className={cn('w-3.5 h-3.5', refreshingUsers && 'animate-spin')} />
+                      </button>
+                    </div>
                     <ScrollArea className="max-h-40 mt-1">
                       {filteredUsers.map((u) => (
                         <button

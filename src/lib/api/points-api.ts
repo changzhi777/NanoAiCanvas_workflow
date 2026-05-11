@@ -79,7 +79,7 @@ export const pointsApi = {
   /**
    * 检查积分余额是否足够
    */
-  async checkBalance(modelType: string): Promise<{ sufficient: boolean; required: number; balance: number }> {
+  async checkBalance(modelType: string): Promise<{ sufficient: boolean; required: number; balance: number; account_id: number }> {
     return client.post('/points/check', { model_type: modelType })
   },
 

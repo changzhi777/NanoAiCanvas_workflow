@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,13 +17,7 @@ export default function PointsPage() {
   const [history, setHistory] = useState<any[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
 
-  useEffect(() => {
-    if (!token) return
-    refreshBalance()
-    loadHistory()
-  }, [token])
-
-  const loadHistory = async () => {
+  const loadHistory = useCallback(async () => {
     setHistoryLoading(true)
     try {
       const records = await getHistory(50, 0)
@@ -33,7 +27,13 @@ export default function PointsPage() {
     } finally {
       setHistoryLoading(false)
     }
-  }
+  }, [getHistory, toast])
+
+  useEffect(() => {
+    if (!token) return
+    refreshBalance()
+    loadHistory()
+  }, [token, refreshBalance, loadHistory])
 
   if (!token) {
     return (

@@ -177,17 +177,21 @@ async def create_personal_account(
     )
 
 
+class CheckRequest(BaseModel):
+    model_type: str = ""
+    amount: int = 0
+
+
 @router.post("/check")
 async def check_points_balance(
-    model_type: str = "",
-    amount: int = 0,
+    request: CheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """检查用户积分余额是否足够执行任务"""
     from app.services.points_service import check_balance as _check
 
-    result = await _check(db, current_user.id, model_type, amount if amount else None)
+    result = await _check(db, current_user.id, request.model_type, request.amount if request.amount else None)
     return result
 
 

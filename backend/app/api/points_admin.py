@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, String
 from pydantic import BaseModel
 from typing import Optional, List
 from uuid import UUID
@@ -585,7 +585,7 @@ async def get_points_stats(
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_used = await db.execute(
         select(func.coalesce(func.sum(PointsTransaction.amount), 0)).where(
-            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.transaction_type.cast(String) == "deduct",
             PointsTransaction.created_at >= today,
         )
     )
@@ -597,7 +597,7 @@ async def get_points_stats(
             func.sum(PointsTransaction.amount).label("total"),
         )
         .where(
-            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.transaction_type.cast(String) == "deduct",
             PointsTransaction.created_at >= seven_days_ago,
             PointsTransaction.amount > 0,
         )
@@ -617,7 +617,7 @@ async def get_points_stats(
             func.sum(PointsTransaction.amount).label("total"),
         )
         .where(
-            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.transaction_type.cast(String) == "deduct",
             PointsTransaction.created_at >= seven_days_ago,
             PointsTransaction.amount > 0,
         )
