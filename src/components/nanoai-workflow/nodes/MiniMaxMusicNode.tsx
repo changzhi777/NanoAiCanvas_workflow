@@ -40,7 +40,7 @@ export const MiniMaxMusicNode = ({ id, data }: NodeProps<MiniMaxMusicData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Music className="w-5 h-5" />}
+      icon={<Music className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateMusic } = await import('@/lib/api/minimax-api');

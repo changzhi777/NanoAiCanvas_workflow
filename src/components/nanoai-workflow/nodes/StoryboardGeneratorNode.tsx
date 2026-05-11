@@ -169,7 +169,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
   return (
     <BaseNode
       data={data}
-      icon={<Film className="w-5 h-5" />}
+      icon={<Film className="w-4 h-4" />}
       headerAction={
         <button className="p-1 hover:bg-white/50 rounded transition-colors" title="配置">
           <Wand2 className="w-4 h-4 text-blue-600" />

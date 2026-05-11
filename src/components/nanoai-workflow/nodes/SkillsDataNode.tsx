@@ -441,7 +441,7 @@ const SkillsDataNode = memo(({ id, data }: { id: string; data: SkillsDataNodeDat
   return (
     <BaseNode
       data={data}
-      icon={<Database className="w-5 h-5" />}
+      icon={<Database className="w-4 h-4" />}
     >
       <div className="space-y-3">
         {/* 分类选择 */}

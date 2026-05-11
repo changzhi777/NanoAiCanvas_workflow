@@ -57,7 +57,7 @@ export const NanoBanana2Node = ({ id, data }: NodeProps<NanoBanana2Data>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Image className="w-5 h-5" />}
+      icon={<Image className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateNanoaiImageWithPolling } = await import('@/lib/api/suchuang-api');

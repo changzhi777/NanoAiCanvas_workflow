@@ -64,7 +64,7 @@ export const GlmTtsNode = ({ id, data }: NodeProps<GlmTtsData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Mic className="w-5 h-5" />}
+      icon={<Mic className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { synthesizeSpeech } = await import('@/lib/api/glm-api');

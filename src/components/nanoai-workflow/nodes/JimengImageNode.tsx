@@ -57,7 +57,7 @@ export const JimengImageNode = ({ id, data }: NodeProps<JimengImageData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Image className="w-5 h-5" />}
+      icon={<Image className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateImage } = await import('@/lib/api/jimeng-api');

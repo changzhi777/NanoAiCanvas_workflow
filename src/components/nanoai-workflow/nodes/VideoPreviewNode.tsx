@@ -141,7 +141,7 @@ export const VideoPreviewNode = ({ id, data }: NodeProps<VideoPreviewNodeData>) 
   return (
     <BaseNode
       data={data}
-      icon={<Video className="w-5 h-5" />}
+      icon={<Video className="w-4 h-4" />}
       headerAction={
         <button
           onClick={handleExecute}

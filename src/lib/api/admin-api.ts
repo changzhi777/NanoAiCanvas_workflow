@@ -476,6 +476,22 @@ export async function createRechargeOrder(
   return response
 }
 
+/**
+ * 获取积分系统统计数据
+ */
+export interface PointsStats {
+  total_granted: number
+  total_used: number
+  active_users: number
+  today_used: number
+  model_distribution: { name: string; total: number }[]
+  daily_trend: { date: string; total: number }[]
+}
+
+export async function getPointsStats(): Promise<PointsStats> {
+  return client.get<PointsStats>('/v2/admin/points/stats', getToken() || undefined)
+}
+
 // ============ 导出所有 API ============
 
 export const adminApi = {
@@ -513,6 +529,7 @@ export const adminApi = {
   deleteBillingRule,
   getRechargeRecords,
   createRechargeOrder,
+  getPointsStats,
   // Key Mapper
   getFrontendAPIKeys,
   createFrontendAPIKey,

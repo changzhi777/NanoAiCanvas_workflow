@@ -17,6 +17,7 @@ import {
   Plus,
   Image,
   Square,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -52,6 +53,7 @@ import { MessageSquare } from 'lucide-react';
 import { PageSwitcher } from './NanoaiWorkflowCanvas';
 import { useChatStore } from '@/stores/chatStore';
 import { useNotificationStore } from '@/stores/notificationStore';
+import { usePoints } from '@/hooks/usePoints';
 
 declare const __APP_VERSION__: string;
 
@@ -86,6 +88,10 @@ export function NanoaiWorkflowToolbar() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  // 积分余额
+  const { balance, refreshBalance } = usePoints();
+  useEffect(() => { if (token) refreshBalance(); }, [token]);
 
   const {
     executeWorkflow,
@@ -267,6 +273,23 @@ export function NanoaiWorkflowToolbar() {
           'flex-nowrap',
           'scrollbar-hide'
         )}>
+          {/* 积分余额 */}
+          {token && (
+            <button
+              onClick={() => window.location.hash = '#/points'}
+              className={cn(
+                'flex items-center gap-1 h-7 px-2 rounded-md text-[11px] font-medium transition-colors',
+                balance < 50
+                  ? isDark ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-red-50 text-red-600 hover:bg-red-100'
+                  : isDark ? 'bg-white/[0.04] text-slate-400 hover:bg-white/[0.08]' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+              )}
+              title={balance < 50 ? '积分不足，请充值' : '点击查看积分详情'}
+            >
+              <Zap className="w-3 h-3" />
+              {balance.toLocaleString()}
+            </button>
+          )}
+
           {/* 资产库 */}
           {token && (
             <Button

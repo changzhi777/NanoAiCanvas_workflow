@@ -556,3 +556,84 @@ async def get_recharge_record(
         created_at=r.created_at.isoformat() if r.created_at else "",
         paid_at=r.paid_at.isoformat() if r.paid_at else None
     )
+
+
+# ============ 统计仪表盘 ============
+
+@router.get("/stats")
+async def get_points_stats(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """积分系统全局统计"""
+    from datetime import timedelta
+
+    # 总发放 / 总消耗
+    grant_total = await db.execute(
+        select(func.coalesce(func.sum(PointsAccount.total_granted), 0))
+    )
+    used_total = await db.execute(
+        select(func.coalesce(func.sum(PointsAccount.total_used), 0))
+    )
+    # 活跃用户数（有余额或消耗过的）
+    active_users = await db.execute(
+        select(func.count(PointsAccount.id)).where(
+            (PointsAccount.total_used > 0) | (PointsAccount.balance > 0)
+        )
+    )
+    # 今日消耗
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_used = await db.execute(
+        select(func.coalesce(func.sum(PointsTransaction.amount), 0)).where(
+            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.created_at >= today,
+        )
+    )
+    # 模型消耗分布（近 7 天）
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    model_dist_rows = await db.execute(
+        select(
+            PointsTransaction.description,
+            func.sum(PointsTransaction.amount).label("total"),
+        )
+        .where(
+            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.created_at >= seven_days_ago,
+            PointsTransaction.amount > 0,
+        )
+        .group_by(PointsTransaction.description)
+        .order_by(desc("total"))
+        .limit(10)
+    )
+    model_distribution = [
+        {"name": r[0] or "未知", "total": r[1]}
+        for r in model_dist_rows.all()
+    ]
+
+    # 近 7 天每日消耗
+    daily_rows = await db.execute(
+        select(
+            func.date_trunc("day", PointsTransaction.created_at).label("day"),
+            func.sum(PointsTransaction.amount).label("total"),
+        )
+        .where(
+            PointsTransaction.transaction_type == TransactionType.DEDUCT,
+            PointsTransaction.created_at >= seven_days_ago,
+            PointsTransaction.amount > 0,
+        )
+        .group_by("day")
+        .order_by("day")
+    )
+    daily_trend = [
+        {"date": r[0].strftime("%m-%d") if r[0] else "", "total": r[1]}
+        for r in daily_rows.all()
+    ]
+
+    return {
+        "total_granted": grant_total.scalar(),
+        "total_used": used_total.scalar(),
+        "active_users": active_users.scalar(),
+        "today_used": today_used.scalar(),
+        "model_distribution": model_distribution,
+        "daily_trend": daily_trend,
+    }

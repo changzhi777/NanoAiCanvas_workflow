@@ -77,6 +77,38 @@ export const pointsApi = {
   },
 
   /**
+   * 检查积分余额是否足够
+   */
+  async checkBalance(modelType: string): Promise<{ sufficient: boolean; required: number; balance: number }> {
+    return client.post('/points/check', { model_type: modelType })
+  },
+
+  /**
+   * 按 model_type 自动计价扣费
+   */
+  async deductByModel(
+    modelType: string,
+    description?: string,
+    relatedOrderId?: string,
+  ): Promise<DeductResponse> {
+    try {
+      return await client.post<DeductResponse>('/points/deduct', {
+        model_type: modelType,
+        description,
+        related_order_id: relatedOrderId,
+      })
+    } catch (error: any) {
+      if (error?.status === 402) {
+        const err = new Error('积分不足，无法完成任务') as any
+        err.status = 402
+        err.insufficientBalance = true
+        throw err
+      }
+      throw error
+    }
+  },
+
+  /**
    * 扣减积分（AI任务完成时调用）
    */
   async deduct(

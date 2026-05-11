@@ -65,7 +65,7 @@ export const GlmMultimodalNode = ({ id, data }: NodeProps<GlmMultimodalData>) =>
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Layers className="w-5 h-5" />}
+      icon={<Layers className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateMultimodal } = await import('@/lib/api/glm-api');

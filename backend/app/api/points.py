@@ -25,7 +25,8 @@ class BalanceResponse(BaseModel):
 
 
 class DeductRequest(BaseModel):
-    amount: int
+    amount: int = 0
+    model_type: Optional[str] = None  # 传入时自动按规则计价
     description: Optional[str] = None
     related_order_id: Optional[str] = None
     metadata: Optional[dict] = None
@@ -176,6 +177,20 @@ async def create_personal_account(
     )
 
 
+@router.post("/check")
+async def check_points_balance(
+    model_type: str = "",
+    amount: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """检查用户积分余额是否足够执行任务"""
+    from app.services.points_service import check_balance as _check
+
+    result = await _check(db, current_user.id, model_type, amount if amount else None)
+    return result
+
+
 @router.post("/deduct", response_model=DeductResponse)
 async def deduct_points(
     request: DeductRequest,
@@ -184,10 +199,28 @@ async def deduct_points(
 ):
     """
     扣减用户积分（AI任务完成时调用）
-
-    触发时机：AI任务完成
-    失败处理：积分不足时阻止任务执行
+    支持 model_type 自动按规则计价，或直接传 amount
     """
+    from app.services.points_service import auto_deduct
+
+    # 有 model_type 时走自动计价（忽略 amount）
+    if request.model_type:
+        tx = await auto_deduct(
+            db=db,
+            user_id=current_user.id,
+            node_type=request.model_type,
+            description=request.description,
+            related_order_id=request.related_order_id,
+            metadata=request.metadata,
+        )
+        return DeductResponse(
+            success=True,
+            balance_before=tx.balance_before,
+            balance_after=tx.balance_after,
+            transaction_id=tx.id,
+        )
+
+    # 兼容旧逻辑：直接传 amount
     if request.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 

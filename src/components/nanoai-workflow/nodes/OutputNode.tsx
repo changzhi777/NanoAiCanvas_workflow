@@ -356,7 +356,7 @@ export const OutputNode = memo(({ id, data }: NodeProps<OutputNodeData>) => {
   return (
     <BaseNode
       data={data}
-      icon={<Save className="w-5 h-5" />}
+      icon={<Save className="w-4 h-4" />}
     >
       <div className="space-y-3">
         {/* 快捷操作栏 */}

@@ -50,7 +50,7 @@ export const MiniMaxSpeechNode = ({ id, data }: NodeProps<MiniMaxSpeechData>) =>
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Mic className="w-5 h-5" />}
+      icon={<Mic className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateSpeech } = await import('@/lib/api/minimax-api');

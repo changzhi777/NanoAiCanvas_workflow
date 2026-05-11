@@ -57,7 +57,7 @@ export const QwenCodingNode = ({ id, data }: NodeProps<QwenCodingData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Code className="w-5 h-5" />}
+      icon={<Code className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateCode } = await import('@/lib/api/qwen-api');

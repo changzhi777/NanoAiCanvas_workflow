@@ -232,7 +232,7 @@ const SkillsTaskNode = memo(({ id, data }: { id: string; data: SkillsTaskNodeDat
   return (
     <BaseNode
       data={data}
-      icon={<Wand2 className="w-5 h-5" />}
+      icon={<Wand2 className="w-4 h-4" />}
     >
       <div className="space-y-3">
         {/* 状态指示器 */}

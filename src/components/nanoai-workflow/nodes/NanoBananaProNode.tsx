@@ -78,7 +78,7 @@ export const NanoBananaProNode = ({ id, data }: NodeProps<NanoBananaProData>) =>
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Image className="w-5 h-5" />}
+      icon={<Image className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { createNanoBananaProAPI } = await import('@/lib/api/nanobanana-pro');

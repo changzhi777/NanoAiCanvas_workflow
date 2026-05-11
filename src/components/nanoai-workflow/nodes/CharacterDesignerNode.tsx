@@ -163,7 +163,7 @@ export const CharacterDesignerNode = ({ id, data }: NodeProps<CharacterDesignerD
   return (
     <BaseNode
       data={data}
-      icon={<User className="w-5 h-5" />}
+      icon={<User className="w-4 h-4" />}
       headerAction={
         <button className="p-1 hover:bg-white/50 rounded transition-colors" title="配置">
           <Palette className="w-4 h-4 text-blue-600" />

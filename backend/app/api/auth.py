@@ -189,8 +189,13 @@ async def login(
     user.last_login_at = datetime.utcnow()
     await db.commit()
 
+    # Admin users get 30-day session regardless of remember_me
+    is_admin = user.role == UserRole.ADMIN
+    effective_remember = login_data.remember_me or is_admin
+    admin_refresh_delta = timedelta(days=30) if is_admin else None
+
     # Create Redis session
-    session_id = await SessionManager.create_session(str(user.id), remember=login_data.remember_me)
+    session_id = await SessionManager.create_session(str(user.id), remember=effective_remember)
 
     # Generate tokens with session_id embedded
     access_token = create_access_token({
@@ -200,7 +205,7 @@ async def login(
     refresh_token = create_refresh_token({
         "sub": str(user.id),
         "session_id": session_id,
-    })
+    }, expires_delta=admin_refresh_delta)
 
     # Query API key
     api_key = None
@@ -218,7 +223,7 @@ async def login(
     return LoginResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        remember_me=login_data.remember_me,
+        remember_me=effective_remember,
         user=UserResponse(
             id=user.id,
             username=user.username,
@@ -252,6 +257,9 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Account is not active")
 
     # Validate session in Redis
+    is_admin = user.role == UserRole.ADMIN
+    admin_refresh_delta = timedelta(days=30) if is_admin else None
+
     if session_id:
         session_data = await SessionManager.get_session(session_id)
         remember_me = session_data.get("remember", False) if session_data else False
@@ -266,7 +274,7 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
     new_refresh_token = create_refresh_token({
         "sub": str(user.id),
         "session_id": session_id,
-    })
+    }, expires_delta=admin_refresh_delta)
 
     return TokenResponse(
         access_token=new_access_token,

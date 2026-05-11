@@ -145,7 +145,7 @@ export const TextPreviewNode = ({ id, data }: NodeProps<TextPreviewNodeData>) =>
   return (
     <BaseNode
       data={data}
-      icon={<FileText className="w-5 h-5" />}
+      icon={<FileText className="w-4 h-4" />}
       headerAction={
         <button
           onClick={handleExecute}

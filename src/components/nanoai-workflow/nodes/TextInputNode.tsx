@@ -61,7 +61,7 @@ export const TextInputNode = ({ id, data }: NodeProps<TextInputNodeData>) => {
   return (
     <BaseNode
       data={data}
-      icon={<Type className="w-5 h-5" />}
+      icon={<Type className="w-4 h-4" />}
       headerAction={
         <div className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium"
              style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#898989' }}>

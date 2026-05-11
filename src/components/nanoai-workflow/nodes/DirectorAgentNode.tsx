@@ -49,7 +49,7 @@ const DirectorAgentNode = memo((props: { data: DirectorAgentNodeData }) => {
   return (
     <BaseNode
       data={data}
-      icon={<Brain className="w-5 h-5" />}
+      icon={<Brain className="w-4 h-4" />}
       headerAction={
         <div className={cn('px-2 py-1 rounded-md', colorScheme.iconBg)}>
           <GitBranch className="w-4 h-4" style={{ color: colorScheme.iconText }} />

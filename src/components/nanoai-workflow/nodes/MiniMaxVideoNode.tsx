@@ -48,7 +48,7 @@ export const MiniMaxVideoNode = ({ id, data }: NodeProps<MiniMaxVideoData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Video className="w-5 h-5" />}
+      icon={<Video className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateVideo } = await import('@/lib/api/minimax-api');

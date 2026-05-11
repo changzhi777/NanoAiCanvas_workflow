@@ -26,7 +26,7 @@ const MilestoneNode = memo((props: { data: MilestoneNodeData }) => {
     switch (milestoneType) {
       case 'start':
         return {
-          icon: <Clock className="w-5 h-5" />,
+          icon: <Clock className="w-4 h-4" />,
           color: 'blue',
           label: '开始',
           bgClass: isDark ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200',
@@ -34,7 +34,7 @@ const MilestoneNode = memo((props: { data: MilestoneNodeData }) => {
         };
       case 'complete':
         return {
-          icon: <CheckCircle2 className="w-5 h-5" />,
+          icon: <CheckCircle2 className="w-4 h-4" />,
           color: 'green',
           label: '完成',
           bgClass: isDark ? 'bg-green-500/10 border-green-500/20' : 'bg-green-50 border-green-200',
@@ -42,7 +42,7 @@ const MilestoneNode = memo((props: { data: MilestoneNodeData }) => {
         };
       case 'review':
         return {
-          icon: <AlertCircle className="w-5 h-5" />,
+          icon: <AlertCircle className="w-4 h-4" />,
           color: 'yellow',
           label: '审核',
           bgClass: isDark ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-yellow-50 border-yellow-200',
@@ -50,7 +50,7 @@ const MilestoneNode = memo((props: { data: MilestoneNodeData }) => {
         };
       default:
         return {
-          icon: <Flag className="w-5 h-5" />,
+          icon: <Flag className="w-4 h-4" />,
           color: 'orange',
           label: '检查点',
           bgClass: isDark ? 'bg-orange-500/10 border-orange-500/20' : 'bg-orange-50 border-orange-200',

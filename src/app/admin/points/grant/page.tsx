@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Zap, Loader2, Search, RefreshCw, Plus, Trash2, Edit, QrCode, CreditCard, Wallet, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState, useEffect, useCallback } from 'react'
-import { adminApi, type UserPointsInfo, type BillingRule, type TransactionRecord, type RechargeRecord } from '@/lib/api/admin-api'
+import { adminApi, type UserPointsInfo, type BillingRule, type TransactionRecord, type RechargeRecord, type PointsStats } from '@/lib/api/admin-api'
 import { useAuthStore } from '@/stores/remoteStore'
 
 // 用户积分列表页
@@ -1075,9 +1075,101 @@ function SystemBillingTab() {
   )
 }
 
+// 统计仪表盘
+function DashboardTab() {
+  const [stats, setStats] = useState<PointsStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const token = useAuthStore((s) => s.token)
+
+  const fetchStats = useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    try {
+      const data = await adminApi.getPointsStats()
+      setStats(data)
+    } catch { toast.error('获取统计数据失败') }
+    finally { setLoading(false) }
+  }, [token])
+
+  useEffect(() => { fetchStats() }, [fetchStats])
+
+  const cards = [
+    { label: '总发放', value: stats?.total_granted ?? 0, icon: TrendingUp, color: 'text-green-500' },
+    { label: '总消耗', value: stats?.total_used ?? 0, icon: TrendingDown, color: 'text-red-500' },
+    { label: '活跃用户', value: stats?.active_users ?? 0, icon: Users, color: 'text-blue-500' },
+    { label: '今日消耗', value: stats?.today_used ?? 0, icon: Zap, color: 'text-yellow-500' },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        {cards.map(({ label, value, icon: Icon, color }) => (
+          <Card key={label} className="py-3">
+            <CardContent className="flex items-center gap-3 px-4 py-0">
+              <Icon className={`w-5 h-5 ${color}`} />
+              <div>
+                <p className="text-2xl font-bold">{value.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">{label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {/* 模型消耗分布 */}
+        <Card>
+          <CardHeader><CardTitle className="text-sm">近7天模型消耗 Top 10</CardTitle></CardHeader>
+          <CardContent>
+            {loading ? <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin" /></div> :
+            stats?.model_distribution.length === 0 ? <p className="text-center text-muted-foreground py-4 text-sm">暂无数据</p> :
+            <div className="space-y-2">
+              {stats?.model_distribution.map((d, i) => {
+                const max = stats.model_distribution[0]?.total || 1
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-[180px] truncate" title={d.name}>{d.name}</span>
+                    <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+                      <div className="h-full bg-yellow-500/70 rounded" style={{ width: `${(d.total / max) * 100}%` }} />
+                    </div>
+                    <span className="text-xs font-medium w-12 text-right">{d.total}</span>
+                  </div>
+                )
+              })}
+            </div>}
+          </CardContent>
+        </Card>
+
+        {/* 每日消耗趋势 */}
+        <Card>
+          <CardHeader><CardTitle className="text-sm">近7天每日消耗</CardTitle></CardHeader>
+          <CardContent>
+            {loading ? <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin" /></div> :
+            stats?.daily_trend.length === 0 ? <p className="text-center text-muted-foreground py-4 text-sm">暂无数据</p> :
+            <div className="space-y-2">
+              {stats?.daily_trend.map((d, i) => {
+                const max = Math.max(...stats.daily_trend.map(x => x.total), 1)
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-10">{d.date}</span>
+                    <div className="flex-1 h-4 bg-muted rounded overflow-hidden">
+                      <div className="h-full bg-blue-500/70 rounded" style={{ width: `${(d.total / max) * 100}%` }} />
+                    </div>
+                    <span className="text-xs font-medium w-12 text-right">{d.total}</span>
+                  </div>
+                )
+              })}
+            </div>}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
 // 主页面
 export default function GrantPointsPage() {
-  const [activeTab, setActiveTab] = useState('users')
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   return (
     <div className="space-y-6">
@@ -1088,6 +1180,7 @@ export default function GrantPointsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="flex flex-wrap gap-2">
+          <Button variant={activeTab === 'dashboard' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('dashboard')}>统计概览</Button>
           <Button variant={activeTab === 'users' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('users')}>用户积分</Button>
           <Button variant={activeTab === 'accounts' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('accounts')}>积分账户</Button>
           <Button variant={activeTab === 'system' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('system')}>系统扣费</Button>
@@ -1096,6 +1189,10 @@ export default function GrantPointsPage() {
           <Button variant={activeTab === 'recharge' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('recharge')}>扫码充值</Button>
           <Button variant={activeTab === 'records' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('records')}>充值记录</Button>
         </div>
+
+        <TabsContent value="dashboard">
+          <DashboardTab />
+        </TabsContent>
 
         <TabsContent value="users">
           <PointsUsersTab />

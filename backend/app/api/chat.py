@@ -18,6 +18,13 @@ from app.models.asset import Asset, AssetType
 from app.api.auth import get_current_user
 from app.redis import redis_client
 
+
+def get_email_domain(user: User) -> str | None:
+    """提取用户邮箱域名"""
+    if not user.email or "@" not in user.email:
+        return None
+    return user.email.split("@", 1)[1].lower()
+
 # 聊天文件上传目录
 UPLOAD_DIR = os.environ.get("CHAT_UPLOAD_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "chat-uploads"))
 
@@ -434,6 +441,13 @@ async def create_conversation(
     if other_id == current_user.id:
         raise HTTPException(status_code=400, detail="不能和自己创建会话")
 
+    # 校验目标用户与当前用户同邮箱域
+    domain = get_email_domain(current_user)
+    if domain:
+        other_user = await db.get(User, other_id)
+        if not other_user or not other_user.email or not other_user.email.lower().endswith(f"@{domain}"):
+            raise HTTPException(status_code=403, detail="只能与同域用户对话")
+
     # 检查是否已有私聊会话
     my_convs = await db.execute(
         select(ConversationMember.conversation_id).where(
@@ -584,13 +598,18 @@ async def list_chat_users(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """获取可对话的用户列表（同团队成员 + 自己可见的用户）"""
+    """获取可对话的用户列表（同邮箱域名的用户）"""
+    domain = get_email_domain(current_user)
+    if not domain:
+        return {"users": []}
+
     online_ids = await manager.get_online_users()
     online_set = set(online_ids)
     result = await db.execute(
         select(User.id, User.username, User.avatar_url)
         .where(User.is_active == True)
         .where(User.id != current_user.id)
+        .where(User.email.like(f"%@{domain}"))
         .order_by(User.username)
     )
     users = []

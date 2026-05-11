@@ -54,7 +54,7 @@ export const JimengVideoNode = ({ id, data }: NodeProps<JimengVideoData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Video className="w-5 h-5" />}
+      icon={<Video className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateVideo, pollVideoResult } = await import('@/lib/api/jimeng-api');

@@ -55,7 +55,7 @@ const ScreenwriterAgentNode = memo((props: { data: ScreenwriterAgentNodeData }) 
   return (
     <BaseNode
       data={data}
-      icon={<PenTool className="w-5 h-5" />}
+      icon={<PenTool className="w-4 h-4" />}
       headerAction={
         <div className={cn('px-2 py-1 rounded-md', colorScheme.iconBg)}>
           <Wand2 className="w-4 h-4" style={{ color: colorScheme.iconText }} />

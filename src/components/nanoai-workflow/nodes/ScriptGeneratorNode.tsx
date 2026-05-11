@@ -93,7 +93,7 @@ export const ScriptGeneratorNode = ({ id, data }: NodeProps<ScriptGeneratorData>
   return (
     <BaseNode
       data={data}
-      icon={<FileText className="w-5 h-5" />}
+      icon={<FileText className="w-4 h-4" />}
       headerAction={
         <button
           className="p-1 hover:bg-white/50 rounded transition-colors"

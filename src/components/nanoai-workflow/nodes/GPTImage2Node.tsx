@@ -75,7 +75,7 @@ export const GPTImage2Node = ({ id, data }: NodeProps<GPTImage2Data>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<Image className="w-5 h-5" />}
+      icon={<Image className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateGPTImageWithPolling } = await import('@/lib/api/gpt-image-api');

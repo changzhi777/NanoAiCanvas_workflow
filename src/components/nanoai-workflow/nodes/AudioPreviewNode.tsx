@@ -156,7 +156,7 @@ export const AudioPreviewNode = ({ id, data }: NodeProps<AudioPreviewNodeData>) 
   return (
     <BaseNode
       data={data}
-      icon={<Music className="w-5 h-5" />}
+      icon={<Music className="w-4 h-4" />}
       headerAction={
         <button
           onClick={handleExecute}

@@ -347,7 +347,7 @@ export const BaseNode = memo(({
       {/* 节点头部 - 扁平化设计 */}
       <div
         className={cn(
-          'flex items-center justify-between p-4 border-b border-border/50 rounded-t-xl cursor-pointer transition-all duration-200',
+          'flex items-center justify-between p-3 border-b border-border/50 rounded-t-xl cursor-pointer transition-all duration-200',
           'relative overflow-hidden ml-2',
           // 扁平半透明背景替代渐变
           isDark ? 'bg-[#242424]/50' : 'bg-slate-50/50'
@@ -359,12 +359,11 @@ export const BaseNode = memo(({
           <div className="absolute inset-0 bg-blue-500/10" />
         )}
 
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-center gap-2.5">
           {icon && (
             <div className={cn(
-              'p-2 rounded-lg transition-transform duration-200',
-              categoryColors[nodeCategory].iconBg,
-              isHovered && 'scale-110'
+              'p-1.5 rounded-md transition-colors duration-200',
+              categoryColors[nodeCategory].iconBg
             )}>
               <div className={cn('transition-colors duration-200', categoryColors[nodeCategory].iconText)}>
                 {icon}
@@ -373,7 +372,7 @@ export const BaseNode = memo(({
           )}
           {/* 标题 - CardNode风格 */}
           <h3 className={cn(
-            'font-semibold text-base',
+            'font-semibold text-sm',
             isDark ? 'text-slate-100' : 'text-gray-800',
             'transition-all duration-200'
           )}>

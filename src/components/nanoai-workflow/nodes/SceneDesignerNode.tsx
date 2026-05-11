@@ -167,7 +167,7 @@ export const SceneDesignerNode = ({ id, data }: NodeProps<SceneDesignerData>) =>
   return (
     <BaseNode
       data={data}
-      icon={<Mountain className="w-5 h-5" />}
+      icon={<Mountain className="w-4 h-4" />}
       headerAction={
         <button className="p-1 hover:bg-white/50 rounded transition-colors" title="配置">
           <Sun className="w-4 h-4 text-blue-600" />

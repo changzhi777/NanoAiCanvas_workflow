@@ -66,7 +66,7 @@ export const KimiTextNode = ({ id, data }: NodeProps<KimiTextData>) => {
     <TaskNodeBase
       id={id}
       data={data}
-      icon={<MessageSquare className="w-5 h-5" />}
+      icon={<MessageSquare className="w-4 h-4" />}
       paramSchema={paramSchema}
       apiCall={async (params) => {
         const { generateText } = await import('@/lib/api/kimi-api');
