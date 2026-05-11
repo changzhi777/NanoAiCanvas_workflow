@@ -45,8 +45,8 @@ export default function UserApplyPage() {
     setActionLoading(userId)
     try {
       await approveUser(userId)
+      setUsers(prev => prev.filter(u => u.id !== userId))
       toast.success('已通过审核，用户可正常登录')
-      loadUsers()
     } catch {
       toast.error('操作失败')
     } finally {
@@ -58,8 +58,8 @@ export default function UserApplyPage() {
     setActionLoading(userId)
     try {
       await rejectUser(userId)
+      setUsers(prev => prev.filter(u => u.id !== userId))
       toast.success('已拒绝该申请')
-      loadUsers()
     } catch {
       toast.error('操作失败')
     } finally {

@@ -66,6 +66,8 @@ async def approve_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if user.status != UserStatus.PENDING:
+        if user.status == UserStatus.APPROVED:
+            return ApproveResponse(id=user.id, username=user.username, email=user.email, status=user.status)
         raise HTTPException(status_code=400, detail=f"User status is '{user.status}', not 'pending'")
 
     user.status = UserStatus.APPROVED
@@ -122,6 +124,8 @@ async def reject_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     if user.status != UserStatus.PENDING:
+        if user.status == UserStatus.REJECTED:
+            return ApproveResponse(id=user.id, username=user.username, email=user.email, status=user.status)
         raise HTTPException(status_code=400, detail=f"User status is '{user.status}', not 'pending'")
 
     user.status = UserStatus.REJECTED

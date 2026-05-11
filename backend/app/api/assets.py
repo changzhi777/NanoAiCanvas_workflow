@@ -2,11 +2,12 @@ from typing import Optional, List
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, update
+from sqlalchemy import select, func, or_, update, exists
 from pydantic import BaseModel
 
 from app.database import get_db
 from app.models import User, Asset, AssetType, AssetCategory
+from app.models.points import Team, TeamAsset, TeamMember
 from app.api.auth import get_current_user
 from app.services.image_downloader import download_image
 
@@ -341,3 +342,109 @@ async def batch_update(
     )
     await db.commit()
     return {"updated": result.rowcount}
+
+
+# ============ 团队资产 ============
+
+@router.get("/team/{team_id}")
+async def list_team_assets(
+    team_id: UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    type_filter: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # verify membership
+    is_member = await db.execute(
+        select(exists().where(
+            TeamMember.team_id == team_id,
+            TeamMember.user_id == current_user.id,
+        ))
+    )
+    if not is_member.scalar():
+        raise HTTPException(status_code=403, detail="Not a team member")
+
+    query = (
+        select(Asset)
+        .join(TeamAsset, TeamAsset.asset_id == Asset.id)
+        .where(
+            TeamAsset.team_id == team_id,
+            Asset.is_deleted == False,
+        )
+    )
+    if type_filter:
+        query = query.where(Asset.type == AssetType(type_filter))
+
+    count_q = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
+
+    query = query.order_by(Asset.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    rows = (await db.execute(query)).scalars().all()
+
+    return {"items": [_to_response(a) for a in rows], "total": total, "page": page, "page_size": page_size}
+
+
+class ShareRequest(BaseModel):
+    team_id: str
+
+
+@router.post("/{asset_id}/share")
+async def share_asset_to_team(
+    asset_id: UUID,
+    data: ShareRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    team_id = _safe_uuid(data.team_id)
+    if not team_id:
+        raise HTTPException(status_code=400, detail="Invalid team_id")
+
+    # verify ownership
+    asset = await db.execute(
+        select(Asset).where(Asset.id == asset_id, Asset.user_id == current_user.id, Asset.is_deleted == False)
+    )
+    if not asset.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    # verify team membership
+    is_member = await db.execute(
+        select(exists().where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id))
+    )
+    if not is_member.scalar():
+        raise HTTPException(status_code=403, detail="Not a team member")
+
+    # check duplicate
+    already = await db.execute(
+        select(exists().where(TeamAsset.team_id == team_id, TeamAsset.asset_id == asset_id))
+    )
+    if already.scalar():
+        return {"success": True, "message": "Already shared"}
+
+    db.add(TeamAsset(team_id=team_id, asset_id=asset_id, added_by=current_user.id))
+    await db.commit()
+    return {"success": True}
+
+
+@router.delete("/{asset_id}/team/{team_id}")
+async def remove_asset_from_team(
+    asset_id: UUID,
+    team_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # verify team membership
+    is_member = await db.execute(
+        select(exists().where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id))
+    )
+    if not is_member.scalar():
+        raise HTTPException(status_code=403, detail="Not a team member")
+
+    result = await db.execute(
+        select(TeamAsset).where(TeamAsset.team_id == team_id, TeamAsset.asset_id == asset_id)
+    )
+    link = result.scalar_one_or_none()
+    if link:
+        await db.delete(link)
+        await db.commit()
+    return {"success": True}

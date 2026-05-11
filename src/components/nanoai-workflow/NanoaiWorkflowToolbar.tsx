@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import logoCanvas from '@/../public/logo-canvas-minimal.png';
+import logoCanvas from '/logo-canvas-minimal.png?url';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useAuthStore, useSyncStore } from '@/stores/remoteStore';
 import {

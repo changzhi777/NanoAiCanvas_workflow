@@ -10,6 +10,9 @@ interface UseChatSocketOptions {
   enabled?: boolean
 }
 
+const RECONNECT_BASE = 3000
+const RECONNECT_MAX = 60000
+
 export function useChatSocket({
   userId,
   onMessage,
@@ -19,6 +22,9 @@ export function useChatSocket({
 }: UseChatSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null)
   const callbacksRef = useRef({ onMessage, onRead, onOnlineStatus })
+  const retryRef = useRef(0)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+
   callbacksRef.current = { onMessage, onRead, onOnlineStatus }
 
   const connect = useCallback(() => {
@@ -29,6 +35,7 @@ export function useChatSocket({
 
     ws.onopen = () => {
       console.log('[ChatWS] connected')
+      retryRef.current = 0
     }
 
     ws.onmessage = (event) => {
@@ -42,9 +49,11 @@ export function useChatSocket({
     }
 
     ws.onclose = () => {
-      console.log('[ChatWS] disconnected, reconnecting in 3s...')
       wsRef.current = null
-      setTimeout(() => connect(), 3000)
+      const delay = Math.min(RECONNECT_BASE * Math.pow(2, retryRef.current), RECONNECT_MAX)
+      retryRef.current++
+      console.log(`[ChatWS] disconnected, reconnecting in ${delay}ms (attempt ${retryRef.current})`)
+      timerRef.current = setTimeout(() => connect(), delay)
     }
 
     ws.onerror = () => {
@@ -94,6 +103,7 @@ export function useChatSocket({
       connect()
     }
     return () => {
+      clearTimeout(timerRef.current)
       wsRef.current?.close()
       wsRef.current = null
     }

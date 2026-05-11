@@ -540,6 +540,33 @@ async def mark_conversation_read(
     return {"success": True}
 
 
+@router.delete("/conversations/{conv_id}")
+async def delete_conversation(
+    conv_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # verify membership
+    result = await db.execute(
+        select(ConversationMember).where(
+            ConversationMember.conversation_id == conv_id,
+            ConversationMember.user_id == current_user.id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    # delete conversation (cascade deletes members + messages)
+    conv_result = await db.execute(
+        select(Conversation).where(Conversation.id == conv_id)
+    )
+    conv = conv_result.scalar_one_or_none()
+    if conv:
+        await db.delete(conv)
+        await db.commit()
+    return {"success": True}
+
+
 # ============ REST: 在线用户 ============
 
 @router.get("/online-users")

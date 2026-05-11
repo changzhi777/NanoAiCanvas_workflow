@@ -30,9 +30,10 @@ const AdminKevinPage = lazy(() => import('./app/admin/kevin/page'))
 const AdminAppsPage = lazy(() => import('./app/admin/apps/page'))
 const AdminAppsWorkflowPage = lazy(() => import('./app/admin/apps/workflow/page'))
 const AdminAppsNano2Page = lazy(() => import('./app/admin/apps/nano2/page'))
+const NotificationsPage = lazy(() => import('./app/notifications/page'))
 import { AdminSidebar } from './components/admin/AdminSidebar'
 
-type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps' | 'admin-apps-workflow' | 'admin-apps-nano2'
+type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps' | 'admin-apps-workflow' | 'admin-apps-nano2' | 'notifications'
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -137,6 +138,8 @@ function AppContent() {
       setCurrentPage('admin-models')
     } else if (path.startsWith('/nanoaicanvas/admin')) {
       setCurrentPage('admin')
+    } else if (path === '/nanoaicanvas/notifications') {
+      setCurrentPage('notifications')
     }
   }, [])
 
@@ -182,6 +185,8 @@ function AppContent() {
         setCurrentPage('admin-models')
       } else if (path.startsWith('/nanoaicanvas/admin')) {
         setCurrentPage('admin')
+      } else if (path === '/nanoaicanvas/notifications') {
+        setCurrentPage('notifications')
       } else {
         setCurrentPage('workflow')
       }
@@ -229,6 +234,7 @@ function AppContent() {
         {currentPage === 'admin-apps' && <AdminLayout><AdminAppsPage /></AdminLayout>}
         {currentPage === 'admin-apps-workflow' && <AdminLayout><AdminAppsWorkflowPage /></AdminLayout>}
         {currentPage === 'admin-apps-nano2' && <AdminLayout><AdminAppsNano2Page /></AdminLayout>}
+        {currentPage === 'notifications' && <NotificationsPage />}
       </Suspense>
     </div>
   )

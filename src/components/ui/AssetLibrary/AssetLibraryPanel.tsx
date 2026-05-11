@@ -2,12 +2,13 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore, useSyncStore, useAssetLibStore } from '../../../stores/remoteStore';
-import { assets, categories, tags, folders, type Asset, type Category } from '../../../lib/api/client';
+import { assets, categories, tags, folders, teams, type Asset, type Category, type Team } from '../../../lib/api/client';
 import { assetCache } from '../../../lib/db/AssetCache';
 import { getDB } from '../../../lib/db/schema';
 import {
   Search, Grid3X3, List, Star, Trash2, RefreshCw, FolderPlus, Tag, ChevronRight, ChevronDown,
-  FolderOpen, Folder, Plus, Check, Upload, MoreHorizontal, Trash, Move, X, Download
+  FolderOpen, Folder, Plus, Check, Upload, MoreHorizontal, Trash, Move, X, Download,
+  Users, User, Share2
 } from 'lucide-react';
 import { Button } from '../button';
 import { Input } from '../input';
@@ -107,12 +108,32 @@ export default function AssetLibraryPanel({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 团队资产 Tab
+  const [assetTab, setAssetTab] = useState<'personal' | 'team'>('personal');
+  const [userTeams, setUserTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [shareMenuAssetId, setShareMenuAssetId] = useState<string | null>(null);
+
   // 加载数据
   const loadAssets = useCallback(async () => {
     if (!token) return;
     setLoading(true);
 
     try {
+      // 团队资产
+      if (assetTab === 'team' && selectedTeamId && isOnline) {
+        const result = await assets.listTeamAssets(selectedTeamId, token, {
+          page,
+          page_size: pageSize,
+          type_filter: typeFilter === 'ALL' ? undefined : typeFilter,
+        });
+        setAssetsList(result.items);
+        setTotal(result.total);
+        setLoading(false);
+        return;
+      }
+
+      // 个人资产
       if (isOnline) {
         const result = await assets.list(token, {
           page,
@@ -156,7 +177,7 @@ export default function AssetLibraryPanel({
     } finally {
       setLoading(false);
     }
-  }, [token, isOnline, page, pageSize, typeFilter, categoryFilter, folderFilter, starredOnly, searchQuery]);
+  }, [token, isOnline, page, pageSize, typeFilter, categoryFilter, folderFilter, starredOnly, searchQuery, assetTab, selectedTeamId]);
 
   const loadMetaData = useCallback(async () => {
     if (!token || !isOnline) return;
@@ -178,6 +199,7 @@ export default function AssetLibraryPanel({
     if (open && token) {
       loadAssets();
       loadMetaData();
+      teams.list(token).then(setUserTeams).catch(() => {});
     }
   }, [open, token, loadAssets, loadMetaData]);
 
@@ -359,6 +381,28 @@ export default function AssetLibraryPanel({
     }
   };
 
+  // 分享到团队
+  const handleShareToTeam = async (assetId: string, teamId: string) => {
+    if (!token) return;
+    try {
+      await assets.shareToTeam(assetId, teamId, token);
+      setShareMenuAssetId(null);
+    } catch (e) {
+      console.error('Failed to share:', e);
+    }
+  };
+
+  // 从团队移除
+  const handleRemoveFromTeam = async (assetId: string) => {
+    if (!token || !selectedTeamId) return;
+    try {
+      await assets.removeFromTeam(assetId, selectedTeamId, token);
+      setAssetsList(prev => prev.filter(a => a.id !== assetId));
+    } catch (e) {
+      console.error('Failed to remove from team:', e);
+    }
+  };
+
   // 拖拽上传
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -424,8 +468,31 @@ export default function AssetLibraryPanel({
         onDrop={handleDrop}
       >
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>资产库</span>
+          <DialogTitle className="flex items-center justify-between pl-2">
+            <div className="flex items-center gap-3">
+              <span>资产库</span>
+              {/* 个人/团队 Tab */}
+              <div className="flex items-center bg-muted rounded-md p-0.5">
+                <button
+                  className={cn(
+                    'flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                    assetTab === 'personal' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => { setAssetTab('personal'); setSelectedTeamId(null); }}
+                >
+                  <User className="w-3 h-3" /> 个人
+                </button>
+                <button
+                  className={cn(
+                    'flex items-center gap-1 px-2.5 py-1 rounded text-xs font-medium transition-colors',
+                    assetTab === 'team' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                  onClick={() => setAssetTab('team')}
+                >
+                  <Users className="w-3 h-3" /> 团队
+                </button>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               {!isOnline && (
                 <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded">离线模式</span>
@@ -449,6 +516,34 @@ export default function AssetLibraryPanel({
         <div className="flex flex-1 overflow-hidden">
           {/* 左侧文件夹/分类面板 */}
           <div className="w-48 border-r flex flex-col overflow-hidden">
+            {assetTab === 'team' ? (
+              /* 团队列表 */
+              <div className="flex-1 overflow-y-auto p-2">
+                <div className="mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">我的团队</span>
+                </div>
+                {userTeams.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">暂无团队</p>
+                ) : (
+                  <div className="space-y-1">
+                    {userTeams.map(team => (
+                      <button
+                        key={team.id}
+                        className={cn(
+                          'w-full text-left px-2 py-1.5 text-sm rounded flex items-center gap-2',
+                          selectedTeamId === team.id ? 'bg-muted' : 'hover:bg-muted/50',
+                        )}
+                        onClick={() => setSelectedTeamId(team.id)}
+                      >
+                        <Users className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{team.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
             {/* 文件夹区域 */}
             <div className="p-2 border-b">
               <div className="flex items-center justify-between mb-2">
@@ -520,6 +615,8 @@ export default function AssetLibraryPanel({
                 ))}
               </div>
             </div>
+              </>
+            )}
           </div>
 
           {/* 右侧内容区 */}
@@ -616,6 +713,11 @@ export default function AssetLibraryPanel({
                       onSelect={() => handleSelectAsset(asset)}
                       onToggleStar={() => handleToggleStar(asset)}
                       onDelete={() => handleDelete(asset.id)}
+                      onShareToTeam={assetTab === 'personal' ? handleShareToTeam : undefined}
+                      onRemoveFromTeam={assetTab === 'team' && selectedTeamId ? handleRemoveFromTeam : undefined}
+                      userTeams={userTeams}
+                      shareMenuAssetId={shareMenuAssetId}
+                      setShareMenuAssetId={setShareMenuAssetId}
                       multiSelectMode={multiSelectMode}
                     />
                   ))}
@@ -747,6 +849,11 @@ function AssetCard({
   onSelect,
   onToggleStar,
   onDelete,
+  onShareToTeam,
+  onRemoveFromTeam,
+  userTeams,
+  shareMenuAssetId,
+  setShareMenuAssetId,
   multiSelectMode,
 }: {
   asset: Asset;
@@ -754,6 +861,11 @@ function AssetCard({
   onSelect: () => void;
   onToggleStar: () => void;
   onDelete: () => void;
+  onShareToTeam?: (assetId: string, teamId: string) => void;
+  onRemoveFromTeam?: (assetId: string) => void;
+  userTeams?: Team[];
+  shareMenuAssetId: string | null;
+  setShareMenuAssetId: (id: string | null) => void;
   multiSelectMode: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
@@ -811,6 +923,32 @@ function AssetCard({
 
       {/* 操作按钮 */}
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onShareToTeam && userTeams && userTeams.length > 0 && (
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); setShareMenuAssetId(shareMenuAssetId === asset.id ? null : asset.id); }}>
+              <Share2 className="h-4 w-4 text-white" />
+            </Button>
+            {shareMenuAssetId === asset.id && (
+              <div className="absolute right-0 top-10 w-40 bg-popover border rounded-md shadow-lg z-20 py-1" onClick={(e) => e.stopPropagation()}>
+                <p className="px-2 py-1 text-xs text-muted-foreground">分享到团队</p>
+                {userTeams.map(team => (
+                  <button
+                    key={team.id}
+                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted flex items-center gap-1.5"
+                    onClick={() => { onShareToTeam(asset.id, team.id); setShareMenuAssetId(null); }}
+                  >
+                    <Users className="w-3 h-3" /> {team.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {onRemoveFromTeam && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-orange-500" onClick={(e) => { e.stopPropagation(); onRemoveFromTeam(asset.id); }} title="从团队移除">
+            <Share2 className="h-4 w-4 text-white rotate-180" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
           <Star className={cn("h-4 w-4", asset.is_starred ? "fill-yellow-500 text-yellow-500" : "text-white")} />
         </Button>

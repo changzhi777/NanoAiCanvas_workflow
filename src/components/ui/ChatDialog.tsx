@@ -6,6 +6,7 @@ import { useChatSocket } from '@/hooks/useChatSocket'
 import {
   getConversations,
   createConversation,
+  deleteConversation,
   getMessages,
   markConversationRead,
   getChatUsers,
@@ -29,7 +30,7 @@ import { useTheme } from '@/components/nanoai-workflow/ui/Theme'
 import {
   Send, Check, CheckCheck, MessageSquare, Bell,
   Paperclip, X, Download, Bookmark, Image, Film, Music,
-  Loader2, FolderOpen,
+  Loader2, FolderOpen, Trash2, Search, ArrowUp,
 } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import { AssetPicker } from '@/components/ui/AssetPicker'
@@ -55,8 +56,10 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     setCurrentConvId,
     setMessages,
     addMessage,
+    prependMessages,
     setUsers,
     decrementUnread,
+    removeConversation,
   } = useChatStore()
 
   const {
@@ -70,12 +73,16 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
   const [tab, setTab] = useState<'chat' | 'notifications'>('chat')
   const [inputText, setInputText] = useState('')
   const [showNewChat, setShowNewChat] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [userSearch, setUserSearch] = useState('')
+  const [convSearch, setConvSearch] = useState('')
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [showAttachMenu, setShowAttachMenu] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -120,14 +127,37 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
   useEffect(() => {
     if (!currentConvId || !open) return
-    getMessages(currentConvId).then(setMessages).catch(() => {})
+    setHasMoreMessages(true)
+    getMessages(currentConvId).then((msgs) => {
+      setMessages(msgs)
+      setHasMoreMessages(msgs.length >= 50)
+    }).catch(() => {})
     markConversationRead(currentConvId).then(() => decrementUnread(currentConvId)).catch(() => {})
     sendRead(currentConvId)
   }, [currentConvId, open])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages.length])
+
+  // 加载更多历史消息
+  const loadMoreMessages = useCallback(async () => {
+    if (!currentConvId || loadingMore || !hasMoreMessages) return
+    setLoadingMore(true)
+    try {
+      const oldest = messages[0]
+      if (!oldest) return
+      const older = await getMessages(currentConvId, 50, oldest.id)
+      if (older.length === 0) {
+        setHasMoreMessages(false)
+      } else {
+        prependMessages(older)
+        setHasMoreMessages(older.length >= 50)
+      }
+    } catch {} finally {
+      setLoadingMore(false)
+    }
+  }, [currentConvId, messages, loadingMore, hasMoreMessages, prependMessages])
 
   // 点击外部关闭附件菜单
   useEffect(() => {
@@ -140,7 +170,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     return () => document.removeEventListener('click', handler)
   }, [showAttachMenu])
 
-  // 文件选择处理
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files?.length) return
@@ -198,7 +227,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
   const handleSelectConv = (conv: ConversationInfo) => {
     setCurrentConvId(conv.id)
-    setSearchQuery('')
+    setUserSearch('')
   }
 
   const handleStartChat = async (targetUserId: string) => {
@@ -207,16 +236,38 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
       await loadConversations()
       setCurrentConvId(id)
       setShowNewChat(false)
-      setSearchQuery('')
+      setUserSearch('')
     } catch {
       toast.error('创建会话失败')
     }
   }
 
+  const handleDeleteConv = async (convId: string) => {
+    try {
+      await deleteConversation(convId)
+      removeConversation(convId)
+      if (currentConvId === convId) {
+        setCurrentConvId(null)
+      }
+      setDeleteConfirm(null)
+      toast.success('会话已删除')
+    } catch {
+      toast.error('删除失败')
+    }
+  }
+
   const currentConv = conversations.find((c) => c.id === currentConvId)
+
   const filteredUsers = users.filter((u) =>
-    u.username.toLowerCase().includes(searchQuery.toLowerCase()),
+    u.username.toLowerCase().includes(userSearch.toLowerCase()),
   )
+
+  const filteredConversations = convSearch
+    ? conversations.filter((c) =>
+        c.other_user?.username?.toLowerCase().includes(convSearch.toLowerCase())
+        || c.last_message?.content?.toLowerCase().includes(convSearch.toLowerCase()),
+      )
+    : conversations
 
   const renderAttachmentIcon = (type: string) => {
     switch (type) {
@@ -232,7 +283,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     const bubbleClass = cn(
       'px-3 py-1.5 rounded-2xl text-sm break-words',
       isMine
-        ? 'bg-primary text-primary-foreground rounded-br-md'
+        ? isDark
+          ? 'bg-blue-600 text-white rounded-br-md'
+          : 'bg-primary text-primary-foreground rounded-br-md'
         : isDark
         ? 'bg-slate-700 text-slate-100 rounded-bl-md'
         : 'bg-gray-100 text-gray-900 rounded-bl-md',
@@ -240,7 +293,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
     return (
       <div className={cn('max-w-[75%]')}>
-        {/* 附件区域 */}
         {hasAttachments && msg.attachments.map((att, idx) => (
           <div key={idx} className="mb-1">
             {att.type === 'image' && (
@@ -252,11 +304,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
               />
             )}
             {att.type === 'video' && (
-              <video
-                src={att.url}
-                controls
-                className="max-w-full max-h-48 rounded-lg"
-              />
+              <video src={att.url} controls className="max-w-full max-h-48 rounded-lg" />
             )}
             {att.type === 'audio' && (
               <div className={cn('flex items-center gap-2 p-2 rounded-lg', isDark ? 'bg-slate-600' : 'bg-gray-200')}>
@@ -264,13 +312,11 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                 <audio src={att.url} controls className="h-8 w-full" />
               </div>
             )}
-            {/* prompt 文本 */}
             {att.prompt && (
               <p className={cn('text-xs mt-0.5 italic', isDark ? 'text-slate-400' : 'text-gray-500')}>
                 Prompt: {att.prompt}
               </p>
             )}
-            {/* 操作按钮 */}
             {!isMine && (
               <div className="flex gap-1 mt-1">
                 <button
@@ -290,7 +336,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                     'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors',
                     isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-gray-200 text-gray-500',
                   )}
-                  title="下载到本地"
                 >
                   <Download className="w-3 h-3" /> 下载
                 </a>
@@ -313,37 +358,136 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
           </div>
         ))}
 
-        {/* 文本气泡 */}
         {msg.content && (
           <div className={bubbleClass}>{msg.content}</div>
         )}
 
-        {/* 时间+已读状态 */}
         <div className={cn('flex items-center gap-1 mt-0.5', isMine ? 'justify-end' : 'justify-start')}>
-          <span className="text-[10px] text-muted-foreground">{formatTime(msg.created_at)}</span>
+          <span className={cn('text-[10px]', isDark ? 'text-slate-500' : 'text-muted-foreground')}>
+            {formatTime(msg.created_at)}
+          </span>
           {isMine && (
             msg.is_read
               ? <CheckCheck className="w-3 h-3 text-blue-400" />
-              : <Check className="w-3 h-3 text-muted-foreground" />
+              : <Check className={cn('w-3 h-3', isDark ? 'text-slate-500' : 'text-muted-foreground')} />
           )}
         </div>
       </div>
     )
   }
 
+  // 会话列表项（含删除）
+  const renderConvItem = (conv: ConversationInfo) => {
+    const isDeleting = deleteConfirm === conv.id
+    return (
+      <div
+        key={conv.id}
+        className={cn(
+          'group flex items-center gap-2 w-full px-3 py-2.5 text-left transition-colors',
+          currentConvId === conv.id
+            ? isDark ? 'bg-blue-500/10' : 'bg-primary/10'
+            : isDark ? 'hover:bg-white/[0.04]' : 'hover:bg-accent',
+        )}
+      >
+        <button
+          onClick={() => handleSelectConv(conv)}
+          className="flex items-center gap-2 flex-1 min-w-0"
+        >
+          <div className="relative flex-shrink-0">
+            {conv.other_user?.avatar_url ? (
+              <img src={conv.other_user.avatar_url} className="w-9 h-9 rounded-full object-cover" />
+            ) : (
+              <div className={cn(
+                'w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium',
+                isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20',
+              )}>
+                {conv.other_user?.username?.charAt(0).toUpperCase() || '?'}
+              </div>
+            )}
+            {conv.other_user?.online && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className={cn('text-sm font-medium truncate', isDark ? 'text-slate-200' : '')}>
+                {conv.other_user?.username || conv.name || '未知'}
+              </span>
+              {conv.last_message && (
+                <span className={cn('text-[10px] flex-shrink-0', isDark ? 'text-slate-600' : 'text-muted-foreground')}>
+                  {formatTime(conv.last_message.created_at)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between mt-0.5">
+              <span className={cn('text-xs truncate', isDark ? 'text-slate-500' : 'text-muted-foreground')}>
+                {conv.last_message?.content || '暂无消息'}
+              </span>
+              {conv.unread_count > 0 && (
+                <span className="flex-shrink-0 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {conv.unread_count > 9 ? '9+' : conv.unread_count}
+                </span>
+              )}
+            </div>
+          </div>
+        </button>
+
+        {/* 删除按钮 */}
+        {isDeleting ? (
+          <div className="flex gap-1 flex-shrink-0">
+            <button
+              onClick={() => handleDeleteConv(conv.id)}
+              className="px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded transition-colors hover:bg-red-600"
+            >
+              删除
+            </button>
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className={cn(
+                'px-1.5 py-0.5 text-[10px] rounded transition-colors',
+                isDark ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+              )}
+            >
+              取消
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setDeleteConfirm(conv.id)}
+            className={cn(
+              'flex-shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity',
+              isDark ? 'text-slate-500 hover:text-red-400 hover:bg-white/[0.06]' : 'text-gray-400 hover:text-red-500 hover:bg-gray-100',
+            )}
+            title="删除会话"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-0 gap-0 h-[560px] flex flex-col overflow-hidden">
+      <DialogContent className={cn(
+        'sm:max-w-2xl p-0 gap-0 h-[560px] flex flex-col overflow-hidden',
+        isDark
+          ? 'bg-slate-900 border-white/10 text-slate-100'
+          : 'bg-white border-gray-200 text-gray-900',
+      )}>
         {/* Header */}
-        <div className={cn('flex items-center border-b px-4 py-2', isDark ? 'border-white/10' : 'border-gray-200')}>
+        <div className={cn(
+          'flex items-center border-b px-4 py-2',
+          isDark ? 'border-white/[0.06]' : 'border-gray-200',
+        )}>
           <div className="flex gap-1">
             <button
               onClick={() => setTab('chat')}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 tab === 'chat'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-primary/10 text-primary'
+                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <MessageSquare className="w-4 h-4" />
@@ -359,8 +503,8 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 tab === 'notifications'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:text-foreground',
+                  ? isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-primary/10 text-primary'
+                  : isDark ? 'text-slate-400 hover:text-slate-200' : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <Bell className="w-4 h-4" />
@@ -379,38 +523,63 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
           {tab === 'chat' ? (
             <>
               {/* 会话列表 */}
-              <div className={cn('w-64 flex flex-col border-r', isDark ? 'border-white/10' : 'border-gray-200')}>
-                <div className="p-2">
+              <div className={cn(
+                'w-64 flex flex-col border-r',
+                isDark ? 'border-white/[0.06]' : 'border-gray-200',
+              )}>
+                <div className="p-2 space-y-1.5">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full text-xs"
+                    className={cn('w-full text-xs', isDark && 'border-white/10 text-slate-300 hover:bg-white/[0.06]')}
                     onClick={() => setShowNewChat(!showNewChat)}
                   >
                     + 发起新对话
                   </Button>
+
+                  {/* 会话搜索 */}
+                  {conversations.length > 3 && (
+                    <div className="relative">
+                      <Search className={cn(
+                        'absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3',
+                        isDark ? 'text-slate-600' : 'text-gray-400',
+                      )} />
+                      <Input
+                        placeholder="搜索会话..."
+                        value={convSearch}
+                        onChange={(e) => setConvSearch(e.target.value)}
+                        className={cn('h-7 text-xs pl-6', isDark && 'bg-white/[0.03] border-white/[0.06] text-slate-300')}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {showNewChat && (
                   <div className="px-2 pb-2">
                     <Input
                       placeholder="搜索用户..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-8 text-xs"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className={cn('h-8 text-xs', isDark && 'bg-white/[0.03] border-white/[0.06] text-slate-300')}
                     />
                     <ScrollArea className="max-h-40 mt-1">
                       {filteredUsers.map((u) => (
                         <button
                           key={u.id}
                           onClick={() => handleStartChat(u.id)}
-                          className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs hover:bg-accent transition-colors"
+                          className={cn(
+                            'flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs transition-colors',
+                            isDark ? 'hover:bg-white/[0.06] text-slate-300' : 'hover:bg-accent',
+                          )}
                         >
                           <div className="relative">
                             {u.avatar_url ? (
                               <img src={u.avatar_url} className="w-6 h-6 rounded-full object-cover" />
                             ) : (
-                              <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                              <div className={cn(
+                                'w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium',
+                                isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20',
+                              )}>
                                 {u.username.charAt(0).toUpperCase()}
                               </div>
                             )}
@@ -426,56 +595,12 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                 )}
 
                 <ScrollArea className="flex-1">
-                  {conversations.length === 0 ? (
-                    <div className="text-center text-muted-foreground text-xs py-8">暂无会话</div>
+                  {filteredConversations.length === 0 ? (
+                    <div className={cn('text-center text-xs py-8', isDark ? 'text-slate-600' : 'text-muted-foreground')}>
+                      {convSearch ? '未找到匹配的会话' : '暂无会话'}
+                    </div>
                   ) : (
-                    conversations.map((conv) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => handleSelectConv(conv)}
-                        className={cn(
-                          'flex items-center gap-2 w-full px-3 py-2.5 text-left transition-colors',
-                          currentConvId === conv.id
-                            ? 'bg-primary/10'
-                            : 'hover:bg-accent',
-                        )}
-                      >
-                        <div className="relative flex-shrink-0">
-                          {conv.other_user?.avatar_url ? (
-                            <img src={conv.other_user.avatar_url} className="w-9 h-9 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-sm font-medium">
-                              {conv.other_user?.username?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                          )}
-                          {conv.other_user?.online && (
-                            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium truncate">
-                              {conv.other_user?.username || conv.name || '未知'}
-                            </span>
-                            {conv.last_message && (
-                              <span className="text-[10px] text-muted-foreground flex-shrink-0">
-                                {formatTime(conv.last_message.created_at)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-between mt-0.5">
-                            <span className="text-xs text-muted-foreground truncate">
-                              {conv.last_message?.content || '暂无消息'}
-                            </span>
-                            {conv.unread_count > 0 && (
-                              <span className="flex-shrink-0 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                                {conv.unread_count > 9 ? '9+' : conv.unread_count}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                    filteredConversations.map(renderConvItem)
                   )}
                 </ScrollArea>
               </div>
@@ -485,12 +610,18 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                 {currentConv ? (
                   <>
                     {/* 聊天头部 */}
-                    <div className={cn('flex items-center gap-2 px-4 py-2 border-b', isDark ? 'border-white/10' : 'border-gray-200')}>
+                    <div className={cn(
+                      'flex items-center gap-2 px-4 py-2 border-b',
+                      isDark ? 'border-white/[0.06]' : 'border-gray-200',
+                    )}>
                       <div className="relative">
                         {currentConv.other_user?.avatar_url ? (
                           <img src={currentConv.other_user.avatar_url} className="w-7 h-7 rounded-full object-cover" />
                         ) : (
-                          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-medium">
+                          <div className={cn(
+                            'w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium',
+                            isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20',
+                          )}>
                             {currentConv.other_user?.username?.charAt(0).toUpperCase() || '?'}
                           </div>
                         )}
@@ -498,14 +629,37 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                           <span className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full border border-background" />
                         )}
                       </div>
-                      <span className="text-sm font-medium">{currentConv.other_user?.username}</span>
-                      <span className={cn('text-xs', currentConv.other_user?.online ? 'text-green-500' : 'text-muted-foreground')}>
+                      <span className={cn('text-sm font-medium', isDark && 'text-slate-200')}>
+                        {currentConv.other_user?.username}
+                      </span>
+                      <span className={cn(
+                        'text-xs',
+                        currentConv.other_user?.online ? 'text-green-500' : isDark ? 'text-slate-500' : 'text-muted-foreground',
+                      )}>
                         {currentConv.other_user?.online ? '在线' : '离线'}
                       </span>
                     </div>
 
                     {/* 消息列表 */}
                     <ScrollArea className="flex-1 px-4 py-2">
+                      {hasMoreMessages && (
+                        <div className="flex justify-center py-2 mb-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn('text-xs h-6', isDark && 'text-slate-500')}
+                            onClick={loadMoreMessages}
+                            disabled={loadingMore}
+                          >
+                            {loadingMore ? (
+                              <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                            ) : (
+                              <ArrowUp className="w-3 h-3 mr-1" />
+                            )}
+                            加载更早消息
+                          </Button>
+                        </div>
+                      )}
                       {messages.map((msg) => {
                         const isMine = msg.sender_id === user?.id
                         return (
@@ -518,7 +672,10 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                                 {msg.sender_avatar ? (
                                   <img src={msg.sender_avatar} className="w-6 h-6 rounded-full object-cover" />
                                 ) : (
-                                  <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium">
+                                  <div className={cn(
+                                    'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium',
+                                    isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-primary/20',
+                                  )}>
                                     {msg.sender_name?.charAt(0).toUpperCase() || '?'}
                                   </div>
                                 )}
@@ -533,13 +690,19 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
                     {/* 待发送附件预览 */}
                     {pendingAttachments.length > 0 && (
-                      <div className={cn('flex gap-2 px-4 py-2 border-t overflow-x-auto', isDark ? 'border-white/10' : 'border-gray-200')}>
+                      <div className={cn(
+                        'flex gap-2 px-4 py-2 border-t overflow-x-auto',
+                        isDark ? 'border-white/[0.06]' : 'border-gray-200',
+                      )}>
                         {pendingAttachments.map((att, idx) => (
                           <div key={idx} className="relative flex-shrink-0 group">
                             {att.type === 'image' ? (
                               <img src={att.url} className="w-16 h-16 rounded object-cover" />
                             ) : (
-                              <div className="w-16 h-16 rounded flex flex-col items-center justify-center text-xs gap-1 bg-accent">
+                              <div className={cn(
+                                'w-16 h-16 rounded flex flex-col items-center justify-center text-xs gap-1',
+                                isDark ? 'bg-white/[0.06]' : 'bg-accent',
+                              )}>
                                 {renderAttachmentIcon(att.type)}
                                 <span className="truncate max-w-[56px] text-[10px]">{att.name}</span>
                               </div>
@@ -556,7 +719,10 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                     )}
 
                     {/* 输入框 */}
-                    <div className={cn('flex items-center gap-2 px-4 py-2 border-t', isDark ? 'border-white/10' : 'border-gray-200')}>
+                    <div className={cn(
+                      'flex items-center gap-2 px-4 py-2 border-t',
+                      isDark ? 'border-white/[0.06]' : 'border-gray-200',
+                    )}>
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -569,7 +735,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0"
+                          className={cn('h-8 w-8 p-0', isDark && 'text-slate-400 hover:text-slate-200')}
                           onClick={() => setShowAttachMenu(!showAttachMenu)}
                           disabled={uploading}
                         >
@@ -584,7 +750,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                               onClick={() => { fileInputRef.current?.click(); setShowAttachMenu(false) }}
                               className={cn(
                                 'flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors',
-                                isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100',
+                                isDark ? 'hover:bg-white/[0.06] text-slate-300' : 'hover:bg-gray-100',
                               )}
                             >
                               <Paperclip className="w-3.5 h-3.5" /> 上传文件
@@ -593,7 +759,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                               onClick={() => { setShowAssetPicker(true); setShowAttachMenu(false) }}
                               className={cn(
                                 'flex items-center gap-2 w-full px-3 py-2 text-xs transition-colors',
-                                isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100',
+                                isDark ? 'hover:bg-white/[0.06] text-slate-300' : 'hover:bg-gray-100',
                               )}
                             >
                               <FolderOpen className="w-3.5 h-3.5" /> 资产库
@@ -606,7 +772,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
                         placeholder={pendingAttachments.length > 0 ? '添加文字说明（可选）...' : '输入消息...'}
-                        className="h-8 text-sm"
+                        className={cn('h-8 text-sm', isDark && 'bg-white/[0.03] border-white/[0.06] text-slate-300')}
                       />
                       <Button size="sm" onClick={handleSend} disabled={!inputText.trim() && !pendingAttachments.length}>
                         <Send className="w-4 h-4" />
@@ -614,7 +780,10 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                  <div className={cn(
+                    'flex-1 flex items-center justify-center text-sm',
+                    isDark ? 'text-slate-600' : 'text-muted-foreground',
+                  )}>
                     选择一个会话开始聊天
                   </div>
                 )}
@@ -623,29 +792,41 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
           ) : (
             /* 通知 tab */
             <div className="flex-1 flex flex-col">
-              <div className={cn('flex items-center justify-between px-4 py-2 border-b', isDark ? 'border-white/10' : 'border-gray-200')}>
-                <span className="text-sm font-medium">系统通知</span>
+              <div className={cn(
+                'flex items-center justify-between px-4 py-2 border-b',
+                isDark ? 'border-white/[0.06]' : 'border-gray-200',
+              )}>
+                <span className={cn('text-sm font-medium', isDark && 'text-slate-200')}>系统通知</span>
                 {notifUnread > 0 && (
-                  <Button variant="ghost" size="sm" className="text-xs h-auto py-1 px-2" onClick={async () => {
-                    if (!user?.id) return
-                    await markAllAsRead(user.id)
-                    markAllNotifRead()
-                  }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn('text-xs h-auto py-1 px-2', isDark && 'text-slate-400 hover:text-slate-200')}
+                    onClick={async () => {
+                      if (!user?.id) return
+                      await markAllAsRead(user.id)
+                      markAllNotifRead()
+                    }}
+                  >
                     全部已读
                   </Button>
                 )}
               </div>
               <ScrollArea className="flex-1">
                 {notifications.length === 0 ? (
-                  <div className="text-center text-muted-foreground text-sm py-12">暂无通知</div>
+                  <div className={cn('text-center text-sm py-12', isDark ? 'text-slate-600' : 'text-muted-foreground')}>
+                    暂无通知
+                  </div>
                 ) : (
                   notifications.map((n) => (
                     <div
                       key={n.id}
                       className={cn(
                         'px-4 py-3 border-b cursor-pointer transition-colors',
-                        n.status !== 'read' ? (isDark ? 'bg-blue-950/30' : 'bg-blue-50') : '',
-                        isDark ? 'border-white/5' : 'border-gray-100',
+                        n.status !== 'read'
+                          ? isDark ? 'bg-blue-500/[0.06]' : 'bg-blue-50'
+                          : '',
+                        isDark ? 'border-white/[0.04]' : 'border-gray-100',
                       )}
                       onClick={async () => {
                         if (n.status !== 'read') {
@@ -656,9 +837,13 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{n.title}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.content}</p>
-                          <p className="text-[10px] text-muted-foreground mt-1">{formatTime(n.created_at)}</p>
+                          <p className={cn('text-sm font-medium truncate', isDark && 'text-slate-200')}>{n.title}</p>
+                          <p className={cn('text-xs mt-0.5 line-clamp-2', isDark ? 'text-slate-500' : 'text-muted-foreground')}>
+                            {n.content}
+                          </p>
+                          <p className={cn('text-[10px] mt-1', isDark ? 'text-slate-600' : 'text-muted-foreground')}>
+                            {formatTime(n.created_at)}
+                          </p>
                         </div>
                         {n.status !== 'read' && (
                           <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5" />

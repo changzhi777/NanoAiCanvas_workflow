@@ -73,26 +73,28 @@ export async function getUserNotifications(
   params.set('limit', String(pageSize))
   params.set('offset', String((page - 1) * pageSize))
 
-  const items = await client.get<any[]>(
-    `/notifications?${params}`,
-    getToken() || undefined
-  )
+  const data = await client.get<{
+    notifications: any[]
+    total: number
+    unread_count: number
+  }>(`/notifications?${params}`, getToken() || undefined)
+
   return {
-    notifications: items.map(n => ({
+    notifications: (data.notifications || []).map((n: any) => ({
       id: String(n.id),
       sender_id: null,
-      receiver_id: String(n.user_id || ''),
+      receiver_id: String(n.receiver_id || ''),
       team_id: null,
       title: n.title,
-      content: n.message || '',
-      notification_type: (n.type || 'system') as Notification['notification_type'],
-      status: n.is_read ? 'read' : 'delivered',
+      content: n.content || '',
+      notification_type: (n.notification_type || 'system') as Notification['notification_type'],
+      status: (n.status === 'READ' || n.status === 'read') ? 'read' as const : 'delivered' as const,
       created_at: n.created_at,
       delivered_at: null,
       read_at: null,
     })),
-    total: items.length,
-    unread_count: items.filter((n: any) => !n.is_read).length,
+    total: data.total || 0,
+    unread_count: data.unread_count || 0,
   }
 }
 
@@ -121,6 +123,28 @@ export async function markAllAsRead(_userId: string): Promise<{ success: boolean
 }
 
 /**
+ * 删除单条通知
+ */
+export async function deleteNotification(notificationId: string): Promise<{ success: boolean }> {
+  const response = await client.delete<{ success: boolean }>(
+    `/notifications/${notificationId}`,
+    getToken() || undefined
+  )
+  return response
+}
+
+/**
+ * 清空已读通知
+ */
+export async function deleteReadNotifications(): Promise<{ success: boolean; deleted_count: number }> {
+  const response = await client.delete<{ success: boolean; deleted_count: number }>(
+    '/notifications',
+    getToken() || undefined
+  )
+  return response
+}
+
+/**
  * 获取消息发送记录（管理端）
  */
 export async function getNotificationRecords(
@@ -137,15 +161,15 @@ export async function getNotificationRecords(
     `/notifications/records?${params}`,
     getToken() || undefined
   )
-  return records.map(r => ({
+  return records.map((r: any) => ({
     id: String(r.id),
     sender_id: null,
-    receiver_id: String(r.user_id),
+    receiver_id: String(r.receiver_id || ''),
     team_id: null,
     title: r.title,
-    content: r.message || '',
-    notification_type: (r.type || 'system') as Notification['notification_type'],
-    status: r.is_read ? 'read' : 'delivered',
+    content: r.content || '',
+    notification_type: (r.notification_type || 'system') as Notification['notification_type'],
+    status: (r.status === 'READ' || r.status === 'read') ? 'read' as const : 'delivered' as const,
     created_at: r.created_at,
     delivered_at: null,
     read_at: null,

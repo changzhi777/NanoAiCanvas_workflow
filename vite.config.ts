@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import pkg from './package.json'
 
+const BACKEND = 'http://64.118.135.134:8002'
+
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/nanoaicanvas/',
@@ -30,6 +32,58 @@ export default defineConfig({
     host: true,
     open: true,
     proxy: {
+      // base-prefixed proxy rules (browser requests /nanoaicanvas/api/...)
+      '/nanoaicanvas/api/wuyinkeji': {
+        target: 'https://api.wuyinkeji.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas\/api\/wuyinkeji/, '/api'),
+        secure: true,
+      },
+      '/nanoaicanvas/v2/': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+      '/nanoaicanvas/ws/': {
+        target: BACKEND,
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+      '/nanoaicanvas/asset-uploads/': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+      '/nanoaicanvas/chat-uploads/': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+      '/nanoaicanvas/api': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+      '/nanoaicanvas/auth': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas\/auth/, '/api/auth'),
+        secure: false,
+      },
+      '/nanoaicanvas/health': {
+        target: BACKEND,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        secure: false,
+      },
+
+      // direct /api rules (fallback for non-base requests)
       '/api/wuyinkeji': {
         target: 'https://api.wuyinkeji.com',
         changeOrigin: true,
@@ -37,31 +91,30 @@ export default defineConfig({
         secure: true,
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes) => {
-            // 禁用缓存，确保轮询获取最新状态
             proxyRes.headers['cache-control'] = 'no-cache, no-store, must-revalidate'
             proxyRes.headers['pragma'] = 'no-cache'
             proxyRes.headers['expires'] = '0'
           })
         },
       },
-      '/api/v2/admin': {
-        target: 'http://64.118.135.134:8002',
-        changeOrigin: true,
-        secure: false,
-      },
       '/api': {
-        target: 'http://64.118.135.134:8002',
+        target: BACKEND,
         changeOrigin: true,
         secure: false,
       },
-      '/prompt-restrictions': {
-        target: 'http://64.118.135.134:8002/api',
+      '/v2/': {
+        target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/prompt-restrictions/, '/prompt-restrictions'),
+        secure: false,
+      },
+      '/ws/': {
+        target: BACKEND,
+        changeOrigin: true,
+        ws: true,
         secure: false,
       },
       '/auth': {
-        target: 'http://64.118.135.134:8002',
+        target: BACKEND,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/auth/, '/api/auth'),
         secure: false,
@@ -74,27 +127,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // React 核心
           if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
             return 'react-vendor'
           }
-          // Redux 状态管理
           if (id.includes('node_modules/@reduxjs/') || id.includes('node_modules/react-redux/')) {
             return 'redux-vendor'
           }
-          // React Flow 画布核心
           if (id.includes('node_modules/reactflow/')) {
             return 'reactflow-vendor'
           }
-          // Radix UI 组件库（按需分割）
           if (id.includes('node_modules/@radix-ui/')) {
             return 'ui-vendor'
           }
-          // Lucide 图标库
           if (id.includes('node_modules/lucide-react/')) {
             return 'icons-vendor'
           }
-          // i18next 国际化
           if (id.includes('node_modules/i18next/') || id.includes('node_modules/react-i18next/')) {
             return 'i18n-vendor'
           }

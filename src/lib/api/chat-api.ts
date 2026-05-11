@@ -77,6 +77,10 @@ export async function createConversation(userId: string): Promise<{ id: string; 
   return client.post<{ id: string; type: string }>('/chat/conversations', { user_id: userId }, getToken() || undefined)
 }
 
+export async function deleteConversation(convId: string): Promise<{ success: boolean }> {
+  return client.delete<{ success: boolean }>(`/chat/conversations/${convId}`, getToken() || undefined)
+}
+
 export async function getMessages(
   convId: string,
   limit = 50,
@@ -144,5 +148,6 @@ export function getChatWsUrl(userId: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
   const token = typeof window !== 'undefined' ? localStorage.getItem('nanoai_token') : ''
-  return `${protocol}//${host}/api/chat/ws/${userId}?token=${token}`
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '')
+  return `${protocol}//${host}${base}/api/chat/ws/${userId}?token=${token}`
 }

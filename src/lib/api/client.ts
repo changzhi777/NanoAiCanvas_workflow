@@ -365,6 +365,24 @@ export const assets = {
   batchDelete: (ids: string[], token: string) =>
     request<{ deleted_count: number }>('/assets/batch_delete', { method: 'POST', body: JSON.stringify({ ids }), token }),
 
+  listTeamAssets: (teamId: string, token: string, params?: { page?: number; page_size?: number; type_filter?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.page) sp.set('page', String(params.page));
+    if (params?.page_size) sp.set('page_size', String(params.page_size));
+    if (params?.type_filter) sp.set('type_filter', params.type_filter);
+    const q = sp.toString();
+    return request<{ items: Asset[]; total: number; page: number; page_size: number }>(
+      `/assets/team/${teamId}${q ? `?${q}` : ''}`,
+      { token }
+    );
+  },
+
+  shareToTeam: (assetId: string, teamId: string, token: string) =>
+    request<{ success: boolean }>(`/assets/${assetId}/share`, { method: 'POST', body: JSON.stringify({ team_id: teamId }), token }),
+
+  removeFromTeam: (assetId: string, teamId: string, token: string) =>
+    request<{ success: boolean }>(`/assets/${assetId}/team/${teamId}`, { method: 'DELETE', token }),
+
   batchUpdate: (ids: string[], data: { category?: string; tags?: string[] }, token: string) =>
     request<{ updated_count: number }>('/assets/batch_update', { method: 'POST', body: JSON.stringify({ ids, ...data }), token }),
 

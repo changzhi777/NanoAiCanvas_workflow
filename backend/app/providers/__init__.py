@@ -5,6 +5,7 @@ Provider 工厂类
 from typing import Dict, Any
 from .base import BaseImageProvider
 from .wuyinkeji import WuyinkejiProvider
+from .caohua_jimeng import CaohuaJimengProvider
 
 
 class ProviderFactory:
@@ -12,9 +13,7 @@ class ProviderFactory:
 
     _providers = {
         "wuyinkeji": WuyinkejiProvider,
-        # 可以扩展更多 provider
-        # "minimax": MinimaxProvider,
-        # "glm": GlmProvider,
+        "caohua_jimeng": CaohuaJimengProvider,
     }
 
     @classmethod

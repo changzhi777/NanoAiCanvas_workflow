@@ -34,6 +34,7 @@ interface ChatState {
   updateOnlineStatus: (userId: string, online: boolean) => void
   updateConvLastMessage: (convId: string, msg: ChatMessage) => void
   decrementUnread: (convId: string) => void
+  removeConversation: (convId: string) => void
   reset: () => void
 }
 
@@ -97,6 +98,15 @@ export const useChatStore = create<ChatState>((set) => ({
     return {
       conversations: s.conversations.map(c => c.id === convId ? { ...c, unread_count: 0 } : c),
       totalUnread: Math.max(0, s.totalUnread - conv.unread_count),
+    }
+  }),
+
+  removeConversation: (convId) => set((s) => {
+    const conv = s.conversations.find(c => c.id === convId)
+    return {
+      conversations: s.conversations.filter(c => c.id !== convId),
+      totalUnread: Math.max(0, s.totalUnread - (conv?.unread_count || 0)),
+      currentConvId: s.currentConvId === convId ? null : s.currentConvId,
     }
   }),
 
