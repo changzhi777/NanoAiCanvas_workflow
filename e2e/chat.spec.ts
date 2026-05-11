@@ -9,13 +9,12 @@ const MOCK_USER = {
 }
 const MOCK_TOKEN = 'e2e-test-token'
 
-// API 请求实际路径: client.get('/chat/conversations') → /chat/conversations (无 /api 前缀)
 const CHAT_API = {
-  conversations: '**/chat/conversations',
-  users: '**/chat/users',
-  onlineUsers: '**/chat/online-users',
-  convMessages: (id: string) => `**/chat/conversations/${id}/messages**`,
-  convRead: (id: string) => `**/chat/conversations/${id}/read`,
+  conversations: '**/api/chat/conversations',
+  users: '**/api/chat/users',
+  onlineUsers: '**/api/chat/online-users',
+  convMessages: (id: string) => `**/api/chat/conversations/${id}/messages**`,
+  convRead: (id: string) => `**/api/chat/conversations/${id}/read`,
 }
 
 async function mockLogin(page: import('@playwright/test').Page) {

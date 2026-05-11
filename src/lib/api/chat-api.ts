@@ -70,15 +70,15 @@ export interface ChatMessage {
 // ============ REST ============
 
 export async function getConversations(): Promise<ConversationInfo[]> {
-  return client.get<ConversationInfo[]>('/chat/conversations', getToken() || undefined)
+  return client.get<ConversationInfo[]>('/api/chat/conversations', getToken() || undefined)
 }
 
 export async function createConversation(userId: string): Promise<{ id: string; type: string }> {
-  return client.post<{ id: string; type: string }>('/chat/conversations', { user_id: userId }, getToken() || undefined)
+  return client.post<{ id: string; type: string }>('/api/chat/conversations', { user_id: userId }, getToken() || undefined)
 }
 
 export async function deleteConversation(convId: string): Promise<{ success: boolean }> {
-  return client.delete<{ success: boolean }>(`/chat/conversations/${convId}`, getToken() || undefined)
+  return client.delete<{ success: boolean }>(`/api/chat/conversations/${convId}`, getToken() || undefined)
 }
 
 export async function getMessages(
@@ -90,25 +90,25 @@ export async function getMessages(
   params.set('limit', String(limit))
   if (before) params.set('before', before)
   return client.get<ChatMessage[]>(
-    `/chat/conversations/${convId}/messages?${params}`,
+    `/api/chat/conversations/${convId}/messages?${params}`,
     getToken() || undefined,
   )
 }
 
 export async function markConversationRead(convId: string): Promise<{ success: boolean }> {
   return client.post<{ success: boolean }>(
-    `/chat/conversations/${convId}/read`,
+    `/api/chat/conversations/${convId}/read`,
     undefined,
     getToken() || undefined,
   )
 }
 
 export async function getChatUsers(): Promise<{ users: ChatUser[] }> {
-  return client.get<{ users: ChatUser[] }>('/chat/users', getToken() || undefined)
+  return client.get<{ users: ChatUser[] }>('/api/chat/users', getToken() || undefined)
 }
 
 export async function getOnlineUsers(): Promise<{ user_ids: string[] }> {
-  return client.get<{ user_ids: string[] }>('/chat/online-users', getToken() || undefined)
+  return client.get<{ user_ids: string[] }>('/api/chat/online-users', getToken() || undefined)
 }
 
 export async function uploadChatFile(file: File): Promise<Attachment> {
@@ -136,7 +136,7 @@ export async function saveAttachmentToAssets(data: {
   thumbnail_url?: string | null
 }): Promise<{ asset_id: string; success: boolean }> {
   return client.post<{ asset_id: string; success: boolean }>(
-    '/chat/save-attachment',
+    '/api/chat/save-attachment',
     data,
     getToken() || undefined,
   )
