@@ -102,11 +102,11 @@ async def auto_deduct(
 
     tx = PointsTransaction(
         account_id=account.id,
-        transaction_type=TransactionType.DEDUCT,
+        transaction_type="deduct",
         amount=amount,
         balance_before=balance_before,
         balance_after=account.balance,
-        status=TransactionStatus.SUCCESS,
+        status="success",
         description=description or (f"[免费] {node_type}" if amount == 0 else f"AI任务扣费 ({node_type})"),
         related_order_id=related_order_id,
         meta_data=str(metadata) if metadata else None,

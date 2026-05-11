@@ -132,11 +132,11 @@ async def execute_recharge(
 
     transaction = PointsTransaction(
         account_id=account.id,
-        transaction_type=TransactionType.GRANT,
+        transaction_type="grant",
         amount=amount,
         balance_before=balance_before,
         balance_after=balance_after,
-        status=TransactionStatus.SUCCESS,
+        status="success",
         description=description
     )
     db.add(transaction)

@@ -661,6 +661,12 @@ interface WorkflowState {
   setEdges: (edges: WorkflowEdge[]) => void;
 }
 
+const FREE_NODE_TYPES = new Set([
+  'input_text', 'input_image', 'milestone', 'transition',
+  'image_preview', 'video_preview', 'audio_preview', 'text_preview',
+  'output_preview', 'output_node', 'output_export',
+]);
+
 export const useNanoaiWorkflowStore = create<WorkflowState>()(
   persist(
     (set, get) => ({
@@ -842,11 +848,30 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         const node = nodes.find(n => n.id === nodeId);
         if (!node) return;
 
+        const nodeType = node.type;
+        const needsBilling = !FREE_NODE_TYPES.has(nodeType);
+
+        // 积分前置校验
+        if (needsBilling) {
+          try {
+            const { pointsApi } = await import('@/lib/api/points-api');
+            const check = await pointsApi.checkBalance(nodeType);
+            if (!check.sufficient && check.required > 0) {
+              updateNode(nodeId, {
+                status: NodeStatus.ERROR,
+                error: `积分不足: 需要 ${check.required}，当前余额 ${check.balance}`,
+              });
+              return;
+            }
+          } catch {
+            // 校验失败不阻断（未登录等场景）
+          }
+        }
+
         // 更新节点状态为运行中
         updateNode(nodeId, { status: NodeStatus.RUNNING });
 
         try {
-          const nodeType = node.type;
           let result: any = { message: '执行成功' };
 
           // 根据节点类型执行不同逻辑
@@ -1198,6 +1223,17 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
           // 被中止的节点跳过结果更新（stopExecution 已统一重置状态）
           if (!get()._globalAbortController?.signal.aborted) {
+            // 积分扣费（节点成功完成后）
+            if (needsBilling) {
+              try {
+                const { pointsApi } = await import('@/lib/api/points-api');
+                await pointsApi.deductByModel(nodeType, undefined, nodeId);
+              } catch (e: any) {
+                // 扣费失败不阻断结果展示，仅记录
+                console.warn(`[Points] deduct failed for ${nodeType}:`, e.message);
+              }
+            }
+
             updateNode(nodeId, {
               status: NodeStatus.SUCCESS,
               result,

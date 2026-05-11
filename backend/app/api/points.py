@@ -131,11 +131,11 @@ async def execute_transaction(
 
     transaction = PointsTransaction(
         account_id=account.id,
-        transaction_type=transaction_type,
+        transaction_type=transaction_type.value if hasattr(transaction_type, 'value') else transaction_type,
         amount=amount,
         balance_before=balance_before,
         balance_after=balance_after,
-        status=TransactionStatus.SUCCESS,
+        status="success",
         description=description,
         related_order_id=related_order_id,
         meta_data=str(metadata) if metadata else None

@@ -52,11 +52,11 @@ class PointsTransaction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     account_id = Column(Integer, ForeignKey("points_accounts.id"), nullable=False, index=True)
-    transaction_type = Column(SQLEnum(TransactionType), nullable=False)
+    transaction_type = Column(String(32), nullable=False)
     amount = Column(Integer, nullable=False)  # 正数表示增加，负数表示扣减
     balance_before = Column(Integer, nullable=False)  # 交易前余额
     balance_after = Column(Integer, nullable=False)  # 交易后余额
-    status = Column(SQLEnum(TransactionStatus), default=TransactionStatus.PENDING)
+    status = Column(String(32), default="pending")
     description = Column(Text, nullable=True)  # 交易描述
     related_order_id = Column(String(64), nullable=True, index=True)  # 关联订单ID
     meta_data = Column(Text, nullable=True)  # 扩展数据JSON
