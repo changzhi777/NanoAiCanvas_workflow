@@ -86,7 +86,7 @@ async def approve_user(
     except Exception:
         pass
 
-    # Grant initial 500 points
+    # Grant initial 500 points (独立事务，不影响审批状态)
     try:
         from app.api.points import get_or_create_user_account, execute_transaction
         from app.models import TransactionType
@@ -99,8 +99,8 @@ async def approve_user(
             description="New user registration bonus",
         )
     except Exception as e:
-        await db.rollback()
-        print(f"Failed to grant initial points for approved user: {e}")
+        import logging
+        logging.getLogger(__name__).error(f"Failed to grant initial points for user {user.id}: {e}")
 
     return ApproveResponse(
         id=user.id,

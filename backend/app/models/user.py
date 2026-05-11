@@ -30,7 +30,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
-    status = Column(String(20), default=UserStatus.APPROVED, nullable=False)
+    status = Column(String(20), default=UserStatus.PENDING, nullable=False)
     role = Column(String(20), default=UserRole.USER, nullable=False)
     avatar_url = Column(Text, nullable=True)
     reset_token = Column(String(255), nullable=True)

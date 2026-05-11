@@ -182,9 +182,8 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
     } else if (err.status === 429) {
       toast.error('登录尝试过多，账号已被临时锁定，请稍后再试');
     } else if (err.status === 403) {
-      const detail = err.message || '';
-      let statusKey = 'pending';
-      if (detail.includes('reject') || detail.includes('拒绝')) statusKey = 'rejected';
+      const detail = (err.message || '').toLowerCase();
+      const statusKey = detail.includes('reject') ? 'rejected' : 'pending';
       const statusMsg = STATUS_ERROR_MESSAGES[statusKey];
       toast.error(`${statusMsg.title}：${statusMsg.description}`);
     } else if (err.status === 401) {

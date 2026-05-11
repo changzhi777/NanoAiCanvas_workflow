@@ -663,23 +663,23 @@ export interface PendingUser {
 }
 
 export async function listPendingUsers(): Promise<PendingUser[]> {
-  const response = await client.get<PendingUser[]>('/admin/users/pending')
+  const response = await client.get<PendingUser[]>('/api/admin/users/pending')
   return response
 }
 
 export async function listAllUsers(statusFilter?: string): Promise<PendingUser[]> {
-  const url = statusFilter ? `/admin/users/all?status_filter=${statusFilter}` : '/admin/users/all'
+  const url = statusFilter ? `/api/admin/users/all?status_filter=${statusFilter}` : '/api/admin/users/all'
   const response = await client.get<PendingUser[]>(url)
   return response
 }
 
 export async function approveUser(userId: string): Promise<PendingUser> {
-  const response = await client.post<PendingUser>(`/admin/users/${userId}/approve`, {})
+  const response = await client.post<PendingUser>(`/api/admin/users/${userId}/approve`, {})
   return response
 }
 
 export async function rejectUser(userId: string): Promise<PendingUser> {
-  const response = await client.post<PendingUser>(`/admin/users/${userId}/reject`, {})
+  const response = await client.post<PendingUser>(`/api/admin/users/${userId}/reject`, {})
   return response
 }
 

@@ -374,11 +374,11 @@ async def get_transaction_history(
     return [
         TransactionResponse(
             id=t.id,
-            transaction_type=t.transaction_type.value,
+            transaction_type=t.transaction_type if isinstance(t.transaction_type, str) else t.transaction_type.value,
             amount=t.amount,
             balance_before=t.balance_before,
             balance_after=t.balance_after,
-            status=t.status.value,
+            status=t.status if isinstance(t.status, str) else t.status.value,
             description=t.description,
             related_order_id=t.related_order_id,
             created_at=t.created_at.isoformat() if t.created_at else ""
