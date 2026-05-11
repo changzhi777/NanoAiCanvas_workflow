@@ -91,7 +91,7 @@ class TeamMember(Base):
     __tablename__ = "team_members"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     role = Column(String(32), default="member")  # owner, admin, member
     can_edit = Column(Boolean, default=False)  # 是否可编辑团队资产
@@ -107,7 +107,7 @@ class TeamAsset(Base):
     __tablename__ = "team_assets"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
     asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
     added_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

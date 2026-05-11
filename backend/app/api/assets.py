@@ -348,7 +348,7 @@ async def batch_update(
 
 @router.get("/team/{team_id}")
 async def list_team_assets(
-    team_id: UUID,
+    team_id: int,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     type_filter: Optional[str] = None,
@@ -386,7 +386,7 @@ async def list_team_assets(
 
 
 class ShareRequest(BaseModel):
-    team_id: str
+    team_id: int
 
 
 @router.post("/{asset_id}/share")
@@ -396,9 +396,7 @@ async def share_asset_to_team(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    team_id = _safe_uuid(data.team_id)
-    if not team_id:
-        raise HTTPException(status_code=400, detail="Invalid team_id")
+    team_id = data.team_id
 
     # verify ownership
     asset = await db.execute(
@@ -429,7 +427,7 @@ async def share_asset_to_team(
 @router.delete("/{asset_id}/team/{team_id}")
 async def remove_asset_from_team(
     asset_id: UUID,
-    team_id: UUID,
+    team_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
