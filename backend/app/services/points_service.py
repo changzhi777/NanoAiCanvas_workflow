@@ -42,11 +42,11 @@ def node_type_to_model_type(node_type: str) -> str:
     mapping = {
         # image
         "nano_banana_2": "image", "nano_banana_pro": "image", "gpt_image_2": "image",
-        "minimax_image": "image", "jimeng_image": "image",
+        "minimax_image": "image", "jimeng_image": "jimeng_image",
         "character_designer": "image", "scene_designer": "image",
         "storyboard_generator": "image",
         # video
-        "minimax_video": "video", "jimeng_video": "video", "glm_video": "video",
+        "minimax_video": "video", "jimeng_video": "jimeng_video", "glm_video": "video",
         # audio
         "minimax_speech": "audio", "minimax_music": "audio", "glm_tts": "audio",
         "background_music": "audio",

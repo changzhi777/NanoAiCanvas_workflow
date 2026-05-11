@@ -148,7 +148,7 @@ function AppContent() {
     const handlePopState = () => {
       const path = window.location.pathname
       if (path === '/nano2') {
-        setCurrentPage('admin-mqtt')
+        setCurrentPage('nano2')
       } else if (path === '/canvas') {
         setCurrentPage('canvas')
       } else if (path.startsWith('/nanoaicanvas/admin/mqtt')) {
