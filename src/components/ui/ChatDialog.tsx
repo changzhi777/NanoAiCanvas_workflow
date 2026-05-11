@@ -502,7 +502,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
               )}
             >
               <MessageSquare className="w-4 h-4" />
-              聊天
+              交流
               {totalUnread > 0 && (
                 <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                   {totalUnread > 99 ? '99+' : totalUnread}
@@ -808,7 +808,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
                     'flex-1 flex items-center justify-center text-sm',
                     isDark ? 'text-slate-600' : 'text-muted-foreground',
                   )}>
-                    选择一个会话开始聊天
+                    选择一个会话开始交流
                   </div>
                 )}
               </div>

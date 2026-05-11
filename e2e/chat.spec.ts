@@ -81,18 +81,18 @@ test.describe('对话功能 - ChatDialog 基础', () => {
 
   test('点击消息按钮打开对话框', async ({ page }) => {
     await openChatDialog(page)
-    await expect(page.locator('button:has-text("聊天")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('button:has-text("交流")')).toBeVisible({ timeout: 5000 })
   })
 
-  test('对话框包含聊天和通知两个 tab', async ({ page }) => {
+  test('对话框包含交流和通知两个 tab', async ({ page }) => {
     await openChatDialog(page)
-    await expect(page.locator('button:has-text("聊天")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('button:has-text("交流")')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('button:has-text("通知")')).toBeVisible({ timeout: 5000 })
   })
 
-  test('默认选中聊天 tab', async ({ page }) => {
+  test('默认选中交流 tab', async ({ page }) => {
     await openChatDialog(page)
-    const chatTab = page.locator('button:has-text("聊天")')
+    const chatTab = page.locator('button:has-text("交流")')
     const classes = await chatTab.getAttribute('class')
     expect(classes).toMatch(/bg-(blue-500|primary)/)
   })
@@ -106,7 +106,7 @@ test.describe('对话功能 - ChatDialog 基础', () => {
 
   test('按 Escape 关闭对话框', async ({ page }) => {
     await openChatDialog(page)
-    await expect(page.locator('button:has-text("聊天")')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('button:has-text("交流")')).toBeVisible({ timeout: 5000 })
     await page.keyboard.press('Escape')
     await page.waitForTimeout(500)
     await expect(page.locator('text=发起新对话')).toBeHidden({ timeout: 3000 })
@@ -268,7 +268,7 @@ test.describe('对话功能 - 会话列表', () => {
     await expect(greenDot).toBeVisible({ timeout: 5000 })
   })
 
-  test('点击会话进入聊天窗口', async ({ page }) => {
+  test('点击会话进入交流窗口', async ({ page }) => {
     await page.route(CHAT_API.convMessages('conv-1'), async (route) => {
       await route.fulfill({
         status: 200,
@@ -355,7 +355,7 @@ test.describe('对话功能 - 消息发送', () => {
   })
 
   test('未选中会话时显示占位提示', async ({ page }) => {
-    await expect(page.locator('text=选择一个会话开始聊天')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('text=选择一个会话开始交流')).toBeVisible({ timeout: 5000 })
   })
 
   test('选中会话后输入框可见', async ({ page }) => {
