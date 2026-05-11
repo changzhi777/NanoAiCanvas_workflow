@@ -17,6 +17,7 @@ from app.api.v2 import admin as v2_admin
 from app.api.v2 import glm_proxy as v2_glm
 from app.api.v2 import app_visibility as v2_app_visibility
 from app.services.skills_worker import WorkerManager
+from app.services.health_checker import run_health_check, mark_stale_keys
 
 settings = get_settings()
 
@@ -30,8 +31,15 @@ async def lifespan(app: FastAPI):
     await chat.manager.start_subscriber()
     print("✅ Chat Redis subscriber started")
 
+    import asyncio
+    health_task = asyncio.create_task(run_health_check())
+    stale_task = asyncio.create_task(mark_stale_keys())
+    print("✅ API Key health checker started")
+
     yield
 
+    health_task.cancel()
+    stale_task.cancel()
     await chat.manager.stop_subscriber()
     print("👋 Chat Redis subscriber stopped")
     print("👋 Stopping Skills Workers...")

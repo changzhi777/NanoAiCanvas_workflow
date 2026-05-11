@@ -121,6 +121,10 @@ class APIKeyOut(BaseModel):
     last_used_at: Optional[datetime] = None
     last_test_at: Optional[datetime] = None
     last_test_success: Optional[bool] = None
+    last_heartbeat_at: Optional[datetime] = None
+    health_status: str = "unknown"
+    last_response_ms: Optional[int] = None
+    last_error: Optional[str] = None
     key_preview: str = ""
     created_at: Optional[datetime] = None
 
@@ -192,6 +196,10 @@ def _apikey_to_out(k: APIKey) -> dict:
         "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
         "last_test_at": k.last_test_at.isoformat() if k.last_test_at else None,
         "last_test_success": k.last_test_success,
+        "last_heartbeat_at": k.last_heartbeat_at.isoformat() if k.last_heartbeat_at else None,
+        "health_status": k.health_status or "unknown",
+        "last_response_ms": k.last_response_ms,
+        "last_error": k.last_error,
         "key_preview": preview,
         "created_at": k.created_at.isoformat() if k.created_at else None,
     }
@@ -413,14 +421,63 @@ async def test_api_key(key_id: int, admin: User = Depends(require_admin), db: As
         error_msg = str(e)[:200]
 
     elapsed_ms = int((time.time() - start) * 1000)
-    k.last_test_at = datetime.utcnow()
+    now = datetime.utcnow()
+    k.last_test_at = now
     k.last_test_success = success
+    k.last_response_ms = elapsed_ms
+    k.last_error = error_msg
+    k.last_heartbeat_at = now
+    if success:
+        k.health_status = "healthy"
+    elif error_msg and "timeout" in error_msg.lower():
+        k.health_status = "degraded"
+    else:
+        k.health_status = "down"
     await db.commit()
 
     return {
         "is_success": success,
         "response_time_ms": elapsed_ms,
         "error_message": error_msg,
+        "health_status": k.health_status,
+        "tested_at": now.isoformat(),
+    }
+
+
+@router.post("/api-keys/{key_id}/heartbeat")
+async def heartbeat_api_key(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    k = await db.get(APIKey, key_id)
+    if not k:
+        raise HTTPException(404, "密钥不存在")
+    k.last_heartbeat_at = datetime.utcnow()
+    if k.health_status == "unknown":
+        k.health_status = "healthy"
+    await db.commit()
+    return {"ok": True, "last_heartbeat_at": k.last_heartbeat_at.isoformat()}
+
+
+@router.get("/api-keys/health-summary")
+async def health_summary(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    stmt = select(
+        APIKey.health_status,
+        func.count().label("count"),
+    ).group_by(APIKey.health_status)
+    result = await db.execute(stmt)
+    counts = {r[0] or "unknown": r[1] for r in result.all()}
+
+    total_stmt = select(func.count()).select_from(APIKey)
+    total = (await db.execute(total_stmt)).scalar() or 0
+
+    active_stmt = select(func.count()).where(APIKey.status == "active")
+    active = (await db.execute(active_stmt)).scalar() or 0
+
+    return {
+        "total": total,
+        "active": active,
+        "healthy": counts.get("healthy", 0),
+        "degraded": counts.get("degraded", 0),
+        "down": counts.get("down", 0),
+        "unknown": counts.get("unknown", 0),
     }
 
 

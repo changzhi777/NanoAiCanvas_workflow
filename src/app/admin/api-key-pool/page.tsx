@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Search, Key, Copy, Trash2, RefreshCw, TestTube2, Loader2 } from 'lucide-react'
+import { Plus, Search, Key, Copy, Trash2, RefreshCw, TestTube2, Loader2, Heart, Activity } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import {
   getAPIKeys,
@@ -16,22 +16,62 @@ import {
   deleteAPIKey,
   updateAPIKey,
   testAPIKey,
+  heartbeatAPIKey,
+  getHealthSummary,
   getProviders,
   type APIKey,
   type APIKeyCreate,
   type Provider,
 } from '@/lib/api/admin-api'
 
+type HealthSummary = {
+  total: number
+  active: number
+  healthy: number
+  degraded: number
+  down: number
+  unknown: number
+}
+
+const HEALTH_DOT: Record<string, { color: string; label: string }> = {
+  healthy: { color: 'bg-green-500', label: '健康' },
+  degraded: { color: 'bg-yellow-500', label: '降级' },
+  down: { color: 'bg-red-500', label: '离线' },
+  unknown: { color: 'bg-gray-400', label: '未知' },
+}
+
+function formatTime(iso: string | null): string {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  if (diffMs < 60000) return '刚刚'
+  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}分钟前`
+  if (diffMs < 86400000) return `${Math.floor(diffMs / 3600000)}小时前`
+  return d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ApiKeyPoolPage() {
   const { toast } = useToast()
   const [keys, setKeys] = useState<APIKey[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
+  const [health, setHealth] = useState<HealthSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [testResult, setTestResult] = useState<{
+    keyId: number
+    keyName: string
+    result: {
+      is_success: boolean
+      response_time_ms: number
+      error_message?: string
+      health_status: string
+      tested_at: string
+    }
+  } | null>(null)
 
-  // 新增表单
   const [newKey, setNewKey] = useState<Partial<APIKeyCreate>>({
     provider_id: 0,
     name: '',
@@ -40,20 +80,25 @@ export default function ApiKeyPoolPage() {
     priority: 0,
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [keyList, providerList] = await Promise.all([getAPIKeys(), getProviders()])
+      const [keyList, providerList, healthData] = await Promise.all([
+        getAPIKeys(),
+        getProviders(),
+        getHealthSummary().catch(() => null),
+      ])
       setKeys(keyList)
       setProviders(providerList)
+      setHealth(healthData)
     } catch {
       toast.error('加载数据失败')
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [loadData])
 
   const handleAdd = async () => {
     if (!newKey.provider_id || !newKey.name || !newKey.api_key) {
@@ -92,20 +137,31 @@ export default function ApiKeyPoolPage() {
     }
   }
 
-  const handleTest = async (id: number) => {
+  const handleTest = async (id: number, name: string) => {
     setActionLoading(id)
     try {
       const result = await testAPIKey(id)
       if (result.is_success) {
-        toast.success(`测试通过 (${result.response_time_ms}ms)`)
+        toast.success(`${name} 测试通过 (${result.response_time_ms}ms)`)
       } else {
-        toast.error(`测试失败: ${result.error_message || '未知错误'}`)
+        toast.error(`${name} 测试失败: ${result.error_message || '未知错误'}`)
       }
+      setTestResult({ keyId: id, keyName: name, result })
       loadData()
     } catch {
       toast.error('测试请求失败')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const handleHeartbeat = async (id: number) => {
+    try {
+      await heartbeatAPIKey(id)
+      toast.success('心跳已发送')
+      loadData()
+    } catch {
+      toast.error('心跳发送失败')
     }
   }
 
@@ -133,6 +189,29 @@ export default function ApiKeyPoolPage() {
           </Button>
         }
       />
+
+      {/* 健康概览 */}
+      {health && (
+        <div className="grid grid-cols-5 gap-3">
+          {[
+            { label: '总计', value: health.total, icon: Key, color: 'text-foreground' },
+            { label: '健康', value: health.healthy, icon: Activity, color: 'text-green-500' },
+            { label: '降级', value: health.degraded, icon: Activity, color: 'text-yellow-500' },
+            { label: '离线', value: health.down, icon: Activity, color: 'text-red-500' },
+            { label: '未知', value: health.unknown, icon: Activity, color: 'text-gray-400' },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <Card key={label} className="py-3">
+              <CardContent className="flex items-center gap-3 px-4 py-0">
+                <Icon className={`w-5 h-5 ${color}`} />
+                <div>
+                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div className="relative flex-1 max-w-md">
@@ -166,59 +245,84 @@ export default function ApiKeyPoolPage() {
                   <TableHead>名称</TableHead>
                   <TableHead>渠道商</TableHead>
                   <TableHead>Key 预览</TableHead>
+                  <TableHead>健康</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>优先级</TableHead>
                   <TableHead>今日用量</TableHead>
-                  <TableHead>总用量</TableHead>
+                  <TableHead>最近测试</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((key) => (
-                  <TableRow key={key.id}>
-                    <TableCell className="font-medium">{key.name}</TableCell>
-                    <TableCell>{getProviderName(key.provider_id)}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{key.key_preview || '***'}</code>
-                    </TableCell>
-                    <TableCell>
-                      <button onClick={() => handleToggleStatus(key)}>
-                        <Badge variant={key.status === 'active' ? 'default' : 'secondary'} className="cursor-pointer">
-                          {key.status === 'active' ? '启用' : '禁用'}
-                        </Badge>
-                      </button>
-                    </TableCell>
-                    <TableCell className="text-sm">{key.priority}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full",
-                              key.daily_limit > 0 && key.used_today / key.daily_limit > 0.8 ? "bg-red-500" : "bg-primary",
-                            )}
-                            style={{ width: `${key.daily_limit > 0 ? Math.min(100, (key.used_today / key.daily_limit) * 100) : 0}%` }}
-                          />
+                {filtered.map((key) => {
+                  const h = HEALTH_DOT[key.health_status] || HEALTH_DOT.unknown
+                  return (
+                    <TableRow key={key.id}>
+                      <TableCell className="font-medium">{key.name}</TableCell>
+                      <TableCell>{getProviderName(key.provider_id)}</TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">{key.key_preview || '***'}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5" title={h.label}>
+                          <span className={`inline-block w-2.5 h-2.5 rounded-full ${h.color}`} />
+                          <span className="text-xs text-muted-foreground">{h.label}</span>
+                          {key.last_response_ms != null && (
+                            <span className="text-xs text-muted-foreground">({key.last_response_ms}ms)</span>
+                          )}
                         </div>
-                        <span className="text-xs text-muted-foreground">{key.used_today}/{key.daily_limit || '∞'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{key.total_used}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleCopy(key.key_preview || '')} title="复制">
-                          <Copy className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleTest(key.id)} disabled={actionLoading === key.id} title="测试">
-                          {actionLoading === key.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TestTube2 className="w-3.5 h-3.5" />}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(key.id)} title="删除">
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell>
+                        <button onClick={() => handleToggleStatus(key)}>
+                          <Badge variant={key.status === 'active' ? 'default' : 'secondary'} className="cursor-pointer">
+                            {key.status === 'active' ? '启用' : '禁用'}
+                          </Badge>
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-sm">{key.priority}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full rounded-full",
+                                key.daily_limit > 0 && key.used_today / key.daily_limit > 0.8 ? "bg-red-500" : "bg-primary",
+                              )}
+                              style={{ width: `${key.daily_limit > 0 ? Math.min(100, (key.used_today / key.daily_limit) * 100) : 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">{key.used_today}/{key.daily_limit || '∞'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-xs text-muted-foreground">
+                          {formatTime(key.last_test_at)}
+                          {key.last_test_at && (
+                            <span className={key.last_test_success ? 'text-green-500 ml-1' : 'text-red-500 ml-1'}>
+                              {key.last_test_success ? '✓' : '✗'}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleCopy(key.key_preview || '')} title="复制">
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleTest(key.id, key.name)} disabled={actionLoading === key.id} title="测试">
+                            {actionLoading === key.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TestTube2 className="w-3.5 h-3.5" />}
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleHeartbeat(key.id)} title="心跳保活">
+                            <Heart className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(key.id)} title="删除">
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}
@@ -268,6 +372,49 @@ export default function ApiKeyPoolPage() {
               <Button onClick={handleAdd}>添加</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 测试结果弹窗 */}
+      <Dialog open={!!testResult} onOpenChange={() => setTestResult(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TestTube2 className="w-5 h-5" />
+              测试结果 — {testResult?.keyName}
+            </DialogTitle>
+          </DialogHeader>
+          {testResult && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">状态</span>
+                <Badge variant={testResult.result.is_success ? 'default' : 'destructive'}>
+                  {testResult.result.is_success ? '通过' : '失败'}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">健康状态</span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-block w-2.5 h-2.5 rounded-full ${(HEALTH_DOT[testResult.result.health_status] || HEALTH_DOT.unknown).color}`} />
+                  <span className="text-sm">{(HEALTH_DOT[testResult.result.health_status] || HEALTH_DOT.unknown).label}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">响应时间</span>
+                <span className="text-sm font-mono">{testResult.result.response_time_ms}ms</span>
+              </div>
+              {testResult.result.error_message && (
+                <div>
+                  <span className="text-sm text-muted-foreground">错误信息</span>
+                  <p className="text-sm text-destructive mt-1 bg-destructive/10 px-3 py-2 rounded">{testResult.result.error_message}</p>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">测试时间</span>
+                <span className="text-sm">{new Date(testResult.result.tested_at).toLocaleString('zh-CN')}</span>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

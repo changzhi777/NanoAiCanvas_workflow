@@ -176,6 +176,10 @@ class APIKey(Base):
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     last_test_at = Column(DateTime(timezone=True), nullable=True)
     last_test_success = Column(Boolean, nullable=True)
+    last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    health_status = Column(String(16), default="unknown")  # healthy, degraded, down, unknown
+    last_response_ms = Column(Integer, nullable=True)
+    last_error = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

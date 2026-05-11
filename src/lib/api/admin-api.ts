@@ -67,8 +67,16 @@ export interface APIKey {
   used_this_month: number
   total_used: number
   priority: number
+  weight: number
+  max_concurrent: number
   expires_at: string | null
   last_used_at: string | null
+  last_test_at: string | null
+  last_test_success: boolean | null
+  last_heartbeat_at: string | null
+  health_status: 'healthy' | 'degraded' | 'down' | 'unknown'
+  last_response_ms: number | null
+  last_error: string | null
   created_at: string
   key_preview: string
 }
@@ -230,8 +238,50 @@ export async function deleteAPIKey(keyId: number): Promise<void> {
 /**
  * 测试API密钥
  */
-export async function testAPIKey(keyId: number): Promise<{ is_success: boolean; response_time_ms: number; error_message?: string }> {
-  const response = await client.post<{ is_success: boolean; response_time_ms: number; error_message?: string }>(`${API_KEYS_BASE}/${keyId}/test`, {})
+export async function testAPIKey(keyId: number): Promise<{
+  is_success: boolean
+  response_time_ms: number
+  error_message?: string
+  health_status: string
+  tested_at: string
+}> {
+  const response = await client.post<{
+    is_success: boolean
+    response_time_ms: number
+    error_message?: string
+    health_status: string
+    tested_at: string
+  }>(`${API_KEYS_BASE}/${keyId}/test`, {})
+  return response
+}
+
+/**
+ * 心跳保活
+ */
+export async function heartbeatAPIKey(keyId: number): Promise<{ ok: boolean; last_heartbeat_at: string }> {
+  const response = await client.post<{ ok: boolean; last_heartbeat_at: string }>(`${API_KEYS_BASE}/${keyId}/heartbeat`, {})
+  return response
+}
+
+/**
+ * 健康概览
+ */
+export async function getHealthSummary(): Promise<{
+  total: number
+  active: number
+  healthy: number
+  degraded: number
+  down: number
+  unknown: number
+}> {
+  const response = await client.get<{
+    total: number
+    active: number
+    healthy: number
+    degraded: number
+    down: number
+    unknown: number
+  }>(`${API_KEYS_BASE}/health-summary`)
   return response
 }
 
@@ -449,6 +499,8 @@ export const adminApi = {
   updateAPIKey,
   deleteAPIKey,
   testAPIKey,
+  heartbeatAPIKey,
+  getHealthSummary,
   updateLoadBalance,
   getKeyStatistics,
   // 积分管理
