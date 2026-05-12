@@ -44,7 +44,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           // 参考图
           referenceImage: "",
           // 模型选择（功能名，非模型名）
-          optimizeMode: 'tvc_deep' as string,
+          optimizeMode: 'tvc_minimax' as string,
           // 执行模式
           executionMode: 'auto' as string,
           // 级联参数
@@ -78,29 +78,37 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       data: {
         label: '分镜头故事板',
         params: {
-          // 图片生成参数
-          style: '电影质感',
+          // 场景描述（从上游获取或手动输入）
+          dataSource: '',
+          // 风格
+          style: 'realistic',
+          // 宽高比
           aspectRatio: '16:9',
-          quality: 'hd',
-          // 由上游脚本驱动
-          shotCount: 6,
+          // 质量
+          quality: 'hd' as const,
+          // 数量
+          count: 6,
+          // 参考图
+          referenceAssets: [],
+          // 角色一致性
+          characterRefs: [],
         },
         inputs: [
           {
-            id: 'input-script',
+            id: 'text-in',
             name: '剧本内容',
             type: 'text',
-            required: true,
+            required: false,
             description: '从剧本节点获取 TVC 结构化脚本',
           },
         ],
         outputs: [
           {
-            id: 'output-storyboard',
+            id: 'result-out',
             name: '分镜图片',
             type: 'array',
             required: false,
-            description: '每镜头起始帧+结束帧图片（共 shotCount×2 张）',
+            description: '每镜头图片（共 count 张）',
           },
         ],
         status: 'idle' as any,
@@ -115,9 +123,9 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       data: {
         label: 'TVC 视频合成',
         params: {
-          // 视频模型（默认 Seedance 2.0）
-          apiProvider: 'jimeng',
-          model: 'jimeng-video-01',
+          // 视频模型（默认 MiniMax Hailuo）
+          apiProvider: 'minimax',
+          model: 'hailuo-2.3-fast-768P',
           duration: 5,
           resolution: '720p',
           aspectRatio: '16:9',
@@ -169,7 +177,7 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       source: 'node-tvc-script',
       target: 'node-tvc-storyboard',
       sourceHandle: 'output-script',
-      targetHandle: 'input-script',
+      targetHandle: 'node-tvc-storyboard',
       type: 'smoothstep',
       animated: true,
       style: { stroke: '#3B82F6', strokeWidth: 2 },
@@ -178,8 +186,8 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       id: 'edge-tvc-storyboard-to-video',
       source: 'node-tvc-storyboard',
       target: 'node-tvc-video',
-      sourceHandle: 'output-storyboard',
-      targetHandle: 'input-storyboard-frames',
+      sourceHandle: 'node-tvc-storyboard',
+      targetHandle: 'video-in',
       type: 'smoothstep',
       animated: true,
       style: { stroke: '#3ecf8e', strokeWidth: 2 },

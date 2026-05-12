@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { Film, Wand2 } from 'lucide-react';
 import { NodeProps } from 'reactflow';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
@@ -43,9 +43,71 @@ const QUALITIES = [
 ];
 
 export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGeneratorData>) => {
-  const { updateNodeParams, updateNode } = useNanoaiWorkflowStore();
+  const { updateNodeParams, updateNode, nodes, edges } = useNanoaiWorkflowStore();
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState('');
+
+  // 从上游边缘获取脚本数据
+  const upstreamText = useMemo(() => {
+    const incomingEdge = edges.find(e => e.target === id);
+    if (incomingEdge) {
+      const sourceNode = nodes.find(n => n.id === incomingEdge.source);
+      const sourceResult = sourceNode?.data?.result;
+      if (sourceResult?.text) return sourceResult.text;
+      if (sourceResult?.copywriteText) return sourceResult.copywriteText;
+      if (sourceResult?.script?.title) {
+        // 来自 TvcScriptNode 的 screenplay 对象
+        const script = sourceResult.script;
+        if (script.shots?.length) {
+          return script.shots.map((s: any) => s.scene_description || s.description || '').join('\n');
+        }
+      }
+      if (sourceResult?.screenplay?.title) {
+        // 来自 StoryboardV2Node 的 screenplay 对象
+        const sp = sourceResult.screenplay;
+        if (sp.shots?.length) {
+          return sp.shots.map((s: any) => s.description || '').join('\n');
+        }
+        if (sp.scenes?.length) {
+          return sp.scenes.map((s: any) => s.description || '').join('\n');
+        }
+      }
+    }
+    return '';
+  }, [edges, nodes, id]);
+
+  // 优先使用上游数据，其次 dataSource
+  const scriptText = upstreamText || data.params.dataSource || '';
+
+  // 构建参考图提示词
+  let referencePrompt = '';
+  if (data.params.referenceAssets?.length > 0) {
+    referencePrompt = '\n\n参考图风格要求：' + data.params.referenceAssets.length + '张参考图用于保持视觉一致性';
+  }
+
+  // 构建角色一致性提示词
+  let characterPrompt = '';
+  if (data.params.characterRefs?.length > 0) {
+    const characterNames = data.params.characterRefs.map(c => c.name).join('、');
+    const sharedTraits = data.params.characterRefs[0]?.traits?.join('、') || '';
+    if (sharedTraits) {
+      characterPrompt = `\n\n角色一致性要求：${characterNames}，保持以下特征：${sharedTraits}`;
+    } else {
+      characterPrompt = `\n\n角色一致性要求：${characterNames}`;
+    }
+  }
+
+  // 构建完整提示词
+  const basePrompt = buildStoryboardPrompt(
+    scriptText || 'storyboard scene',
+    data.params.style,
+    {
+      mood: 'cinematic',
+      lighting: 'professional',
+    }
+  );
+
+  const fullPrompt = basePrompt + referencePrompt + characterPrompt;
 
   // 使用真实API调用的执行逻辑
   const handleExecute = useCallback(async () => {
@@ -53,39 +115,6 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
       updateNode(id, { status: NodeStatus.RUNNING, error: undefined });
       setProgress(0);
       setProgressMessage('准备生成...');
-
-      // 获取上游脚本数据
-      const scriptText = data.params.dataSource || '';
-
-      // 构建参考图提示词
-      let referencePrompt = '';
-      if (data.params.referenceAssets?.length > 0) {
-        referencePrompt = '\n\n参考图风格要求：' + data.params.referenceAssets.length + '张参考图用于保持视觉一致性';
-      }
-
-      // 构建角色一致性提示词
-      let characterPrompt = '';
-      if (data.params.characterRefs?.length > 0) {
-        const characterNames = data.params.characterRefs.map(c => c.name).join('、');
-        const sharedTraits = data.params.characterRefs[0]?.traits?.join('、') || '';
-        if (sharedTraits) {
-          characterPrompt = `\n\n角色一致性要求：${characterNames}，保持以下特征：${sharedTraits}`;
-        } else {
-          characterPrompt = `\n\n角色一致性要求：${characterNames}`;
-        }
-      }
-
-      // 构建完整提示词
-      const basePrompt = buildStoryboardPrompt(
-        scriptText || 'storyboard scene',
-        data.params.style,
-        {
-          mood: 'cinematic',
-          lighting: 'professional',
-        }
-      );
-
-      const fullPrompt = basePrompt + referencePrompt + characterPrompt;
 
       // 调用速创API
       const images = await generateNanoaiImageWithPolling(
@@ -119,7 +148,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
       setProgress(0);
       setProgressMessage('');
     }
-  }, [id, data, updateNode]);
+  }, [id, data, updateNode, fullPrompt]);
 
   const paramSchema = [
     {
