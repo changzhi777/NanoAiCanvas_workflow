@@ -3,7 +3,7 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 export interface AssetRecord {
   id: string;
   user_id?: string;
-  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT';
+  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT' | 'image' | 'video' | 'audio' | 'text' | 'storyboard_image' | 'storyboard_video' | 'tvc';
   name: string;
   url: string;
   thumbnail_url?: string;

@@ -77,64 +77,58 @@ async def submit_image_task(
     frontend_key: Optional[str],
 ) -> TaskSubmitResponse:
     """通用图片任务提交逻辑"""
-    internal_task_id = str(uuid.uuid4())[:16]
+    if not frontend_key:
+        raise HTTPException(status_code=401, detail="Missing API key (X-API-Key header)")
 
-    # 如果有 frontend_key，尝试路由到对应 provider
-    external_task_id = None
-    if frontend_key:
-        try:
-            from sqlalchemy import select
-            from app.models.api_key import ApiKeyConfig, BackendKeyMapping
+    try:
+        from app.models.api_key import ApiKeyConfig, BackendKeyMapping
 
-            # Direct DB lookup without caching
-            result = await db.execute(
-                select(ApiKeyConfig).where(ApiKeyConfig.frontend_key == frontend_key)
+        result = await db.execute(
+            select(ApiKeyConfig).where(ApiKeyConfig.frontend_key == frontend_key)
+        )
+        config = result.scalar_one_or_none()
+
+        if not config:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+
+        mapping_result = await db.execute(
+            select(BackendKeyMapping)
+            .where(
+                BackendKeyMapping.frontend_key_id == config.id,
+                BackendKeyMapping.model_type == request.model_type,
+                BackendKeyMapping.is_active == True
             )
-            config = result.scalar_one_or_none()
+            .order_by(BackendKeyMapping.priority.desc())
+            .limit(1)
+        )
+        mapping = mapping_result.scalar_one_or_none()
 
-            if config:
-                # Get highest priority mapping for this model
-                mapping_result = await db.execute(
-                    select(BackendKeyMapping)
-                    .where(
-                        BackendKeyMapping.frontend_key_id == config.id,
-                        BackendKeyMapping.model_type == request.model_type,
-                        BackendKeyMapping.is_active == True
-                    )
-                    .order_by(BackendKeyMapping.priority.desc())
-                    .limit(1)
-                )
-                mapping = mapping_result.scalar_one_or_none()
+        if not mapping:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No provider mapping for model type: {request.model_type}"
+            )
 
-                if mapping:
-                    provider = ProviderFactory.create(
-                        "wuyinkeji",
-                        mapping.backend_key,
-                        {}
-                    )
+        provider = ProviderFactory.create("wuyinkeji", mapping.backend_key, {})
 
-                    # 提交到 wuyinkeji 获取 external task_id
-                    external_task_id = await provider.generate_image({
-                        "model_type": request.model_type,
-                        "prompt": request.prompt,
-                        "size": request.size,
-                        "aspect_ratio": request.aspect_ratio,
-                        "urls": request.urls,
-                    })
+        external_task_id = await provider.generate_image({
+            "model_type": request.model_type,
+            "prompt": request.prompt,
+            "size": request.size,
+            "aspect_ratio": request.aspect_ratio,
+            "urls": request.urls,
+        })
 
-        except Exception as e:
-            print(f"Provider error: {e}")
-            import traceback
-            traceback.print_exc()
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=502, detail=f"Provider submission failed: {e}")
 
-    # 使用 external_task_id（wuyinkeji的ID）作为主task_id
-    # 如果没有external_id，则使用internal_task_id
-    final_task_id = external_task_id or internal_task_id
-
-    # 保存任务到数据库
     task = ImageTask(
         id=str(uuid.uuid4()),
-        task_id=final_task_id,
+        task_id=external_task_id,
         frontend_key=frontend_key,
         model_type=request.model_type,
         status="pending",
@@ -148,7 +142,7 @@ async def submit_image_task(
     db.add(task)
     await db.commit()
 
-    return TaskSubmitResponse(task_id=final_task_id, status="pending")
+    return TaskSubmitResponse(task_id=external_task_id, status="pending")
 
 
 @router.get("/nanobanana2/task/{task_id}", response_model=TaskStatusResponse)

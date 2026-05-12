@@ -1,43 +1,39 @@
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuthStore, useSyncStore, useAssetLibStore } from '../../../stores/remoteStore';
-import { assets, categories, tags, folders, teams, type Asset, type Category, type Team } from '../../../lib/api/client';
+import { useAuthStore, useSyncStore } from '../../../stores/remoteStore';
+import { assets, teams, type Asset, type Team } from '../../../lib/api/client';
 import { assetCache } from '../../../lib/db/AssetCache';
 import { getDB } from '../../../lib/db/schema';
 import {
-  Search, Grid3X3, List, Star, Trash2, RefreshCw, FolderPlus, Tag, ChevronRight, ChevronDown,
-  FolderOpen, Folder, Plus, Check, Upload, MoreHorizontal, Trash, Move, X, Download,
-  Users, User, Share2
+  Search, Grid3X3, List, Star, Trash2, RefreshCw,
+  Check, Upload, X, Download,
+  Users, User, Share2, Image, Video, Music, FileText, Film, Clapperboard
 } from 'lucide-react';
 import { Button } from '../button';
 import { Input } from '../input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogPortal } from '../dialog';
+import { Dialog, DialogHeader, DialogTitle, DialogPortal } from '../dialog';
 import AssetPreview from './AssetPreview';
-import CategoryWizard from './CategoryWizard';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '../dropdown-menu';
 
 type ViewMode = 'grid' | 'list';
-type AssetType = 'ALL' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT';
 
-// 预设分类
-const SYSTEM_CATEGORIES: Category[] = [
-  { id: 'CHARACTER', name: '角色', is_system: true, created_at: '' },
-  { id: 'SCENE', name: '场景', is_system: true, created_at: '' },
-  { id: 'STORYBOARD', name: '分镜', is_system: true, created_at: '' },
-  { id: 'GENERAL', name: '通用', is_system: true, created_at: '' },
-  { id: 'PROP', name: '道具', is_system: true, created_at: '' },
-  { id: 'MUSIC', name: '音乐', is_system: true, created_at: '' },
-  { id: 'SCRIPT', name: '文案', is_system: true, created_at: '' },
-  { id: 'EFFECT', name: '特效', is_system: true, created_at: '' },
-  { id: 'BACKGROUND', name: '背景图', is_system: true, created_at: '' },
-  { id: 'REFERENCE', name: '参考图', is_system: true, created_at: '' },
-];
+// 6 大类定义
+const ASSET_CATEGORIES = [
+  { id: 'all', label: '全部', icon: null },
+  { id: 'image', label: '图片', icon: Image },
+  { id: 'video', label: '视频', icon: Video },
+  { id: 'audio', label: '音频', icon: Music },
+  { id: 'storyboard_image', label: '分镜图', icon: Clapperboard },
+  { id: 'storyboard_video', label: '分镜视频', icon: Film },
+  { id: 'tvc', label: 'TVC宣传片', icon: Film },
+  { id: 'text', label: '文本', icon: FileText },
+] as const;
 
-const TYPE_ICONS: Record<string, string> = { IMAGE: '🖼️', VIDEO: '🎬', AUDIO: '🎵', TEXT: '📝', image: '🖼️', video: '🎬', audio: '🎵', text: '📝' };
+const TYPE_ICONS: Record<string, string> = {
+  image: '🖼️', video: '🎬', audio: '🎵', text: '📝',
+  storyboard_image: '🎬', storyboard_video: '🎞️', tvc: '📺',
+};
 
 interface AssetLibraryPanelProps {
   open: boolean;
@@ -46,7 +42,6 @@ interface AssetLibraryPanelProps {
   selectionMode?: boolean;
 }
 
-// 创建自定义 DialogContent（不带默认关闭按钮）
 const AssetLibraryDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -67,6 +62,12 @@ const AssetLibraryDialogContent = React.forwardRef<
 ))
 AssetLibraryDialogContent.displayName = "AssetLibraryDialogContent"
 
+// 截断提示词用于卡片展示
+function truncatePrompt(text: string | undefined | null, maxLen = 60): string {
+  if (!text) return '';
+  return text.length > maxLen ? text.slice(0, maxLen) + '...' : text;
+}
+
 export default function AssetLibraryPanel({
   open,
   onClose,
@@ -75,7 +76,6 @@ export default function AssetLibraryPanel({
 }: AssetLibraryPanelProps) {
   const token = useAuthStore((s) => s.token);
   const isOnline = useSyncStore((s) => s.isOnline);
-  const { categories: customCategories, folders: folderList, setCategories, setFolders, setTags } = useAssetLibStore();
 
   const [assetsList, setAssetsList] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,31 +84,20 @@ export default function AssetLibraryPanel({
   const [pageSize] = useState(20);
 
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [typeFilter, setTypeFilter] = useState<AssetType>('ALL');
-  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
-  const [folderFilter, setFolderFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [starredOnly, setStarredOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // 多选模式
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // 新建分类/文件夹弹窗
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [newFolderName, setNewFolderName] = useState('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [showNewFolder, setShowNewFolder] = useState(false);
-
-  // 拖拽上传
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 团队资产 Tab
   const [assetTab, setAssetTab] = useState<'personal' | 'team'>('personal');
   const [userTeams, setUserTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -120,12 +109,11 @@ export default function AssetLibraryPanel({
     setLoading(true);
 
     try {
-      // 团队资产
       if (assetTab === 'team' && selectedTeamId && isOnline) {
         const result = await assets.listTeamAssets(selectedTeamId, token, {
           page,
           page_size: pageSize,
-          type_filter: typeFilter === 'ALL' ? undefined : typeFilter,
+          type_filter: categoryFilter === 'all' ? undefined : categoryFilter,
         });
         setAssetsList(result.items);
         setTotal(result.total);
@@ -133,20 +121,17 @@ export default function AssetLibraryPanel({
         return;
       }
 
-      // 个人资产
       if (isOnline) {
         const result = await assets.list(token, {
           page,
           page_size: pageSize,
-          type_filter: typeFilter === 'ALL' ? undefined : typeFilter,
-          category: folderFilter || categoryFilter === 'ALL' ? undefined : categoryFilter,
+          type_filter: categoryFilter === 'all' ? undefined : categoryFilter,
           starred: starredOnly || undefined,
           search: searchQuery || undefined,
         });
         setAssetsList(result.items);
         setTotal(result.total);
 
-        // 缓存
         for (const asset of result.items) {
           const cached = await assetCache.get(asset.id);
           if (!cached) {
@@ -154,7 +139,7 @@ export default function AssetLibraryPanel({
               const response = await fetch(asset.url);
               if (response.ok) {
                 const blob = await response.blob();
-                await assetCache.cache(asset, blob);
+                await assetCache.cache(asset as any, blob);
               }
             } catch { /* ignore */ }
           }
@@ -162,12 +147,17 @@ export default function AssetLibraryPanel({
       } else {
         const db = await getDB();
         let localAssets = await db.getAll('assets');
-        if (typeFilter !== 'ALL') localAssets = localAssets.filter((a: Asset) => a.type?.toLowerCase() === typeFilter.toLowerCase());
-        if (folderFilter) localAssets = localAssets.filter((a: Asset) => a.folder_id === folderFilter);
+        if (categoryFilter !== 'all') {
+          localAssets = localAssets.filter((a: Asset) =>
+            a.type?.toLowerCase() === categoryFilter || a.category === categoryFilter
+          );
+        }
         if (starredOnly) localAssets = localAssets.filter((a: Asset) => a.is_starred);
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
-          localAssets = localAssets.filter((a: Asset) => a.name.toLowerCase().includes(q) || a.tags.some(t => t.toLowerCase().includes(q)));
+          localAssets = localAssets.filter((a: Asset) =>
+            a.name.toLowerCase().includes(q) || a.tags.some(t => t.toLowerCase().includes(q))
+          );
         }
         setAssetsList(localAssets as Asset[]);
         setTotal(localAssets.length);
@@ -177,90 +167,14 @@ export default function AssetLibraryPanel({
     } finally {
       setLoading(false);
     }
-  }, [token, isOnline, page, pageSize, typeFilter, categoryFilter, folderFilter, starredOnly, searchQuery, assetTab, selectedTeamId]);
-
-  const loadMetaData = useCallback(async () => {
-    if (!token || !isOnline) return;
-    try {
-      const [cats, flds, tg] = await Promise.all([
-        categories.list(token),
-        folders.list(token),
-        tags.list(token),
-      ]);
-      setCategories(cats);
-      setFolders(flds);
-      setTags(tg);
-    } catch (error) {
-      console.error('Failed to load metadata:', error);
-    }
-  }, [token, isOnline, setCategories, setFolders, setTags]);
+  }, [token, isOnline, page, pageSize, categoryFilter, starredOnly, searchQuery, assetTab, selectedTeamId]);
 
   useEffect(() => {
     if (open && token) {
       loadAssets();
-      loadMetaData();
       teams.list(token).then(setUserTeams).catch(() => {});
     }
-  }, [open, token, loadAssets, loadMetaData]);
-
-  // 文件夹树构建
-  const buildFolderTree = () => {
-    const rootFolders = folderList.filter(f => !f.parent_id);
-    return rootFolders.map(folder => ({
-      ...folder,
-      children: folderList.filter(f => f.parent_id === folder.id),
-    }));
-  };
-
-  // 创建分类
-  const handleCreateCategory = async () => {
-    if (!token || !newCategoryName.trim()) return;
-    try {
-      await categories.create(newCategoryName.trim(), token);
-      setNewCategoryName('');
-      setShowNewCategory(false);
-      loadMetaData();
-    } catch (error) {
-      console.error('Failed to create category:', error);
-    }
-  };
-
-  // 创建文件夹
-  const handleCreateFolder = async () => {
-    if (!token || !newFolderName.trim()) return;
-    try {
-      await folders.create(newFolderName.trim(), folderFilter, token);
-      setNewFolderName('');
-      setShowNewFolder(false);
-      loadMetaData();
-    } catch (error) {
-      console.error('Failed to create folder:', error);
-    }
-  };
-
-  // 删除分类
-  const handleDeleteCategory = async (id: string) => {
-    if (!token) return;
-    try {
-      await categories.delete(id, token);
-      loadMetaData();
-    } catch (error) {
-      console.error('Failed to delete category:', error);
-    }
-  };
-
-  // 删除文件夹
-  const handleDeleteFolder = async (id: string) => {
-    if (!token) return;
-    try {
-      await folders.delete(id, token);
-      setFolderFilter(null);
-      loadMetaData();
-      loadAssets();
-    } catch (error) {
-      console.error('Failed to delete folder:', error);
-    }
-  };
+  }, [open, token, loadAssets]);
 
   // 多选操作
   const toggleSelect = (id: string) => {
@@ -284,31 +198,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  const handleBatchMove = async (targetFolderId: string | null) => {
-    if (!token || selectedIds.size === 0) return;
-    try {
-      await assets.batchUpdate(Array.from(selectedIds), { category: targetFolderId ?? undefined }, token);
-      setSelectedIds(new Set());
-      setMultiSelectMode(false);
-      loadAssets();
-    } catch (error) {
-      console.error('Failed to batch move:', error);
-    }
-  };
-
-  const handleBatchTag = async (newTags: string[]) => {
-    if (!token || selectedIds.size === 0) return;
-    try {
-      await assets.batchUpdate(Array.from(selectedIds), { tags: newTags }, token);
-      setSelectedIds(new Set());
-      setMultiSelectMode(false);
-      loadAssets();
-    } catch (error) {
-      console.error('Failed to batch tag:', error);
-    }
-  };
-
-  // 批量导出
   const handleBatchExport = async () => {
     if (!token || selectedIds.size === 0) return;
     try {
@@ -324,26 +213,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 导入文件
-  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !token) return;
-    try {
-      const result = await assets.import(file, token);
-      if (result.success) {
-        alert(`成功导入 ${result.imported} 个资产`);
-        loadAssets();
-      } else if (result.errors) {
-        alert(`部分导入失败: ${result.errors.join(', ')}`);
-      }
-    } catch (error) {
-      console.error('Failed to import:', error);
-    } finally {
-      e.target.value = '';
-    }
-  };
-
-  // 删除资产
   const handleDelete = async (assetId: string) => {
     if (!token) return;
     try {
@@ -355,7 +224,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 收藏
   const handleToggleStar = async (asset: Asset) => {
     if (!token) return;
     try {
@@ -368,7 +236,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 选择资产
   const handleSelectAsset = (asset: Asset) => {
     if (multiSelectMode) {
       toggleSelect(asset.id);
@@ -381,7 +248,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 分享到团队
   const handleShareToTeam = async (assetId: string, teamId: string) => {
     if (!token) return;
     try {
@@ -392,7 +258,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 从团队移除
   const handleRemoveFromTeam = async (assetId: string) => {
     if (!token || !selectedTeamId) return;
     try {
@@ -403,7 +268,6 @@ export default function AssetLibraryPanel({
     }
   };
 
-  // 拖拽上传
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -432,11 +296,10 @@ export default function AssetLibraryPanel({
     setUploading(true);
     try {
       for (const file of files) {
-        // 简单实现：实际上传需要 multipart/form-data
         const formData = new FormData();
         formData.append('file', file);
         formData.append('name', file.name);
-        formData.append('type', file.type.startsWith('image/') ? 'IMAGE' : file.type.startsWith('video/') ? 'VIDEO' : file.type.startsWith('audio/') ? 'AUDIO' : 'TEXT');
+        formData.append('type', file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'text');
 
         const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://64.118.135.134:8000/api'}/assets/upload`, {
           method: 'POST',
@@ -452,9 +315,6 @@ export default function AssetLibraryPanel({
       setUploading(false);
     }
   };
-
-  // 所有分类合并
-  const allCategories = [...SYSTEM_CATEGORIES, ...customCategories.filter(c => !SYSTEM_CATEGORIES.find(s => s.id === c.id))];
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -498,7 +358,7 @@ export default function AssetLibraryPanel({
                 <span className="text-xs bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded">离线模式</span>
               )}
               {uploading && <span className="text-xs text-primary">上传中...</span>}
-              <Button variant="ghost" size="sm" onClick={() => { loadAssets(); loadMetaData(); }} disabled={loading}>
+              <Button variant="ghost" size="sm" onClick={() => loadAssets()} disabled={loading}>
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => fileInputRef.current?.click()}>
@@ -512,12 +372,11 @@ export default function AssetLibraryPanel({
           </DialogTitle>
         </DialogHeader>
 
-        {/* 主布局：左侧文件夹树 + 右侧内容 */}
+        {/* 主布局：左侧分类 + 右侧内容 */}
         <div className="flex flex-1 overflow-hidden">
-          {/* 左侧文件夹/分类面板 */}
-          <div className="w-48 border-r flex flex-col overflow-hidden">
+          {/* 左侧分类面板 */}
+          <div className="w-44 border-r flex flex-col overflow-hidden">
             {assetTab === 'team' ? (
-              /* 团队列表 */
               <div className="flex-1 overflow-y-auto p-2">
                 <div className="mb-2">
                   <span className="text-xs font-medium text-muted-foreground">我的团队</span>
@@ -543,114 +402,56 @@ export default function AssetLibraryPanel({
                 )}
               </div>
             ) : (
-              <>
-            {/* 文件夹区域 */}
-            <div className="p-2 border-b">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">文件夹</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowNewCategory(true)}>
-                  <FolderPlus className="h-3 w-3" />
-                </Button>
+              <div className="flex-1 overflow-y-auto p-2">
+                <div className="mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">资产分类</span>
+                </div>
+                <div className="space-y-0.5">
+                  {ASSET_CATEGORIES.map(cat => {
+                    const IconComp = cat.icon;
+                    return (
+                      <button
+                        key={cat.id}
+                        className={cn(
+                          "w-full text-left px-2.5 py-1.5 text-sm rounded flex items-center gap-2 transition-colors",
+                          categoryFilter === cat.id ? 'bg-muted font-medium' : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground',
+                        )}
+                        onClick={() => { setCategoryFilter(cat.id); setPage(1); }}
+                      >
+                        {IconComp ? <IconComp className="h-3.5 w-3.5 flex-shrink-0" /> : <span className="w-3.5 text-center text-xs">📋</span>}
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="space-y-1">
-                {/* 全部资产 */}
-                <button
-                  className={cn(
-                    "w-full text-left px-2 py-1 text-sm rounded flex items-center gap-1",
-                    folderFilter === null && categoryFilter === 'ALL' && "bg-muted"
-                  )}
-                  onClick={() => { setFolderFilter(null); setCategoryFilter('ALL'); }}
-                >
-                  <FolderOpen className="h-3 w-3" /> 全部
-                </button>
-                {/* 文件夹列表 */}
-                {buildFolderTree().map(folder => (
-                  <FolderItem
-                    key={folder.id}
-                    folder={folder}
-                    level={0}
-                    selectedId={folderFilter}
-                    onSelect={(id) => { setFolderFilter(id); setCategoryFilter('ALL'); }}
-                    onDelete={handleDeleteFolder}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* 分类区域 */}
-            <div className="flex-1 overflow-y-auto p-2">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">分类</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowNewCategory(true)}>
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-              <div className="space-y-1">
-                {allCategories.map(cat => (
-                  <div key={cat.id} className="group flex items-center gap-1">
-                    <button
-                      className={cn(
-                        "flex-1 text-left px-2 py-1 text-sm rounded flex items-center gap-1",
-                        categoryFilter === cat.id && "bg-muted"
-                      )}
-                      onClick={() => { setCategoryFilter(cat.id); setFolderFilter(null); }}
-                    >
-                      <span>{cat.name}</span>
-                    </button>
-                    {!cat.is_system && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100">
-                            <MoreHorizontal className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleDeleteCategory(cat.id)} className="text-destructive">
-                            <Trash className="h-3 w-3 mr-1" /> 删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-              </>
             )}
           </div>
 
           {/* 右侧内容区 */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* 工具栏 */}
-            <div className="flex flex-wrap items-center gap-4 p-4 border-b">
-              <div className="relative flex-1 min-w-[200px]">
+            <div className="flex flex-wrap items-center gap-3 p-3 border-b">
+              <div className="relative flex-1 min-w-[180px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="搜索资产..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+                <Input placeholder="搜索资产名称、提示词..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8" />
               </div>
 
-              <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as AssetType)} className="h-9 rounded-md border border-input bg-background px-3 text-sm">
-                <option value="ALL">全部类型</option>
-                <option value="IMAGE">图片</option>
-                <option value="VIDEO">视频</option>
-                <option value="AUDIO">音频</option>
-                <option value="TEXT">文本</option>
-              </select>
-
               <Button variant={starredOnly ? 'default' : 'outline'} size="sm" onClick={() => setStarredOnly(!starredOnly)}>
-                <Star className={cn("h-4 w-4", starredOnly && "fill-current")} />
+                <Star className={cn("h-3.5 w-3.5", starredOnly && "fill-current")} />
               </Button>
 
-              <div className="flex items-center gap-1 border rounded-md p-1">
-                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('grid')}>
-                  <Grid3X3 className="h-4 w-4" />
+              <div className="flex items-center gap-0.5 border rounded-md p-0.5">
+                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="h-7 w-7 p-0" onClick={() => setViewMode('grid')}>
+                  <Grid3X3 className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" onClick={() => setViewMode('list')}>
-                  <List className="h-4 w-4" />
+                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="h-7 w-7 p-0" onClick={() => setViewMode('list')}>
+                  <List className="h-3.5 w-3.5" />
                 </Button>
               </div>
 
               <Button variant={multiSelectMode ? 'default' : 'outline'} size="sm" onClick={() => { setMultiSelectMode(!multiSelectMode); setSelectedIds(new Set()); }}>
-                {multiSelectMode ? '退出多选' : '多选'}
+                {multiSelectMode ? '取消' : '多选'}
               </Button>
             </div>
 
@@ -659,33 +460,10 @@ export default function AssetLibraryPanel({
               <div className="flex items-center gap-2 p-2 bg-muted">
                 <span className="text-sm">已选择 {selectedIds.size} 项</span>
                 <Button size="sm" variant="outline" onClick={handleBatchDelete}>
-                  <Trash2 className="h-4 w-4 mr-1" /> 批量删除
+                  <Trash2 className="h-4 w-4 mr-1" /> 删除
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleBatchExport}>
-                  <Upload className="h-4 w-4 mr-1" /> 导出
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                  <Download className="h-4 w-4 mr-1" /> 导入
-                </Button>
-                <input ref={fileInputRef} type="file" accept=".zip" className="hidden" onChange={handleFileImport} />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Move className="h-4 w-4 mr-1" /> 移动到
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onClick={() => handleBatchMove(null)}>无分类</DropdownMenuItem>
-                    {folderList.map(f => (
-                      <DropdownMenuItem key={f.id} onClick={() => handleBatchMove(f.id)}>{f.name}</DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button size="sm" variant="outline" onClick={() => {
-                  const newTag = prompt('输入标签:');
-                  if (newTag) handleBatchTag([newTag]);
-                }}>
-                  <Tag className="h-4 w-4 mr-1" /> 添加标签
+                  <Download className="h-4 w-4 mr-1" /> 导出
                 </Button>
               </div>
             )}
@@ -693,7 +471,7 @@ export default function AssetLibraryPanel({
             {/* 资产网格/列表 */}
             <div className="flex-1 overflow-y-auto p-4">
               {loading ? (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="aspect-square bg-muted rounded-lg animate-pulse" />
                   ))}
@@ -701,10 +479,10 @@ export default function AssetLibraryPanel({
               ) : assetsList.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                   <p>暂无资产</p>
-                  <p className="text-sm">拖拽文件到此处或点击上传</p>
+                  <p className="text-sm mt-1">拖拽文件到此处或点击上传</p>
                 </div>
               ) : viewMode === 'grid' ? (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   {assetsList.map((asset) => (
                     <AssetCard
                       key={asset.id}
@@ -736,7 +514,7 @@ export default function AssetLibraryPanel({
 
             {/* 分页 */}
             {total > pageSize && (
-              <div className="flex items-center justify-center gap-2 p-4 border-t">
+              <div className="flex items-center justify-center gap-2 p-3 border-t">
                 <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>上一页</Button>
                 <span className="text-sm text-muted-foreground">{page} / {Math.ceil(total / pageSize)}</span>
                 <Button variant="outline" size="sm" onClick={() => setPage(p => p + 1)} disabled={page * pageSize >= total}>下一页</Button>
@@ -749,100 +527,12 @@ export default function AssetLibraryPanel({
         {selectedAsset && (
           <AssetPreview open={previewOpen} onClose={() => setPreviewOpen(false)} asset={selectedAsset} />
         )}
-
-        {/* 新建分类向导 */}
-        <CategoryWizard
-          open={showNewCategory}
-          onClose={() => setShowNewCategory(false)}
-          onSubmit={async (data) => {
-            if (!token) return;
-            const result = await categories.create(data, token);
-            loadMetaData();
-            setShowNewCategory(false);
-          }}
-          checkNameAvailable={async (name) => {
-            if (!token) return false;
-            const result = await categories.checkName(name, undefined, token);
-            return !result.exists;
-          }}
-        />
-
-        {/* 新建文件夹弹窗 */}
-        {showNewFolder && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-card p-4 rounded-lg w-80 space-y-4">
-              <h3 className="font-medium">新建文件夹</h3>
-              <Input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} placeholder="文件夹名称" />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => setShowNewFolder(false)}>取消</Button>
-                <Button size="sm" onClick={handleCreateFolder}>创建</Button>
-              </div>
-            </div>
-          </div>
-        )}
       </AssetLibraryDialogContent>
     </Dialog>
   );
 }
 
-// 文件夹树节点组件
-function FolderItem({
-  folder,
-  level,
-  selectedId,
-  onSelect,
-  onDelete,
-}: {
-  folder: { id: string; name: string; children: any[] };
-  level: number;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const hasChildren = folder.children && folder.children.length > 0;
-
-  return (
-    <div>
-      <div className="flex items-center gap-1 group">
-        {hasChildren ? (
-          <button onClick={() => setExpanded(!expanded)} className="p-0.5">
-            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          </button>
-        ) : (
-          <span className="w-4" />
-        )}
-        <button
-          className={cn("flex-1 text-left px-1 py-0.5 text-sm rounded flex items-center gap-1", selectedId === folder.id && "bg-muted")}
-          onClick={() => onSelect(folder.id)}
-        >
-          <Folder className="h-3 w-3" /> {folder.name}
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover:opacity-100">
-              <MoreHorizontal className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onDelete(folder.id)} className="text-destructive">
-              <Trash className="h-3 w-3 mr-1" /> 删除
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {hasChildren && expanded && (
-        <div className="ml-4">
-          {folder.children.map(child => (
-            <FolderItem key={child.id} folder={child} level={level + 1} selectedId={selectedId} onSelect={onSelect} onDelete={onDelete} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// 资产卡片组件
+// 资产卡片组件 — 展示缩略图 + 提示词 + 参数标签
 function AssetCard({
   asset,
   selected,
@@ -869,16 +559,22 @@ function AssetCard({
   multiSelectMode: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
+  const meta = (asset as any).meta || {};
+  const prompt = truncatePrompt(meta.prompt || meta.enhancedPrompt);
+  const modelTag = meta.params?.model || meta.params?.modelName || '';
+  const sizeTag = meta.params?.width && meta.params?.height ? `${meta.params.width}×${meta.params.height}` : '';
+  const isImage = ['image', 'storyboard_image'].includes(asset.type?.toLowerCase());
 
   return (
     <div
       className={cn(
-        "group relative aspect-square bg-card rounded-lg border overflow-hidden cursor-pointer hover:border-primary transition-colors",
+        "group relative bg-card rounded-lg border overflow-hidden cursor-pointer hover:border-primary transition-colors",
+        isImage ? "aspect-square" : "aspect-video",
         selected && "ring-2 ring-primary"
       )}
       onClick={onSelect}
     >
-      {/* 多选Checkbox */}
+      {/* 多选 */}
       {multiSelectMode && (
         <div className={cn(
           "absolute top-2 left-2 z-10 w-5 h-5 rounded border flex items-center justify-center",
@@ -889,30 +585,26 @@ function AssetCard({
       )}
 
       {/* 缩略图 */}
-      {asset.type?.toLowerCase() === 'image' && !imageError ? (
+      {isImage && !imageError ? (
         <img src={asset.thumbnail_url || asset.url} alt={asset.name} loading="lazy" className="w-full h-full object-cover" onError={() => setImageError(true)} />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">{TYPE_ICONS[asset.type] || '📄'}</div>
+        <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">{TYPE_ICONS[asset.type?.toLowerCase()] || '📄'}</div>
       )}
 
-      {/* 渐变遮罩 */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="absolute bottom-0 left-0 right-0 p-2">
-          <p className="text-white text-sm font-medium truncate">{asset.name}</p>
-          <div className="flex items-center gap-1.5">
-            <p className="text-white/60 text-xs">{asset.category || asset.type}</p>
-            {asset.version && (
-              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/60 text-white">{asset.version}</span>
-            )}
-            {asset.source_node_id && (
-              <span className="text-[9px] text-white/40">from {asset.source_node_id.slice(0, 8)}</span>
-            )}
-          </div>
+      {/* 底部信息 */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2 pt-8">
+        <p className="text-white text-xs font-medium truncate">{asset.name}</p>
+        {prompt && <p className="text-white/60 text-[10px] truncate mt-0.5">{prompt}</p>}
+        <div className="flex items-center gap-1 mt-1 flex-wrap">
+          <span className="text-[9px] px-1 py-0.5 rounded bg-white/20 text-white/80">{ASSET_CATEGORIES.find(c => c.id === asset.type?.toLowerCase())?.label || asset.type}</span>
+          {modelTag && <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/40 text-white/80">{modelTag}</span>}
+          {sizeTag && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/40 text-white/80">{sizeTag}</span>}
+          {asset.version && <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/40 text-white/80">{asset.version}</span>}
         </div>
       </div>
 
       {/* 收藏标记 */}
-      {asset.is_starred && <div className="absolute top-2 right-2"><Star className="h-5 w-5 fill-yellow-500 text-yellow-500" /></div>}
+      {asset.is_starred && <div className="absolute top-2 right-2"><Star className="h-4 w-4 fill-yellow-500 text-yellow-500" /></div>}
 
       {/* 版本标签 */}
       {asset.version && (
@@ -925,18 +617,15 @@ function AssetCard({
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         {onShareToTeam && userTeams && userTeams.length > 0 && (
           <div className="relative">
-            <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); setShareMenuAssetId(shareMenuAssetId === asset.id ? null : asset.id); }}>
-              <Share2 className="h-4 w-4 text-white" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); setShareMenuAssetId(shareMenuAssetId === asset.id ? null : asset.id); }}>
+              <Share2 className="h-3.5 w-3.5 text-white" />
             </Button>
             {shareMenuAssetId === asset.id && (
-              <div className="absolute right-0 top-10 w-40 bg-popover border rounded-md shadow-lg z-20 py-1" onClick={(e) => e.stopPropagation()}>
+              <div className="absolute right-0 top-9 w-36 bg-popover border rounded-md shadow-lg z-20 py-1" onClick={(e) => e.stopPropagation()}>
                 <p className="px-2 py-1 text-xs text-muted-foreground">分享到团队</p>
                 {userTeams.map(team => (
-                  <button
-                    key={team.id}
-                    className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted flex items-center gap-1.5"
-                    onClick={() => { onShareToTeam(asset.id, team.id); setShareMenuAssetId(null); }}
-                  >
+                  <button key={team.id} className="w-full text-left px-2 py-1.5 text-xs hover:bg-muted flex items-center gap-1.5"
+                    onClick={() => { onShareToTeam(asset.id, team.id); setShareMenuAssetId(null); }}>
                     <Users className="w-3 h-3" /> {team.name}
                   </button>
                 ))}
@@ -945,24 +634,24 @@ function AssetCard({
           </div>
         )}
         {onRemoveFromTeam && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-orange-500" onClick={(e) => { e.stopPropagation(); onRemoveFromTeam(asset.id); }} title="从团队移除">
-            <Share2 className="h-4 w-4 text-white rotate-180" />
+          <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/50 hover:bg-orange-500" onClick={(e) => { e.stopPropagation(); onRemoveFromTeam(asset.id); }} title="从团队移除">
+            <Share2 className="h-3.5 w-3.5 text-white rotate-180" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
-          <Star className={cn("h-4 w-4", asset.is_starred ? "fill-yellow-500 text-yellow-500" : "text-white")} />
+        <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/50 hover:bg-black/70" onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
+          <Star className={cn("h-3.5 w-3.5", asset.is_starred ? "fill-yellow-500 text-yellow-500" : "text-white")} />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 bg-black/50 hover:bg-red-500" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-          <Trash2 className="h-4 w-4 text-white" />
+        <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/50 hover:bg-red-500" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+          <Trash2 className="h-3.5 w-3.5 text-white" />
         </Button>
       </div>
     </div>
   );
 }
 
-// 资产列表视图组件
+// 资产列表视图
 function AssetListView({
-  assets,
+  assets: list,
   selectedIds,
   onSelect,
   onToggleStar,
@@ -978,42 +667,48 @@ function AssetListView({
 }) {
   return (
     <div className="space-y-2">
-      {assets.map((asset) => (
-        <div
-          key={asset.id}
-          className={cn("flex items-center gap-4 p-3 bg-card rounded-lg border hover:border-primary cursor-pointer", selectedIds.has(asset.id) && "ring-2 ring-primary")}
-          onClick={() => onSelect(asset)}
-        >
-          {multiSelectMode && (
-            <div className={cn("w-5 h-5 rounded border flex items-center justify-center flex-shrink-0", selectedIds.has(asset.id) ? "bg-primary text-primary-foreground" : "border-muted-foreground")}>
-              {selectedIds.has(asset.id) && <Check className="h-3 w-3" />}
-            </div>
-          )}
-          <div className="w-16 h-16 bg-muted rounded flex-shrink-0 overflow-hidden">
-            {asset.type?.toLowerCase() === 'image' ? (
-              <img src={asset.thumbnail_url || asset.url} alt={asset.name} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">
-                {asset.type?.toLowerCase() === 'video' ? '🎬' : asset.type?.toLowerCase() === 'audio' ? '🎵' : '📝'}
+      {list.map((asset) => {
+        const meta = (asset as any).meta || {};
+        const prompt = truncatePrompt(meta.prompt || meta.enhancedPrompt, 80);
+        const isImage = ['image', 'storyboard_image'].includes(asset.type?.toLowerCase());
+        return (
+          <div
+            key={asset.id}
+            className={cn("flex items-center gap-3 p-3 bg-card rounded-lg border hover:border-primary cursor-pointer", selectedIds.has(asset.id) && "ring-2 ring-primary")}
+            onClick={() => onSelect(asset)}
+          >
+            {multiSelectMode && (
+              <div className={cn("w-5 h-5 rounded border flex items-center justify-center flex-shrink-0", selectedIds.has(asset.id) ? "bg-primary text-primary-foreground" : "border-muted-foreground")}>
+                {selectedIds.has(asset.id) && <Check className="h-3 w-3" />}
               </div>
             )}
+            <div className="w-14 h-14 bg-muted rounded flex-shrink-0 overflow-hidden">
+              {isImage ? (
+                <img src={asset.thumbnail_url || asset.url} alt={asset.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xl">{TYPE_ICONS[asset.type?.toLowerCase()] || '📄'}</div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm truncate">{asset.name}</p>
+              {prompt && <p className="text-xs text-muted-foreground truncate mt-0.5">{prompt}</p>}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] text-muted-foreground">{ASSET_CATEGORIES.find(c => c.id === asset.type?.toLowerCase())?.label || asset.type}</span>
+                <span className="text-[10px] text-muted-foreground">•</span>
+                <span className="text-[10px] text-muted-foreground">{new Date(asset.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onToggleStar(asset); }}>
+                <Star className={cn("h-3.5 w-3.5", asset.is_starred && "fill-yellow-500 text-yellow-500")} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}>
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium truncate">{asset.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {asset.category || asset.type} • {new Date(asset.created_at).toLocaleDateString()}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onToggleStar(asset); }}>
-              <Star className={cn("h-4 w-4", asset.is_starred && "fill-yellow-500 text-yellow-500")} />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

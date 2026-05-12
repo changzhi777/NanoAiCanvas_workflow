@@ -79,26 +79,26 @@ export function TaskQueueTab({ onCopyAndExecute, onViewTask }: TaskQueueTabProps
 
   // 加载所有任务（图片生成 + 故事板）
   const loadTasks = async () => {
+    if (!user) return
     setIsLoading(true)
     try {
       // 并行加载图片生成任务和故事板任务
       const [imageTasks] = await Promise.all([
-        user ? getAllTaskItems(user.id) : Promise.resolve([]),
+        getAllTaskItems(user.id),
         loadStoryboardTasks(),
         loadStoryboardAssets(),
       ])
       setTasks(imageTasks)
     } catch (error) {
-      // 静默处理 - storyboard API 可能未部署
-      console.warn('Tasks API not available, skipping load')
+      // 静默处理
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
+    if (!user) return
     loadTasks()
-    // Refresh every 5 seconds for active tasks
     const interval = setInterval(loadTasks, 5000)
     return () => clearInterval(interval)
   }, [user])

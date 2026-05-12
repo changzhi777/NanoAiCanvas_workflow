@@ -36,6 +36,8 @@ const DEFAULT_TEMPLATE_VISIBILITY: Record<WorkflowTemplateId, VisibilityState> =
   'scene-workflow': 'disabled',
   'quick-storyboard-v2': 'disabled',
   'dual-line-character-design': 'disabled',
+  // TVC 视频
+  'tvc-video-01': 'active',
   // Skills 模板
   'skills-ui-mockups': 'disabled',
   'skills-product-visuals': 'disabled',
@@ -122,6 +124,11 @@ const DEFAULT_NODE_VISIBILITY: Record<WorkflowNodeType, VisibilityState> = {
   [WorkflowNodeType.TEXT_PREVIEW]: 'disabled',
   // 输出节点
   [WorkflowNodeType.OUTPUT_NODE]: 'active',
+  // 故事板视频+音频合成
+  [WorkflowNodeType.STORYBOARD_VIDEO]: 'active',
+
+  // TVC 专用节点
+  [WorkflowNodeType.TVC_SCRIPT]: 'active',
 }
 
 // Nano 2 模块全部默认 active
@@ -222,6 +229,7 @@ export const WORKFLOW_NODE_META: VisibilityItemMeta[] = [
   { id: 'audio_preview', name: '音频预览', description: '展示音频结果', category: '预览' },
   { id: 'text_preview', name: '文本预览', description: '展示文本结果', category: '预览' },
   { id: 'output_node', name: '输出/保存', description: '保存到资产库/下载', category: '输出' },
+  { id: 'tvc_script', name: 'TVC文案/剧本', description: 'TVC专用起始节点：剧本+提示词优化+双模式执行', category: 'TVC' },
   { id: 'skills_data', name: 'Skills数据', description: 'Skills数据输入', category: 'Skills' },
   { id: 'skills_task', name: 'Skills任务', description: 'Skills任务执行', category: 'Skills' },
 ]

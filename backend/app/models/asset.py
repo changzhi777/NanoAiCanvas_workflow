@@ -12,14 +12,19 @@ class AssetType(str, enum.Enum):
     VIDEO = "video"
     AUDIO = "audio"
     TEXT = "text"
-    STORYBOARD_SHOT = "storyboard_shot"
+    STORYBOARD_IMAGE = "storyboard_image"
+    STORYBOARD_VIDEO = "storyboard_video"
+    TVC = "tvc"
 
 
 class AssetCategory(str, enum.Enum):
-    CHARACTER = "character"
-    SCENE = "scene"
-    STORYBOARD = "storyboard"
-    GENERAL = "general"
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"
+    TEXT = "text"
+    STORYBOARD_IMAGE = "storyboard_image"
+    STORYBOARD_VIDEO = "storyboard_video"
+    TVC = "tvc"
 
 
 class Asset(Base):
@@ -37,15 +42,15 @@ class Asset(Base):
     category = Column(String(20), nullable=True, index=True)
     tags = Column(ARRAY(String), default=list)
 
-    workflow_snapshot = Column(JSONB, nullable=True)  # Snapshot of workflow at creation time
+    workflow_snapshot = Column(JSONB, nullable=True)
 
-    version = Column(String(10), nullable=True)  # 版本标识，如 'v1'
+    version = Column(String(10), nullable=True)
     source_node_id = Column(String(50), nullable=True)
     workflow_id = Column(UUID(as_uuid=True), nullable=True)
     parent_asset_id = Column(UUID(as_uuid=True), nullable=True)
 
     is_starred = Column(Boolean, default=False)
-    is_deleted = Column(Boolean, default=False)  # Soft delete
+    is_deleted = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

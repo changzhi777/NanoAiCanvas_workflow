@@ -630,3 +630,329 @@ async def generate_screenplay(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== TVC 专用端点 ====================
+
+TVC_MODE_CONSTRAINTS = {
+    "creative": "大胆创意，打破常规构图，追求独特视觉冲击。允许非常规镜头角度和转场方式。",
+    "precise": "聚焦产品核心卖点，构图简洁，动作精准。每个镜头必须有明确的产品展示目的。",
+    "cinematic": "电影级画面质感，强调光影层次、景深变化、色彩分级。使用专业镜头语言描述。",
+    "commercial": "经典TVC结构：吸引→展示→利益→行动。品牌露出自然，情感共鸣强烈。",
+}
+
+TVC_SCRIPT_PROMPT = """你是专业的TVC广告脚本专家和提示词优化师。根据用户输入和可选的产品视觉风格约束，生成结构化 TVC 脚本。
+
+## 输出要求
+严格输出以下 JSON 格式，不要添加任何其他文字：
+
+{{
+  "tvc_title": "TVC 标题",
+  "total_duration": {total_duration},
+  "shot_duration": {shot_duration},
+  "shot_count": {shot_count},
+  "shots": [
+    {{
+      "shot_id": 1,
+      "timeline": {{
+        "start": "00:00",
+        "end": "00:05",
+        "duration": 5,
+        "transition": "fade_in"
+      }},
+      "scene_description": "这个镜头发生了什么（中文，简短叙述）",
+      "video_prompt": "English prompt for video generation, under 200 words. Focus on action, camera movement, lighting, atmosphere.",
+      "start_frame_prompt": "起始帧图片提示词（中文，50字以内，描述镜头第一帧画面）",
+      "end_frame_prompt": "结束帧图片提示词（中文，50字以内，描述镜头最后一帧画面）",
+      "bgm_mood": "风格,情绪,乐器（如：独立民谣,忧郁,吉他主导）"
+    }}
+  ],
+  "timeline_summary": {{
+    "total_duration": 30,
+    "shot_count": 6,
+    "shot_duration": 5,
+    "transitions": ["fade_in", "cut", "cut", "dissolve", "cut", "fade_out"]
+  }}
+}}
+
+## video_prompt 编写规则（最重要）
+1. 必须使用英文
+2. 格式：[主体动作] + [镜头运动] + [环境/光线] + cinematic, high quality
+3. 避免否定描述（no, without）
+4. 不超过 200 词
+5. 起始帧和结束帧之间描述过渡动作
+
+## start_frame_prompt / end_frame_prompt 编写规则
+1. 使用中文
+2. 必须与 video_prompt 视觉一致
+3. 起始帧和结束帧之间必须有视觉连续性（同一场景、同一光线、同一色调）
+4. 50 字以内
+5. 包含：画面主体 + 光线 + 构图
+
+## bgm_mood 编写规则
+格式：[风格],[情绪],[乐器]
+示例：独立民谣,忧郁,吉他主导
+示例：电子合成,欢快,快节奏
+
+## timeline 编写规则
+1. 起始帧 transition 用 fade_in，结尾用 fade_out
+2. 中间镜头用 cut 或 dissolve
+3. 时间必须连续，无间隔
+4. duration 必须等于 {shot_duration}"""
+
+
+class TvcScriptRequest(BaseModel):
+    prompt: str
+    shot_count: int = 6
+    shot_duration: int = 5
+    total_duration: int = 30
+    mode: str = "cinematic"
+    style_reference: Optional[str] = None
+    style: Optional[str] = "realistic"
+    model: str = "glm-5.1"
+
+
+@router.post("/tvc-script")
+async def generate_tvc_script(
+    req: TvcScriptRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """TVC 专用脚本生成 — GLM-5.1 thinking 模式"""
+    import json, re
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    # 构造 system prompt
+    system_prompt = TVC_SCRIPT_PROMPT.format(
+        shot_count=req.shot_count,
+        shot_duration=req.shot_duration,
+        total_duration=req.total_duration,
+    )
+
+    # 注入模式约束
+    mode_instruction = TVC_MODE_CONSTRAINTS.get(req.mode, TVC_MODE_CONSTRAINTS["cinematic"])
+    system_prompt += f"\n\n## 创作模式\n{mode_instruction}"
+
+    # 注入风格
+    style_instruction = STYLE_MAP.get(req.style or "realistic", "")
+    if style_instruction:
+        system_prompt += f"\n\n## 画面风格\n{style_instruction}"
+
+    # 注入产品视觉风格约束（来自 5V-Turbo 分析）
+    if req.style_reference:
+        system_prompt += f"\n\n## 产品视觉风格约束（必须遵循）\n{req.style_reference}"
+
+    # thinking 模型使用 <output> 标签
+    is_thinking = req.model.startswith("glm-5")
+    if is_thinking:
+        system_prompt += "\n\n重要：请将最终 JSON 结果放在 <output> 标签中，格式：<output>{...}</output>"
+
+    # 参数
+    api_params = {
+        "model": req.model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"请生成以下TVC广告的结构化脚本：\n{req.prompt}"},
+        ],
+        "temperature": 1.0 if is_thinking else 0.7,
+        "max_tokens": 8192,
+    }
+    if is_thinking:
+        api_params["thinking"] = {"type": "enabled"}
+
+    try:
+        async with httpx.AsyncClient(timeout=180) as client:
+            resp = await client.post(
+                f"{settings.GLM_API_BASE_URL}/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
+                },
+                json=api_params,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
+
+        data = resp.json()
+        msg = data.get("choices", [{}])[0].get("message", {})
+        content = msg.get("content", "").strip()
+
+        # thinking 模型：content 可能为空，取 reasoning_content
+        if not content:
+            rc = msg.get("reasoning_content", "").strip()
+            if rc:
+                match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
+                content = match.group(1).strip() if match else rc
+
+        if not content:
+            raise HTTPException(status_code=502, detail="GLM 返回为空")
+
+        # 提取 JSON
+        json_str = None
+        m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+        if m:
+            json_str = _find_balanced(m.group(1), '{', '}')
+        if not json_str:
+            m = re.search(r'<output>([\s\S]*?)</output>', content)
+            if m:
+                json_str = _find_balanced(m.group(1), '{', '}')
+        if not json_str:
+            json_str = _find_balanced(content, '{', '}')
+
+        if not json_str:
+            raise HTTPException(status_code=502, detail=f"无法解析 TVC 脚本: {content[:200]}")
+
+        try:
+            script = json.loads(json_str)
+        except json.JSONDecodeError:
+            cleaned = _repair_json(json_str)
+            script = json.loads(cleaned)
+
+        # 校验并补全
+        script.setdefault("tvc_title", "未命名TVC")
+        script.setdefault("total_duration", req.total_duration)
+        script.setdefault("shot_duration", req.shot_duration)
+        script.setdefault("shot_count", req.shot_count)
+        script.setdefault("shots", [])
+        script.setdefault("timeline_summary", {})
+
+        for idx, shot in enumerate(script["shots"]):
+            if not isinstance(shot, dict):
+                continue
+            shot.setdefault("shot_id", idx + 1)
+            shot.setdefault("timeline", {
+                "start": f"{(idx * req.shot_duration) // 60:02d}:{(idx * req.shot_duration) % 60:02d}",
+                "end": f"{((idx + 1) * req.shot_duration) // 60:02d}:{((idx + 1) * req.shot_duration) % 60:02d}",
+                "duration": req.shot_duration,
+                "transition": "fade_in" if idx == 0 else ("fade_out" if idx == len(script["shots"]) - 1 else "cut"),
+            })
+            shot.setdefault("scene_description", "")
+            shot.setdefault("video_prompt", "")
+            shot.setdefault("start_frame_prompt", "")
+            shot.setdefault("end_frame_prompt", "")
+            shot.setdefault("bgm_mood", "")
+
+        return {"script": script}
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GLM API 超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== 产品参考图分析 ====================
+
+PRODUCT_REFERENCE_PROMPT = """你是TVC广告视觉风格分析专家。
+分析用户上传的产品参考图，提取视觉风格信息用于TVC广告脚本生成。
+
+输出严格JSON：
+{
+  "product_name": "产品名称",
+  "visual_style": "极简奢华/清新自然/科技未来/复古经典",
+  "color_palette": ["主色调描述", "辅色调描述"],
+  "mood": "温暖/冷峻/活力/优雅/神秘",
+  "lighting_style": "柔光箱/硬光/自然光/霓虹光效",
+  "composition": "居中对称/三分法/对角线/引导线",
+  "key_elements": ["核心视觉元素1", "元素2", "元素3"],
+  "tvc_style_reference": "一段完整的风格约束文本（200字内），包含色调、光影、构图、情绪、风格关键词，用于约束下游TVC脚本的视觉风格一致性"
+}
+
+只输出JSON。"""
+
+
+class ProductReferenceRequest(BaseModel):
+    image_url: str
+    intent: Optional[str] = "tvc"
+    model: str = "glm-5v-turbo"
+
+
+@router.post("/product-reference")
+async def analyze_product_reference(
+    req: ProductReferenceRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """GLM-5V-Turbo 产品参考图分析"""
+    import json, re
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    api_params = {
+        "model": req.model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": req.image_url}},
+                    {"type": "text", "text": PRODUCT_REFERENCE_PROMPT},
+                ],
+            },
+        ],
+        "thinking": {"type": "enabled"},
+        "max_tokens": 2048,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{settings.GLM_API_BASE_URL}/chat/completions",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
+                },
+                json=api_params,
+            )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
+
+        data = resp.json()
+        msg = data.get("choices", [{}])[0].get("message", {})
+        content = msg.get("content", "").strip()
+
+        if not content:
+            rc = msg.get("reasoning_content", "").strip()
+            if rc:
+                match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
+                content = match.group(1).strip() if match else rc
+
+        if not content:
+            raise HTTPException(status_code=502, detail="GLM 返回为空")
+
+        # 提取 JSON
+        json_str = _find_balanced(content, '{', '}')
+        if not json_str:
+            m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+            if m:
+                json_str = _find_balanced(m.group(1), '{', '}')
+
+        if not json_str:
+            raise HTTPException(status_code=502, detail=f"无法解析产品分析结果: {content[:200]}")
+
+        try:
+            analysis = json.loads(json_str)
+        except json.JSONDecodeError:
+            cleaned = _repair_json(json_str)
+            analysis = json.loads(cleaned)
+
+        analysis.setdefault("product_name", "未知产品")
+        analysis.setdefault("visual_style", "")
+        analysis.setdefault("color_palette", [])
+        analysis.setdefault("mood", "")
+        analysis.setdefault("lighting_style", "")
+        analysis.setdefault("composition", "")
+        analysis.setdefault("key_elements", [])
+        analysis.setdefault("tvc_style_reference", "")
+
+        return {"analysis": analysis}
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="GLM API 超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

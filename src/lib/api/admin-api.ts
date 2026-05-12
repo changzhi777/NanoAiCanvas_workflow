@@ -20,9 +20,11 @@ export interface Provider {
   id: number
   name: string
   code: string
+  api_base_url?: string
   description: string
   website: string
   is_active: boolean
+  config?: Record<string, unknown>
   created_at: string
   model_count?: number
   active_key_count?: number
@@ -31,6 +33,7 @@ export interface Provider {
 export interface ProviderCreate {
   name: string
   code: string
+  api_base_url?: string
   description?: string
   website?: string
   config?: Record<string, unknown>

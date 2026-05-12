@@ -6,6 +6,7 @@ import { characterWorkflowTemplate } from '@/components/nanoai-workflow/template
 import { sceneWorkflowTemplate } from '@/components/nanoai-workflow/templates/sceneWorkflow';
 import { quickStoryboardTemplate } from '@/components/nanoai-workflow/templates/quickStoryboard';
 import { textToImageWorkflowTemplate } from '@/components/nanoai-workflow/templates/textToImageWorkflow';
+import { tvcVideo01Template } from '@/components/nanoai-workflow/templates/tvcVideo01';
 import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/skills';
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
 import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
@@ -92,6 +93,12 @@ export enum WorkflowNodeType {
 
   // 输出节点（结束）
   OUTPUT_NODE = 'output_node',
+
+  // 故事板视频+音频合成
+  STORYBOARD_VIDEO = 'storyboard_video',
+
+  // TVC 专用节点
+  TVC_SCRIPT = 'tvc_script',
 }
 
 export enum NodeStatus {
@@ -393,6 +400,18 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
     nodes: textToImageWorkflowTemplate.nodes,
     edges: textToImageWorkflowTemplate.edges,
   },
+  // ==================== TVC 视频 V1 模板 ====================
+  {
+    id: 'tvc-video-01',
+    name: 'TVC视频V1',
+    description: '3步TVC广告视频：文案剧本 → 分镜头故事板 → 视频合成(含BGM/配音)',
+    category: 'story',
+    tags: ['TVC', '视频', '广告', '3步流程', '推荐'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    nodes: tvcVideo01Template.nodes,
+    edges: tvcVideo01Template.edges,
+  },
   // 18 个 Skills 工作流模板
   ...skillsWorkflowTemplates,
   // ==================== 故事板分镜V2版 工作流（1→4 扇出） ====================
@@ -652,6 +671,7 @@ interface WorkflowState {
   exportWorkflow: () => string;
   importWorkflow: (json: string) => void;
   clearWorkflow: () => void;
+  duplicateWorkflow: (templateId: string, offsetX?: number, offsetY?: number) => void;
 
   // Actions - 选择
   selectNode: (nodeId: string | null) => void;
@@ -1018,6 +1038,27 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
               break;
             }
 
+            case 'storyboard_video': {
+              // 故事板视频+音频合成节点：由组件自身驱动执行
+              // Store case 仅用于工作流自动执行时获取上游数据
+              const { edges: svEdges } = get();
+              const svIncoming = svEdges.find(e => e.target === nodeId);
+              if (svIncoming) {
+                const svSource = nodes.find(n => n.id === svIncoming.source);
+                result = svSource?.data?.result || { message: '暂无数据' };
+              } else {
+                result = { message: '请连接分镜图片来源' };
+              }
+              break;
+            }
+
+            case 'tvc_script': {
+              // TVC 起始节点：由 TvcScriptNode 组件自身驱动（分步/一键）
+              // Store case 仅用于工作流自动执行时的标记
+              result = { message: 'TVC 节点由组件自驱动' };
+              break;
+            }
+
             case 'transition': {
               // 转场节点：直接标记成功
               result = {
@@ -1346,6 +1387,39 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
       clearWorkflow: () => {
         set({ nodes: [], edges: [] });
+      },
+
+      duplicateWorkflow: (templateId: string, offsetX: number = 0, offsetY: number = 600) => {
+        const { nodes, edges } = get();
+        const suffix = `_copy_${Date.now()}`;
+        const templateNodes = nodes.filter(n => n.id.startsWith('node-tvc'));
+        if (templateNodes.length === 0) return;
+
+        const idMap = new Map<string, string>();
+        templateNodes.forEach(n => {
+          idMap.set(n.id, n.id + suffix);
+        });
+
+        const newNodes = templateNodes.map(n => ({
+          ...n,
+          id: idMap.get(n.id)!,
+          position: { x: n.position.x + offsetX, y: n.position.y + offsetY },
+          data: { ...n.data, status: 'idle' as any, result: undefined, error: undefined },
+        }));
+
+        const newEdges = edges
+          .filter(e => idMap.has(e.source) && idMap.has(e.target))
+          .map(e => ({
+            ...e,
+            id: e.id + suffix,
+            source: idMap.get(e.source)!,
+            target: idMap.get(e.target)!,
+          }));
+
+        set({
+          nodes: [...nodes, ...newNodes],
+          edges: [...edges, ...newEdges],
+        });
       },
 
       // ==================== 选择管理 ====================

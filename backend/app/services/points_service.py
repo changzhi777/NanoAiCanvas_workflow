@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
-from typing import Optional, Tuple
+from typing import Optional
 
 from app.models.points import PointsAccount, PointsTransaction, TransactionType, TransactionStatus, BillingRule
 
@@ -37,6 +37,8 @@ FRIENDLY_NAMES = {
     "jimeng_image": "即梦SD 2.0", "jimeng_video": "即梦视频",
     "image": "通用图片", "video": "通用视频",
     "audio": "音频", "text": "文本",
+    "storyboard_image": "分镜图", "storyboard_video": "分镜视频",
+    "tvc": "TVC宣传片",
 }
 
 
@@ -47,8 +49,11 @@ def node_type_to_model_type(node_type: str) -> str:
         "minimax_image": "image",
         "character_designer": "image", "scene_designer": "image",
         "storyboard_generator": "image",
+        "storyboard_image": "image",
         "jimeng_video": "jimeng_video",
         "minimax_video": "video", "glm_video": "video",
+        "storyboard_video": "video",
+        "tvc": "video",
         "minimax_speech": "audio", "minimax_music": "audio", "glm_tts": "audio",
         "background_music": "audio",
         "script_generator": "text", "dialogue_generator": "text",
@@ -56,6 +61,7 @@ def node_type_to_model_type(node_type: str) -> str:
         "qwen_text": "text", "qwen_coding": "text", "kimi_text": "text",
         "minimax_coding": "text",
         "director_agent": "text", "screenwriter_agent": "text",
+        "tvc_script": "text",
     }
     return mapping.get(node_type, "text")
 

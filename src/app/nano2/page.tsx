@@ -51,10 +51,10 @@ export default function Nano2Page() {
         const { assets } = await import('@/lib/api/client')
         for (const imageUrl of images) {
           await assets.create({
-            type: 'IMAGE',
+            type: 'image',
             name: `生成_${Date.now()}`,
             url: imageUrl,
-            category: 'STORYBOARD',
+            category: 'image',
             tags: prompt ? [prompt.substring(0, 50)] : [],
           }, token)
         }

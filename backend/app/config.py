@@ -31,9 +31,25 @@ class Settings(BaseSettings):
     # Skills Service
     SKILLS_API_KEY: str = ""  # Optional API key for LLM-based template recommendation
 
+    # 速创 API (Wuyinkeji — NanoBanana2 / GPT-Image-2)
+    WUYINKEJI_API_KEY: str = ""
+    WUYINKEJI_API_BASE_URL: str = "https://api.wuyinkeji.com"
+
     # GLM (智谱AI)
     GLM_API_KEY: str = ""
     GLM_API_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
+
+    # 即梦 (字节AI)
+    JIMENG_API_KEY: str = ""
+    JIMENG_API_BASE_URL: str = "https://api.jimeng.jike.com/v1"
+
+    # Volcengine Ark (Seedance 视频生成)
+    ARK_API_KEY: str = ""
+    ARK_API_BASE_URL: str = "https://ark.cn-beijing.volces.com/api/v3"
+
+    # MiniMax
+    MINIMAX_API_KEY: str = ""
+    MINIMAX_API_BASE_URL: str = "https://api.minimaxi.com/v1"
 
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""

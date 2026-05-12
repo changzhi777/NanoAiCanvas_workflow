@@ -60,6 +60,13 @@ export { default as OutputNode } from './OutputNode';
 // 故事板分镜节点
 export { StoryboardShotANode } from './StoryboardShotANode';
 
+// 故事板视频+音频合成节点
+export { StoryboardVideoNode } from './StoryboardVideoNode'
+
+// TVC 专用节点
+export { TvcScriptNode } from './TvcScriptNode'
+export type { TvcScriptData } from './TvcScriptNode'
+
 // 故事板分镜V2版节点
 export { StoryboardV2Node } from './StoryboardV2Node';
 export { default as ShotRefImageNode } from './ShotRefImageNode';
@@ -140,6 +147,12 @@ export const nodeTypes = {
 
   // 故事板分镜节点
   storyboard_shot_a: lazy(() => import('./StoryboardShotANode').then(m => ({ default: m.StoryboardShotANode }))),
+
+  // 故事板视频+音频合成节点
+  storyboard_video: lazy(() => import('./StoryboardVideoNode').then(m => ({ default: m.StoryboardVideoNode }))),
+
+  // TVC 专用节点
+  tvc_script: lazy(() => import('./TvcScriptNode').then(m => ({ default: m.TvcScriptNode }))),
 
   // 故事板分镜V2版节点
   storyboard_v2: lazy(() => import('./StoryboardV2Node').then(m => ({ default: m.StoryboardV2Node }))),

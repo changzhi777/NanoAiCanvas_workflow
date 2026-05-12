@@ -110,7 +110,7 @@ DEFAULT_NODES = [
     {"item_id": "jimeng_image", "item_name": "即梦图片", "description": "即梦AI图片生成", "category": "即梦", "visibility": "disabled"},
     {"item_id": "jimeng_video", "item_name": "即梦视频", "description": "即梦AI视频生成", "category": "即梦", "visibility": "disabled"},
     {"item_id": "glm_text", "item_name": "智谱文本", "description": "智谱GLM文本生成", "category": "智谱GLM", "visibility": "disabled"},
-    {"item_id": "glm_video", "item_name": "智谱视频", "description": "智谱GLM视频生成", "category": "智谱GLM", "visibility": "disabled"},
+    {"item_id": "glm_video", "item_name": "智谱视频", "description": "智谱GLM视频生成（CogVideoX-3）", "category": "智谱GLM", "visibility": "enabled"},
     {"item_id": "glm_tts", "item_name": "智谱TTS", "description": "智谱GLM语音合成", "category": "智谱GLM", "visibility": "disabled"},
     {"item_id": "glm_multimodal", "item_name": "智谱多模态", "description": "智谱GLM多模态理解", "category": "智谱GLM", "visibility": "disabled"},
     {"item_id": "qwen_text", "item_name": "通义文本", "description": "通义千问文本生成", "category": "通义千问", "visibility": "disabled"},
@@ -184,12 +184,12 @@ async def _ensure_defaults(scope: str, db: AsyncSession):
     defaults = ALL_DEFAULTS.get(scope, [])
     if not defaults:
         return
+    # 先查询已存在的 item_id
+    stmt = select(AppVisibilityItem.item_id).where(AppVisibilityItem.scope == scope)
+    result = await db.execute(stmt)
+    existing_ids = {r[0] for r in result.all()}
     for d in defaults:
-        stmt = select(AppVisibilityItem).where(
-            and_(AppVisibilityItem.scope == scope, AppVisibilityItem.item_id == d["item_id"])
-        )
-        existing = (await db.execute(stmt)).scalar_one_or_none()
-        if not existing:
+        if d["item_id"] not in existing_ids:
             item = AppVisibilityItem(scope=scope, **d)
             db.add(item)
     await db.commit()

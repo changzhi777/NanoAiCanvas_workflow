@@ -31,8 +31,8 @@ server {
         try_files $uri $uri/ /nanoaicanvas/index.html;
     }
 
-    # Nano2 独立入口 SPA fallback
-    location = /nano2 {
+    # Nano2 独立入口 SPA fallback（前缀匹配，兼容 /nano2 和 /nano2/）
+    location /nano2 {
         try_files $uri /nanoaicanvas/index.html;
     }
 

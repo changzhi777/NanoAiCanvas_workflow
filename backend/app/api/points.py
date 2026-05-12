@@ -613,3 +613,63 @@ async def list_team_members(
         }
         for m in team.members
     ]
+
+
+# ============ TVC 积分预估 ============
+
+class TvcEstimateRequest(BaseModel):
+    shot_count: int = 6
+    include_bgm: bool = True
+
+
+@router.post("/tvc-estimate")
+async def estimate_tvc_cost(
+    req: TvcEstimateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """TVC 任务积分预估"""
+    from app.services.points_service import check_balance, node_type_to_model_type, resolve_price
+
+    # 文本（脚本+优化+拆分）×1
+    text_model = node_type_to_model_type("script_generator")
+    text_price = await resolve_price(db, text_model)
+
+    # 图片（起始帧+结束帧）× shot_count × 2
+    image_model = node_type_to_model_type("storyboard_generator")
+    image_price = await resolve_price(db, image_model)
+
+    # 视频 × shot_count
+    video_model = node_type_to_model_type("storyboard_video")
+    video_price = await resolve_price(db, video_model)
+
+    # BGM × 1
+    bgm_model = node_type_to_model_type("background_music")
+    bgm_price = await resolve_price(db, bgm_model) if req.include_bgm else 0
+
+    text_total = text_price * 3  # 脚本+优化+拆分
+    image_total = image_price * req.shot_count * 2
+    video_total = video_price * req.shot_count
+    bgm_total = bgm_price
+
+    total = text_total + image_total + video_total + bgm_total
+
+    account = await get_or_create_user_account(db, current_user.id)
+
+    return {
+        "text": text_total,
+        "images": image_total,
+        "video": video_total,
+        "bgm": bgm_total,
+        "total": total,
+        "balance": account.balance,
+        "sufficient": account.balance >= total,
+        "breakdown": {
+            "text_per": text_price,
+            "image_per": image_price,
+            "video_per": video_price,
+            "bgm_per": bgm_price,
+            "shot_count": req.shot_count,
+            "image_count": req.shot_count * 2,
+        },
+    }

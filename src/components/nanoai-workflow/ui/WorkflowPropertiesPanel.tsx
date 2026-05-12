@@ -8,6 +8,7 @@ import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_PARAMS, optimizePromptWithGLM, SIZE_OPTIONS, getDefaultSize } from '../nodes/StoryboardShotA.shared';
+import { calcTvcParams, formatDuration } from '@/lib/tvc-cascade';
 
 export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElement>) {
   const { isDark } = useTheme();
@@ -556,8 +557,74 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 );
               })()}
 
+              {/* TVC 起始节点专属配置 + 级联参数 */}
+              {selectedNode.type === 'tvc_script' && (() => {
+                const p = { optimizeMode: 'tvc_deep', executionMode: 'auto', style: 'realistic', ...(editData.params || {}) };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>TVC 参数配置</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">TVC 总时长</Label>
+                        <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
+                          <option value={15}>15 秒</option>
+                          <option value={30}>30 秒</option>
+                          <option value={45}>45 秒</option>
+                          <option value={60}>60 秒</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">画面风格</Label>
+                        <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实</option>
+                          <option value="anime">动画</option>
+                          <option value="comic">漫画</option>
+                          <option value="oil_painting">油画</option>
+                          <option value="chinese">水墨</option>
+                        </select>
+                      </div>
+                      {/* 级联计算显示 */}
+                      {(() => {
+                        const calc = calcTvcParams(p.totalDuration || 30);
+                        return (
+                          <div className={cn('rounded-lg p-3 space-y-1.5', isDark ? 'bg-slate-900/50' : 'bg-white')}>
+                            <div className="text-[11px] font-medium text-muted-foreground mb-1">自动计算</div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">单镜头时长</span>
+                              <span className="font-mono">{calc.shotDuration}s</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">镜头数</span>
+                              <span className="font-mono font-semibold text-blue-500">{calc.shotCount}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">生图数</span>
+                              <span className="font-mono">{calc.imageCount} 张（起始帧+结束帧）</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">预估耗时</span>
+                              <span className="font-mono">{formatDuration(calc.estimatedTimeMin)} ~ {formatDuration(calc.estimatedTimeMax)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs border-t pt-1.5 mt-1.5" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                              <span className="text-muted-foreground">预估积分</span>
+                              <span className="font-mono font-semibold text-amber-500">{calc.estimatedCost} 分</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* 节点参数（已有专属配置的节点跳过通用区域） */}
-              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && (
+              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && selectedNode.type !== 'storyboard_video' && selectedNode.type !== 'tvc_script' && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',

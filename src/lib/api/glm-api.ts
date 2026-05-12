@@ -18,8 +18,10 @@ export interface GlmTextParams {
 export interface GlmVideoParams {
   prompt: string;
   model?: string;
-  duration?: number | string;
-  resolution?: '720p' | '1080p';
+  imageUrl?: string | [string, string];
+  quality?: 'quality' | 'speed';
+  size?: string;
+  fps?: 30 | 60;
 }
 
 export interface GlmTtsParams {
@@ -112,35 +114,60 @@ export async function generateText(
 export async function generateVideo(
   params: GlmVideoParams
 ): Promise<string> {
-  const durationNum = typeof params.duration === 'string' ? parseInt(params.duration, 10) : params.duration;
-  const response = await glmRequest<GlmAsyncResponse>('/video/generation', {
+  const body: Record<string, unknown> = {
     model: params.model || getModelCode('glm_video', GLM_CONFIG.MODELS.VIDEO),
     prompt: params.prompt,
-    duration: durationNum || 6,
-    resolution: params.resolution || '1080p',
-  });
-
-  if (response.code !== 0 && response.code !== 200) {
-    throw new Error(`智谱视频生成失败: ${response.msg}`);
+    quality: params.quality || 'quality',
+    size: params.size || '1920x1080',
+    fps: params.fps || 30,
+  };
+  if (params.imageUrl) {
+    body.image_url = params.imageUrl;
   }
 
-  return response.data.id || response.data.task_id || '';
+  const response = await fetch(`${GLM_CONFIG.API_BASE_URL}/videos/generations`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GLM_CONFIG.API_KEY}`,
+      'Content-Type': 'application/json;charset=utf-8',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`CogVideoX-3 提交失败: ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.id || '';
 }
 
 export async function getVideoResult(
   requestId: string
 ): Promise<GlmResultResponse['data']> {
-  const response = await glmRequest<GlmResultResponse>(
-    `/video/generation_result?id=${requestId}`,
-    {},
-    { method: 'GET' }
-  );
+  const response = await fetch(`${GLM_CONFIG.API_BASE_URL}/async-result/${requestId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${GLM_CONFIG.API_KEY}`,
+    },
+  });
 
-  if (response.code !== 0 && response.code !== 200) {
-    throw new Error(`查询智谱视频结果失败: ${response.msg}`);
+  if (!response.ok) {
+    throw new Error(`查询 CogVideoX-3 结果失败: ${response.status}`);
   }
 
-  return response.data;
+  const data = await response.json();
+  return {
+    id: data.id || requestId,
+    status: data.task_status === 'SUCCESS' ? 'succeeded'
+      : data.task_status === 'FAIL' || data.task_status === 'FAILED' ? 'failed'
+      : 'processing',
+    video_url: data.video_result?.[0]?.url
+      || data.results?.[0]?.url
+      || data.data?.url
+      || '',
+    error: data.error?.message || data.message,
+  };
 }
 
 export async function pollVideoResult(

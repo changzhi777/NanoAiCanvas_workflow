@@ -75,9 +75,8 @@ export const useStoryboardTaskStore = create<StoryboardTaskState>((set, get) => 
       if (result.success && result.tasks) {
         set({ tasks: result.tasks })
       }
-    } catch (error) {
-      // 静默处理 - storyboard API 可能未部署
-      console.warn('[StoryboardTaskStore] Load tasks skipped (API not available)')
+    } catch {
+      // storyboard API 可能未部署，静默处理
     }
   },
 
@@ -88,9 +87,8 @@ export const useStoryboardTaskStore = create<StoryboardTaskState>((set, get) => 
       if (result.success && result.assets) {
         set({ completedAssets: result.assets })
       }
-    } catch (error) {
-      // 静默处理 - storyboard API 可能未部署
-      console.warn('[StoryboardTaskStore] Load assets skipped (API not available)')
+    } catch {
+      // storyboard API 可能未部署，静默处理
     }
   },
 

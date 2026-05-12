@@ -96,7 +96,7 @@ function AppContent() {
   // 根据 URL 路径初始化页面
   useEffect(() => {
     const path = window.location.pathname
-    if (path === '/nano2') {
+    if (path === '/nano2' || path === '/nano2/') {
       setCurrentPage('nano2')
     } else if (path === '/canvas') {
       setCurrentPage('canvas')
@@ -147,7 +147,7 @@ function AppContent() {
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname
-      if (path === '/nano2') {
+      if (path === '/nano2' || path === '/nano2/') {
         setCurrentPage('nano2')
       } else if (path === '/canvas') {
         setCurrentPage('canvas')

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { getAssetsApi } from '@/lib/api/assets'
 import { cn } from '@/lib/utils'
 import { useTheme } from '@/components/nanoai-workflow/ui/Theme'
-import { Image, Film, Music, X, Loader2 } from 'lucide-react'
+import { Image, Film, Music, Clapperboard, X, Loader2 } from 'lucide-react'
 import type { Attachment } from '@/lib/api/chat-api'
 
 interface AssetPickerProps {
@@ -11,9 +11,12 @@ interface AssetPickerProps {
   onSelect: (attachment: Attachment) => void
 }
 
+const IMAGE_TYPES = ['image', 'storyboard_image']
+
 const TYPE_FILTERS = [
   { key: 'all', label: '全部', icon: null },
   { key: 'image', label: '图片', icon: Image },
+  { key: 'storyboard_image', label: '分镜图', icon: Clapperboard },
   { key: 'video', label: '视频', icon: Film },
   { key: 'audio', label: '音频', icon: Music },
 ] as const
@@ -38,7 +41,7 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
 
   const filtered = filter === 'all'
     ? assets
-    : assets.filter((a) => a.type === filter)
+    : assets.filter((a) => a.type === filter || (filter === 'image' && a.type === 'storyboard_image'))
 
   if (!open) return null
 
@@ -51,7 +54,6 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className={cn('flex items-center justify-between px-4 py-3 border-b', isDark ? 'border-white/10' : 'border-gray-200')}>
           <span className="text-sm font-medium">从资产库选择</span>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -59,8 +61,7 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
           </button>
         </div>
 
-        {/* 筛选栏 */}
-        <div className="flex gap-1 px-4 py-2">
+        <div className="flex gap-1 px-4 py-2 flex-wrap">
           {TYPE_FILTERS.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -78,7 +79,6 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
           ))}
         </div>
 
-        {/* 列表 */}
         <div className="flex-1 overflow-y-auto px-4 pb-3 min-h-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -88,42 +88,42 @@ export function AssetPicker({ open, onClose, onSelect }: AssetPickerProps) {
             <div className="text-center text-muted-foreground text-xs py-12">暂无资产</div>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {filtered.map((asset) => (
-                <button
-                  key={asset.id}
-                  onClick={() => {
-                    onSelect({
-                      type: asset.type === 'storyboard_shot' ? 'image' : asset.type,
-                      url: asset.url,
-                      thumbnail_url: asset.thumbnail_url,
-                      name: asset.name || '未命名',
-                      prompt: asset.meta_data?.prompt || null,
-                      source_asset_id: asset.id,
-                    })
-                    onClose()
-                  }}
-                  className={cn(
-                    'flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
-                    isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100',
-                  )}
-                >
-                  {asset.type === 'image' || asset.type === 'storyboard_shot' ? (
-                    <img
-                      src={asset.thumbnail_url || asset.url}
-                      className="w-full aspect-square rounded object-cover"
-                    />
-                  ) : asset.type === 'video' ? (
-                    <div className="w-full aspect-square rounded bg-accent flex items-center justify-center">
-                      <Film className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <div className="w-full aspect-square rounded bg-accent flex items-center justify-center">
-                      <Music className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  <span className="text-[10px] truncate w-full text-center">{asset.name}</span>
-                </button>
-              ))}
+              {filtered.map((asset) => {
+                const isImage = IMAGE_TYPES.includes(asset.type)
+                return (
+                  <button
+                    key={asset.id}
+                    onClick={() => {
+                      onSelect({
+                        type: isImage ? 'image' : asset.type === 'storyboard_video' ? 'video' : asset.type,
+                        url: asset.url,
+                        thumbnail_url: asset.thumbnail_url,
+                        name: asset.name || '未命名',
+                        prompt: asset.meta_data?.prompt || null,
+                        source_asset_id: asset.id,
+                      })
+                      onClose()
+                    }}
+                    className={cn(
+                      'flex flex-col items-center gap-1 p-2 rounded-lg transition-colors',
+                      isDark ? 'hover:bg-slate-700' : 'hover:bg-gray-100',
+                    )}
+                  >
+                    {isImage ? (
+                      <img src={asset.thumbnail_url || asset.url} className="w-full aspect-square rounded object-cover" />
+                    ) : asset.type === 'video' || asset.type === 'storyboard_video' ? (
+                      <div className="w-full aspect-square rounded bg-accent flex items-center justify-center">
+                        <Film className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <div className="w-full aspect-square rounded bg-accent flex items-center justify-center">
+                        <Music className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <span className="text-[10px] truncate w-full text-center">{asset.name}</span>
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>

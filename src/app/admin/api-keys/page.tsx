@@ -109,10 +109,7 @@ const mockAPIKeys: APIKey[] = [
   },
 ]
 
-const providerNames: Record<number, string> = {
-  1: '速创API',
-  2: '智谱AI',
-}
+// providerNames 从 providers state 动态构建
 
 const statusConfig = {
   active: { label: '活跃', className: 'bg-green-500/10 text-green-500 border-green-500/20' },
@@ -130,6 +127,7 @@ export default function APIKeysPage() {
   const [testingKeys, setTestingKeys] = useState<Record<number, boolean>>({})
   const [keyTestResults, setKeyTestResults] = useState<Record<number, 'valid' | 'invalid' | 'error'>>({})
   const [useMock, setUseMock] = useState(false)
+  const providerNames = Object.fromEntries(providers.map(p => [p.id, p.name]))
 
   // 创建/编辑密钥对话框状态
   const [keyDialogOpen, setKeyDialogOpen] = useState(false)
@@ -207,15 +205,19 @@ export default function APIKeysPage() {
     setTestingKeys(prev => ({ ...prev, [keyId]: false }))
   }
 
-  const toggleKeyStatus = (key: APIKey) => {
-    setAPIKeys(prev =>
-      prev.map(k =>
-        k.id === key.id
-          ? { ...k, status: k.status === 'active' ? 'inactive' : 'active' }
-          : k
+  const toggleKeyStatus = async (key: APIKey) => {
+    const newStatus = key.status === 'active' ? 'inactive' : 'active'
+    try {
+      await adminApi.updateAPIKey(key.id, { status: newStatus })
+      setAPIKeys(prev =>
+        prev.map(k =>
+          k.id === key.id ? { ...k, status: newStatus } : k
+        )
       )
-    )
-    toast.success(`密钥已${key.status === 'active' ? '禁用' : '启用'}`)
+      toast.success(`密钥已${key.status === 'active' ? '禁用' : '启用'}`)
+    } catch {
+      toast.error('操作失败')
+    }
   }
 
   // 打开添加密钥对话框

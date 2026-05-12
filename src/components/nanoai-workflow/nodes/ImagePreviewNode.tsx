@@ -1,7 +1,7 @@
 /**
  * 图片预览节点 — 分镜头绘本版
  * 支持横向/纵向布局，显示场景描述，P编号
- * 自动保存到资产库（storyboard_shot）+ 下载
+ * 自动保存到资产库（storyboard_image）+ 下载
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
@@ -138,7 +138,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
             version: 'v1',
             sourceNodeId: data.params.sourceNodeId || id,
             params: {
-              type: 'storyboard_shot',
+              type: 'storyboard_image',
               shotNumber: i + 1,
               cameraAngle: shot?.camera_angle || '',
               mood: shot?.mood || '',

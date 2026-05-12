@@ -6,12 +6,15 @@ from sqlalchemy import select, func, or_, update, exists
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import User, Asset, AssetType, AssetCategory
+from app.models import User, Asset, AssetType
 from app.models.points import Team, TeamAsset, TeamMember
 from app.api.auth import get_current_user
 from app.services.image_downloader import download_image
 
 router = APIRouter(prefix="/assets", tags=["assets"])
+
+VALID_ASSET_TYPES = [e.value for e in AssetType]
+VALID_ASSET_CATEGORIES = [e.value for e in AssetType]
 
 
 def _safe_uuid(val: Optional[str]) -> Optional[UUID]:
@@ -21,6 +24,20 @@ def _safe_uuid(val: Optional[str]) -> Optional[UUID]:
         return UUID(val)
     except ValueError:
         return None
+
+
+def _resolve_type(raw: str) -> str:
+    if raw in VALID_ASSET_TYPES:
+        return raw
+    raise HTTPException(status_code=400, detail=f"Invalid asset type: {raw}")
+
+
+def _resolve_category(raw: Optional[str]) -> Optional[str]:
+    if not raw:
+        return None
+    if raw in VALID_ASSET_CATEGORIES:
+        return raw
+    return raw
 
 
 class AssetCreate(BaseModel):
@@ -38,7 +55,6 @@ class AssetCreate(BaseModel):
     parent_asset_id: Optional[str] = None
 
 
-# --- 元数据 Schema ---
 class AssetMeta(BaseModel):
     prompt: Optional[str] = None
     enhancedPrompt: Optional[str] = None
@@ -50,8 +66,10 @@ class AssetMeta(BaseModel):
 
 
 METADATA_SCHEMAS = {
-    "storyboard_shot": AssetMeta,
+    "storyboard_image": AssetMeta,
+    "storyboard_video": AssetMeta,
     "image": AssetMeta,
+    "video": AssetMeta,
 }
 
 
@@ -95,12 +113,12 @@ class AssetListResponse(BaseModel):
 def _to_response(a: Asset) -> AssetResponse:
     return AssetResponse(
         id=a.id,
-        type=a.type.value if isinstance(a.type, AssetType) else a.type,
+        type=a.type if isinstance(a.type, str) else a.type.value,
         name=a.name,
         url=a.url,
         thumbnail_url=a.thumbnail_url,
         metadata=a.meta_data or {},
-        category=a.category.value if isinstance(a.category, AssetCategory) else a.category,
+        category=a.category if isinstance(a.category, str) else (a.category.value if a.category else None),
         tags=a.tags or [],
         is_starred=a.is_starred,
         workflow_snapshot=a.workflow_snapshot,
@@ -118,33 +136,33 @@ async def create_asset(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # 元数据 Schema 校验
+    asset_type = _resolve_type(data.type)
+
     meta = data.metadata or {}
-    schema_cls = METADATA_SCHEMAS.get(data.type)
+    schema_cls = METADATA_SCHEMAS.get(asset_type)
     if schema_cls and meta:
         try:
             schema_cls(**meta)
         except Exception as e:
             raise HTTPException(status_code=422, detail=f"Metadata validation error: {e}")
 
-    # 下载外部URL图片/视频到本地存储
     local_url = data.url
     local_thumbnail = data.thumbnail_url
-    if data.type in ("image", "video", "storyboard_shot") and data.url:
-        local_url, thumb = await download_image(data.url, data.type)
+    if asset_type in ("image", "video", "storyboard_image", "storyboard_video") and data.url:
+        local_url, thumb = await download_image(data.url, asset_type)
         local_thumbnail = thumb
-    if data.type in ("image", "storyboard_shot") and data.thumbnail_url and data.thumbnail_url != data.url:
-        _, thumb = await download_image(data.thumbnail_url, data.type)
+    if asset_type in ("image", "storyboard_image") and data.thumbnail_url and data.thumbnail_url != data.url:
+        _, thumb = await download_image(data.thumbnail_url, asset_type)
         local_thumbnail = thumb
 
     asset = Asset(
         user_id=current_user.id,
-        type=AssetType(data.type),
+        type=asset_type,
         name=data.name,
         url=local_url,
         thumbnail_url=local_thumbnail or local_url,
         meta_data=data.metadata or {},
-        category=AssetCategory(data.category) if data.category else None,
+        category=_resolve_category(data.category) or asset_type,
         tags=data.tags or [],
         workflow_snapshot=data.workflow_snapshot,
         version=data.version,
@@ -177,9 +195,9 @@ async def list_assets(
     )
 
     if type_filter:
-        query = query.where(Asset.type == AssetType(type_filter))
+        query = query.where(Asset.type == type_filter)
     if category:
-        query = query.where(Asset.category == AssetCategory(category))
+        query = query.where(Asset.category == category)
     if starred is not None:
         query = query.where(Asset.is_starred == starred)
     if version:
@@ -195,17 +213,15 @@ async def list_assets(
             Asset.meta_data.isnot(None),
         )
 
-    # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
-    # Paginate
     query = query.order_by(Asset.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
-    assets = result.scalars().all()
+    assets_list = result.scalars().all()
 
-    items = [_to_response(a) for a in assets]
+    items = [_to_response(a) for a in assets_list]
 
     return AssetListResponse(items=items, total=total, page=page, page_size=page_size)
 
@@ -245,7 +261,7 @@ async def update_asset(
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if key == "category":
-            value = AssetCategory(value) if value else None
+            value = _resolve_category(value)
         setattr(asset, key, value)
 
     await db.commit()
@@ -332,7 +348,7 @@ async def batch_update(
         return {"updated": 0}
     values = {}
     if data.category:
-        values["category"] = AssetCategory(data.category)
+        values["category"] = _resolve_category(data.category)
     if not values:
         return {"updated": 0}
     result = await db.execute(
@@ -355,7 +371,6 @@ async def list_team_assets(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # verify membership
     is_member = await db.execute(
         select(exists().where(
             TeamMember.team_id == team_id,
@@ -374,7 +389,7 @@ async def list_team_assets(
         )
     )
     if type_filter:
-        query = query.where(Asset.type == AssetType(type_filter))
+        query = query.where(Asset.type == type_filter)
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar() or 0
@@ -398,21 +413,18 @@ async def share_asset_to_team(
 ):
     team_id = data.team_id
 
-    # verify ownership
     asset = await db.execute(
         select(Asset).where(Asset.id == asset_id, Asset.user_id == current_user.id, Asset.is_deleted == False)
     )
     if not asset.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Asset not found")
 
-    # verify team membership
     is_member = await db.execute(
         select(exists().where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id))
     )
     if not is_member.scalar():
         raise HTTPException(status_code=403, detail="Not a team member")
 
-    # check duplicate
     already = await db.execute(
         select(exists().where(TeamAsset.team_id == team_id, TeamAsset.asset_id == asset_id))
     )
@@ -431,7 +443,6 @@ async def remove_asset_from_team(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # verify team membership
     is_member = await db.execute(
         select(exists().where(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id))
     )
