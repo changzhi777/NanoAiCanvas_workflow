@@ -172,7 +172,7 @@ export async function getVideoResult(
 
 export async function pollVideoResult(
   requestId: string,
-  maxAttempts: number = 30,
+  maxAttempts: number = 120,
   interval: number = 3000
 ): Promise<string> {
   let attempts = 0;

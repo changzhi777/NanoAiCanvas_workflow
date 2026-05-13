@@ -68,7 +68,7 @@ const PROVIDER_MODELS: Record<ApiProvider, { label: string; value: string }[]> =
     { label: 'Hailuo-2.3-768P', value: 'hailuo-2.3-768P' },
   ],
   glm: [
-    { label: 'GLM-CogVideoX', value: 'cogvideox' },
+    { label: 'GLM-CogVideoX', value: 'cogvideox-3' },
   ],
   jimeng: [
     { label: 'Jimeng-Video', value: 'jimeng-video' },
@@ -310,7 +310,13 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
   }, [resultVideos, videoItems, sourceImages])
 
   const handleParamChange = useCallback((key: string, value: any) => {
-    updateNodeParams(id, { [key]: value })
+    const updates: Record<string, any> = { [key]: value }
+    // Auto-switch model when provider changes
+    if (key === 'apiProvider') {
+      const defaultModel = PROVIDER_MODELS[value as ApiProvider]?.[0]?.value
+      if (defaultModel) updates.model = defaultModel
+    }
+    updateNodeParams(id, updates)
   }, [id, updateNodeParams])
 
   const providerModels = PROVIDER_MODELS[params.apiProvider] || []
