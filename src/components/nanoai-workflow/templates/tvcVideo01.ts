@@ -44,7 +44,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           // 参考图
           referenceImage: "",
           // 模型选择（功能名，非模型名）
-          optimizeMode: 'tvc_minimax' as string,
+          optimizeMode: 'tvc_deep' as string,
           // 执行模式
           executionMode: 'auto' as string,
           // 级联参数
