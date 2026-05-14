@@ -242,16 +242,15 @@ test.describe('TVC 工作流', () => {
     const node = tvcNode(page)
     await expect(node).toBeVisible({ timeout: 5000 })
 
-    // 默认选中的是 MiniMax 2.7
     const select = node.locator('select')
     const selectedValue = await select.inputValue()
-    expect(selectedValue).toBe('tvc_minimax')
+    expect(selectedValue).toBe('tvc_deep')
 
-    // 切换到深度分析
-    await select.selectOption('tvc_deep')
+    // 切换到 MiniMax
+    await select.selectOption('tvc_minimax')
     await page.waitForTimeout(200)
 
     const newValue = await select.inputValue()
-    expect(newValue).toBe('tvc_deep')
+    expect(newValue).toBe('tvc_minimax')
   })
 })
