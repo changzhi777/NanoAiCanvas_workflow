@@ -88,6 +88,10 @@ export const StoryboardShotANode = memo(({ id, data }: { id: string; data: Story
       const sourceResult = sourceNode?.data?.result
       if (sourceResult?.text) return sourceResult.text
       if (sourceResult?.copywriteText) return sourceResult.copywriteText
+      // 来自 TvcScriptNode: result.script.shots[i].scene_description
+      if (sourceResult?.script?.shots?.length) {
+        return sourceResult.script.shots.map((s: any) => s.scene_description || s.description || '').join('\n')
+      }
       if (typeof sourceResult === 'string') return sourceResult
     }
     return ''

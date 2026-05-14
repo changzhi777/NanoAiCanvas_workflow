@@ -15,6 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { TaskStepAnimation } from '@/components/TaskStepAnimation'
 import { generateScreenplay, DEFAULT_V2_PARAMS, type ScreenplayData } from './StoryboardV2.shared'
 import { statusConfig } from './nodeStatusConfig'
+import { useIMETextarea } from '@/hooks/useIMETextarea'
 
 export interface StoryboardV2Data extends WorkflowNodeData {
   params: {
@@ -46,6 +47,7 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
   const [stepMessage, setStepMessage] = useState('')
   const abortRef = useRef<AbortController | null>(null)
   const [inputText, setInputText] = useState(data.params?.inputText || '')
+  const ime = useIMETextarea(inputText)
 
   const upstreamText = useMemo(() => {
     const incomingEdge = edges.find(e => e.target === id)
@@ -54,6 +56,15 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
       const sourceResult = sourceNode?.data?.result
       if (sourceResult?.text) return sourceResult.text
       if (sourceResult?.copywriteText) return sourceResult.copywriteText
+      // 来自 TvcScriptNode 的 script/shots
+      if (sourceResult?.script?.shots?.length) {
+        return sourceResult.script.shots.map((s: any) => s.scene_description || s.description || '').join('\n')
+      }
+      // 来自其他节点的数据
+      if (typeof sourceResult === 'object') {
+        const text = sourceResult.text || sourceResult.description || sourceResult.content || ''
+        if (text) return text
+      }
     }
     return ''
   }, [edges, nodes, id])
@@ -181,11 +192,16 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
           </div>
         ) : (
           <textarea
-            value={inputText}
-            onChange={(e) => {
-              setInputText(e.target.value)
-              updateNode(id, { params: { ...data.params, inputText: e.target.value } })
-            }}
+            value={ime.value}
+            onChange={ime.createOnChange((v) => {
+              setInputText(v)
+              updateNode(id, { params: { ...data.params, inputText: v } })
+            })}
+            onCompositionStart={ime.onCompositionStart}
+            onCompositionEnd={(e) => ime.handleCompositionEnd(e, (v) => {
+              setInputText(v)
+              updateNode(id, { params: { ...data.params, inputText: v } })
+            })}
             rows={3}
             className="w-full text-xs resize-none rounded-md border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-500"
             placeholder="输入故事梗概..."

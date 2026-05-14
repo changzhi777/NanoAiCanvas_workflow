@@ -4,9 +4,9 @@
 
 # Backend API 模块 - FastAPI 路由定义
 
-> 后端 API 路由模块，包含认证、资产管理、工作流、积分等核心 API
+> 后端 API 路由模块，包含认证、资产管理、工作流、积分、聊天、通知等核心 API
 
-**最后更新**: 2026-05-05
+**最后更新**: 2026-05-14
 **维护者**: NanoAiCanvas Backend Team
 
 ---
@@ -17,6 +17,9 @@ Backend API 模块负责：
 - 提供 RESTful API 接口
 - 处理认证/授权（JWT）
 - 管理资产、工作流、团队、积分等数据
+- 即时聊天（REST + WebSocket）
+- 实时通知推送
+- 任务状态 WebSocket 推送
 - 离线数据同步
 - Session 管理（Redis）
 
@@ -30,7 +33,9 @@ Backend API 模块负责：
 
 ```python
 from fastapi import FastAPI
-from app.api import auth, assets, workflows, sync, points, points_admin, prompt_restrictions, categories, teams, assets_export
+from app.api import auth, assets, workflows, sync, points, points_admin, prompt_restrictions
+from app.api import categories, teams, assets_export, chat, notifications
+from app.api import admin_users, tags, folders, websocket
 
 app = FastAPI(
     title="NanoAI Canvas API",
@@ -41,6 +46,7 @@ app = FastAPI(
 # 包含路由
 app.include_router(auth.router, prefix="/api")
 app.include_router(assets.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 # ...
 ```
 
@@ -53,35 +59,142 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ---
 
+## 目录结构
+
+```
+backend/app/api/
+├── __init__.py
+├── CLAUDE.md                # 本文档
+├── auth.py                  # 认证路由（注册/登录/JWT）
+├── assets.py                # 资产管理（CRUD + 批量）
+├── workflows.py             # 工作流管理（保存/加载）
+├── points.py                # 积分系统（查询/扣减/统计）
+├── points_admin.py          # 积分管理后台（配置/定价）
+├── categories.py            # 分类管理
+├── teams.py                 # 团队管理
+├── sync.py                  # 离线数据同步
+├── assets_export.py         # 批量导出
+├── prompt_restrictions.py   # 提示词限制
+├── chat.py                  # 即时聊天（REST + WebSocket）★ 新增
+├── notifications.py         # 用户通知 + 管理端通知 ★ 新增
+├── admin_users.py           # 管理员用户审批 ★ 新增
+├── tags.py                  # 标签管理 ★ 新增
+├── folders.py               # 文件夹管理 ★ 新增
+├── websocket.py             # WebSocket 任务状态推送 ★ 新增
+└── v2/                      # V2 API（独立子目录，见下方）
+    ├── __init__.py
+    ├── admin.py             # V2 管理后台
+    ├── app_visibility.py    # 应用可见性控制
+    ├── generation_log.py    # 生成日志
+    ├── glm_proxy.py         # GLM 代理
+    ├── image.py             # 图片生成
+    ├── key_mapper.py        # API Key 映射
+    ├── minimax.py           # MiniMax 集成
+    ├── skills.py            # Skills 任务队列
+    └── workflow_tasks.py    # 工作流任务
+```
+
+---
+
 ## 对外接口
 
-### API 路由列表
+### V1 API 路由列表
 
-| 路由 | 文件 | 功能 | 认证 |
-|------|------|------|------|
-| `POST /api/auth/register` | `auth.py` | 用户注册 | 否 |
-| `POST /api/auth/login` | `auth.py` | 用户登录 | 否 |
-| `POST /api/auth/refresh` | `auth.py` | 刷新 Token | 否 |
-| `GET /api/auth/me` | `auth.py` | 获取当前用户 | 是 |
-| `PUT /api/auth/me` | `auth.py` | 更新用户信息 | 是 |
-| `GET /api/assets` | `assets.py` | 列表资产 | 是 |
-| `POST /api/assets` | `assets.py` | 创建资产 | 是 |
-| `GET /api/assets/{id}` | `assets.py` | 获取资产 | 是 |
-| `PATCH /api/assets/{id}` | `assets.py` | 更新资产 | 是 |
-| `DELETE /api/assets/{id}` | `assets.py` | 删除资产 | 是 |
-| `GET /api/workflows` | `workflows.py` | 列表工作流 | 是 |
-| `POST /api/workflows` | `workflows.py` | 创建工作流 | 是 |
-| `GET /api/workflows/{id}` | `workflows.py` | 获取工作流 | 是 |
-| `PATCH /api/workflows/{id}` | `workflows.py` | 更新工作流 | 是 |
-| `DELETE /api/workflows/{id}` | `workflows.py` | 删除工作流 | 是 |
-| `GET /api/points` | `points.py` | 获取积分 | 是 |
-| `POST /api/points/deduct` | `points.py` | 扣减积分 | 是 |
-| `GET /api/categories` | `categories.py` | 列表分类 | 是 |
-| `POST /api/categories` | `categories.py` | 创建分类 | 是 |
-| `GET /api/teams` | `teams.py` | 列表团队 | 是 |
-| `POST /api/teams` | `teams.py` | 创建团队 | 是 |
-| `POST /api/sync/push` | `sync.py` | 推送同步 | 是 |
-| `POST /api/sync/pull` | `sync.py` | 拉取同步 | 是 |
+| 路由前缀 | 文件 | 功能 | 认证 |
+|----------|------|------|------|
+| `/api/auth/*` | `auth.py` | 注册/登录/JWT/刷新/用户信息 | 部分 |
+| `/api/assets` | `assets.py` | 资产 CRUD + 批量操作 | 是 |
+| `/api/workflows` | `workflows.py` | 工作流保存/加载/删除 | 是 |
+| `/api/points/*` | `points.py` | 积分查询/扣减/统计/余额 | 是 |
+| `/api/points_admin/*` | `points_admin.py` | 积分管理后台（定价/配置） | 管理员 |
+| `/api/categories` | `categories.py` | 分类 CRUD | 是 |
+| `/api/teams` | `teams.py` | 团队管理 | 是 |
+| `/api/sync/*` | `sync.py` | 离线数据同步（push/pull） | 是 |
+| `/api/assets_export` | `assets_export.py` | 批量导出 | 是 |
+| `/api/prompt_restrictions` | `prompt_restrictions.py` | 提示词限制查询 | 是 |
+| `/api/chat/*` | `chat.py` | 即时聊天 REST + WebSocket | 是 |
+| `/api/notifications/*` | `notifications.py` | 通知查询/已读/未读数 | 是 |
+| `/api/admin/users/*` | `admin_users.py` | 用户审批/管理 | 管理员 |
+| `/api/tags` | `tags.py` | 标签 CRUD | 是 |
+| `/api/folders` | `folders.py` | 文件夹 CRUD（树形） | 是 |
+| `/ws/tasks/{task_id}` | `websocket.py` | 任务状态实时推送 | 连接级 |
+
+### V2 API 路由列表
+
+V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 9 个路由文件。
+
+| 路由前缀 | 文件 | 功能 | 说明 |
+|----------|------|------|------|
+| `/api/v2/admin/*` | `admin.py` | V2 管理后台 | 应用/模板/节点管理 |
+| `/api/v2/app-visibility/*` | `app_visibility.py` | 应用可见性控制 | 三态管理 |
+| `/api/v2/generation-log/*` | `generation_log.py` | 生成日志 | 调用记录查询 |
+| `/api/v2/glm/*` | `glm_proxy.py` | GLM API 代理 | SSE 流式转发 |
+| `/api/v2/image/*` | `image.py` | 图片生成 | NanoBanana/GPT-Image |
+| `/api/v2/key-mapper/*` | `key_mapper.py` | API Key 映射 | 热加载配置 |
+| `/api/v2/minimax/*` | `minimax.py` | MiniMax 集成 | 文本/语音/视频 |
+| `/api/v2/skills/*` | `skills.py` | Skills 任务队列 | Redis 队列 Worker |
+| `/api/v2/workflow-tasks/*` | `workflow_tasks.py` | 工作流任务 | 任务执行引擎 |
+
+> 详细文档见 [v2/CLAUDE.md](./v2/CLAUDE.md)
+
+---
+
+## 核心模块详解
+
+### chat.py — 即时聊天
+
+REST + WebSocket 混合架构，723 行。
+
+- **WebSocket 端点**: `/api/chat/ws/{conversation_id}` — 实时消息收发
+- **REST 端点**: 会话管理、消息历史、文件上传
+- **Redis Pub/Sub**: 跨 Worker 消息分发，支持多进程部署
+- **ConnectionManager**: 管理 WebSocket 连接池，按会话分组
+- **文件上传**: 支持图片（10MB）、视频（100MB）、音频（50MB）
+- **数据模型**: Conversation、ConversationMember、Message
+
+### websocket.py — 任务状态推送
+
+独立的 WebSocket 端点，100 行。
+
+- **WebSocket 端点**: `/ws/tasks/{task_id}` — 订阅任务状态更新
+- **ConnectionManager**: 按 task_id 管理连接，支持广播
+- **Redis Pub/Sub**: 从 TaskSubscriber 接收消息并转发
+- **心跳机制**: 30s 超时 + ping 保活
+- **自动清理**: 断开时清理无效连接
+
+### notifications.py — 通知系统
+
+用户通知 + 管理端通知，支持多种通知类型。
+
+- **用户端**: 查询通知列表、标记已读、未读计数
+- **管理端**: 发送通知、批量推送
+- **通知类型**: NotificationType 枚举
+- **状态管理**: NotificationStatus（unread/read）
+
+### admin_users.py — 用户审批
+
+管理员审核用户注册。
+
+- **待审批列表**: 查询 pending 状态用户
+- **审批操作**: approve / reject
+- **权限控制**: require_admin 依赖
+
+### tags.py — 标签管理
+
+用户级标签 CRUD，64 行。
+
+- **GET /tags**: 列表（按名称排序）
+- **POST /tags**: 创建（去重校验）
+- **DELETE /tags**: 删除（按名称）
+
+### folders.py — 文件夹管理
+
+树形文件夹 CRUD，106 行。
+
+- **GET /folders**: 列表（按创建时间倒序）
+- **POST /folders**: 创建（支持 parent_id 嵌套）
+- **PATCH /folders/{id}**: 更新名称
+- **DELETE /folders/{id}**: 删除
 
 ---
 
@@ -92,13 +205,15 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - `fastapi`: Web 框架
 - `sqlalchemy[asyncio]`: ORM（async）
 - `asyncpg`: PostgreSQL 驱动
-- `redis`: Redis 客户端
+- `redis`: Redis 客户端（Session + Pub/Sub）
 - `python-jose`: JWT 编码/解码
 - `passlib[bcrypt]`: 密码哈希
+- `pydantic`: 数据校验
+- `websockets`: WebSocket 支持
 
 ### 配置文件
 
-**文件**: `backend/app/config.py`
+**文件**: `backend/app/core/config.py`
 
 ```python
 class Settings(BaseSettings):
@@ -133,6 +248,7 @@ class User(Base):
     password_hash: str
     is_active: bool
     is_verified: bool
+    status: UserStatus          # active / pending / rejected
     created_at: DateTime
     updated_at: DateTime
     last_login_at: DateTime (nullable)
@@ -153,6 +269,7 @@ class Asset(Base):
     folder_id: UUID (nullable)
     tags: JSON
     is_starred: bool
+    version: str (nullable)
     workflow_snapshot: JSON (nullable)
     created_at: DateTime
 ```
@@ -170,6 +287,56 @@ class Workflow(Base):
     cover_asset_id: UUID (nullable)
     created_at: DateTime
     updated_at: DateTime
+```
+
+#### 聊天相关（新增）
+```python
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id: UUID (PK)
+    type: ConversationType (DIRECT / GROUP)
+    name: str (nullable)
+    created_at: DateTime
+
+class Message(Base):
+    __tablename__ = "messages"
+    id: UUID (PK)
+    conversation_id: UUID (FK)
+    sender_id: UUID (FK -> User)
+    content: str
+    message_type: str (text / image / video / audio)
+    created_at: DateTime
+```
+
+#### 通知相关（新增）
+```python
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: UUID (PK)
+    user_id: UUID (FK -> User)
+    title: str
+    content: str (nullable)
+    notification_type: NotificationType
+    status: NotificationStatus (unread / read)
+    sender_id: UUID (nullable)
+    created_at: DateTime
+```
+
+#### 标签/文件夹（新增）
+```python
+class Tag(Base):
+    __tablename__ = "tags"
+    id: UUID (PK)
+    user_id: UUID (FK -> User)
+    name: str
+
+class Folder(Base):
+    __tablename__ = "folders"
+    id: UUID (PK)
+    user_id: UUID (FK -> User)
+    name: str
+    parent_id: UUID (nullable)  # 支持树形嵌套
+    created_at: DateTime
 ```
 
 ---
@@ -230,16 +397,28 @@ class SessionManager:
         """刷新 Session TTL"""
 ```
 
+Redis 同时用于：
+- **Session 管理**: 用户登录态
+- **Pub/Sub 消息分发**: 聊天消息跨 Worker、任务状态推送
+- **Skills 任务队列**: V2 Skills 后台任务
+
 ---
 
 ## 常见问题 (FAQ)
 
-### Q: 如何添加新的 API 路由？
+### Q: 如何添加新的 V1 API 路由？
 
 A:
 1. 在 `backend/app/api/` 创建新的路由文件（如 `new_feature.py`）
 2. 定义 router 并添加装饰器
 3. 在 `main.py` 中 import 并 include_router
+
+### Q: 如何添加新的 V2 API 路由？
+
+A:
+1. 在 `backend/app/api/v2/` 创建路由文件
+2. 在 `v2/__init__.py` 中 import 注册
+3. V2 路由通过 v2 router 统一挂载
 
 ### Q: 如何处理认证？
 
@@ -251,6 +430,18 @@ from app.api.auth import get_current_user
 @router.get("/protected")
 async def protected_route(current_user: User = Depends(get_current_user)):
     return {"user_id": current_user.id}
+```
+
+### Q: 如何要求管理员权限？
+
+A: 使用 `require_admin` 依赖：
+
+```python
+from app.api.auth import require_admin
+
+@router.get("/admin/only")
+async def admin_route(current_user: User = Depends(require_admin)):
+    return {"message": "admin only"}
 ```
 
 ### Q: 如何使用数据库？
@@ -269,28 +460,24 @@ async def create_item(data: ItemCreate, db: AsyncSession = Depends(get_db)):
     return item
 ```
 
----
+### Q: WebSocket 如何跨 Worker 工作？
 
-## 相关文件清单
-
-```
-backend/app/api/
-├── __init__.py
-├── auth.py              # 认证路由
-├── assets.py            # 资产管理
-├── workflows.py         # 工作流管理
-├── points.py            # 积分系统
-├── points_admin.py     # 积分管理后台
-├── categories.py        # 分类管理
-├── teams.py             # 团队管理
-├── sync.py              # 离线同步
-├── assets_export.py     # 批量导出
-└── prompt_restrictions.py  # 提示词限制
-```
+A: 通过 Redis Pub/Sub。发送端发布消息到频道，接收端（ConnectionManager）订阅频道并转发给 WebSocket 客户端。多个 Worker 各自持有本地连接，通过 Redis 广播实现消息同步。
 
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-14
+- 新增 chat.py 即时聊天模块（REST + WebSocket）
+- 新增 websocket.py 任务状态推送
+- 新增 notifications.py 通知系统
+- 新增 admin_users.py 用户审批
+- 新增 tags.py 标签管理
+- 新增 folders.py 文件夹管理
+- V2 API 拆分到 v2/ 子目录（9 个路由文件）
+- 更新数据模型（Conversation、Message、Notification、Tag、Folder）
+- 更新目录结构和路由列表
 
 ### 2026-05-05
 - 初始化模块文档

@@ -3,4 +3,4 @@ from fastapi import APIRouter
 
 router = APIRouter()
 
-from . import image, skills
+from . import image, skills, minimax

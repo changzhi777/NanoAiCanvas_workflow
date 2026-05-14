@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('完整流程: 登录 + 生图', async ({ page }) => {
   await page.goto('http://localhost:3000/nano2');
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(2000);
   
   console.log('=== Step 1: 登录 ===');
@@ -38,7 +38,7 @@ test('完整流程: 登录 + 生图', async ({ page }) => {
     console.log('登录失败，尝试通过Workflow页面登录');
     // 尝试跳转到workflow页面登录
     await page.goto('http://localhost:3000/workflow');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(2000);
     
     const wfLoginBtn = page.locator('button').filter({ hasText: /登录/i }).first();
@@ -61,7 +61,7 @@ test('完整流程: 登录 + 生图', async ({ page }) => {
     
     // 回到nano2页面
     await page.goto('http://localhost:3000/nano2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(2000);
   }
   

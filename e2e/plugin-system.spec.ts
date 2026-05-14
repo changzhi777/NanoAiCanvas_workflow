@@ -5,7 +5,7 @@ test.describe('插件系统功能测试', () => {
     console.log('\n=== 插件系统功能测试 ===\n');
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(5000);
 
     // 切换到 Workflow 页面

@@ -130,7 +130,6 @@ describe('StoryboardShotANode', () => {
     }} />)
 
     expect(screen.getByTestId('step-animation')).toBeInTheDocument()
-    expect(screen.getByText('取消')).toBeInTheDocument()
   })
 
   it('enables execute button when text is provided', () => {

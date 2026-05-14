@@ -3,8 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('撤销/重做功能测试', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:3000')
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000)
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
   })
 
   test.describe('无限画布页面', () => {

@@ -5,7 +5,7 @@
  * 3节点流程的终端节点：文案/剧本 → 分镜故事板 → 本节点(含输出)
  */
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   Video, Download, CheckCircle2, X, Clock,
   ChevronLeft, ChevronRight, ShieldCheck, Loader2,
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/useToast'
+import { assets as assetsApi, AssetCreate } from '@/lib/api/client'
 
 // ==================== 类型定义 ====================
 
@@ -95,6 +96,7 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [bgmStatus, setBgmStatus] = useState<'idle' | 'generating' | 'success' | 'error'>('idle')
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'generating' | 'success' | 'error'>('idle')
+  const assetSaveRef = useRef(false)
 
   const params = useMemo(() => ({
     ...data.params,
@@ -158,6 +160,7 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
     }
 
     updateNode(id, { status: NodeStatus.RUNNING })
+    assetSaveRef.current = false
     const provider = params.apiProvider
 
     // 初始化视频项
@@ -236,6 +239,39 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
         result: { videos, videoIds, bgmUrl, voiceoverUrl, prompt: params.promptTemplate, scriptTitle },
       })
       toast.success(`${videos.length} 个视频${bgmUrl ? ' + BGM' : ''}${voiceoverUrl ? ' + 配音' : ''}生成完成`)
+
+      // 保存视频资产到资产库
+      if (params.enableAssetSave && !assetSaveRef.current) {
+        assetSaveRef.current = true
+        const token = localStorage.getItem('nanoai_token')
+        if (token) {
+          let savedCount = 0
+          for (let i = 0; i < videos.length; i++) {
+            try {
+              const asset: AssetCreate = {
+                type: 'video',
+                name: `${scriptTitle || 'TVC'}_P${i + 1}_${Date.now()}`,
+                url: videos[i],
+                thumbnail_url: sourceImages[i] || undefined,
+                category: 'tvc',
+                tags: [scriptTitle || 'TVC', `镜头${i + 1}`],
+                source_node_id: id,
+                version: 'v1',
+              }
+              await assetsApi.create(asset, token)
+              savedCount++
+            } catch (err) {
+              console.error(`视频 P${i + 1} 保存资产失败:`, err)
+            }
+          }
+          if (savedCount > 0) {
+            updateNode(id, {
+              result: { videos, videoIds, bgmUrl, voiceoverUrl, prompt: params.promptTemplate, scriptTitle, savedToAsset: true },
+            })
+            toast.success(`${savedCount} 个视频已保存到资产库`)
+          }
+        }
+      }
     } catch (err: any) {
       updateNode(id, { status: NodeStatus.ERROR, error: err.message || '视频生成失败' })
       toast.error(err.message || '视频生成失败')
@@ -256,7 +292,7 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
       ))
       const currentVideos = [...(data.result?.videos || [])]
       currentVideos[index] = videoUrl
-      updateNode(id, { result: { ...data.result, videos: currentVideos } } as any)
+      updateNode(id, { result: { ...data.result, videos: currentVideos } })
       toast.success(`视频 P${index + 1} 重新生成完成`)
     } catch (err: any) {
       setVideoItems(prev => prev.map((item, i) =>

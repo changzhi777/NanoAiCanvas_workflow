@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Nano2 Image页面功能测试', () => {
   test('页面加载正常', async ({ page }) => {
     await page.goto('http://localhost:3000/nano2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
 
     // 等待React hydration
     await page.waitForSelector('[class*="min-h-screen"]', { timeout: 10000 }).catch(() => {});
@@ -19,7 +19,7 @@ test.describe('Nano2 Image页面功能测试', () => {
 
   test('生成图片功能', async ({ page }) => {
     await page.goto('http://localhost:3000/nano2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
 
     // 等待页面完全加载
     await page.waitForTimeout(2000);
@@ -49,7 +49,7 @@ test.describe('Nano2 Image页面功能测试', () => {
 test.describe('Admin Providers页面测试', () => {
   test('providers页面可以访问', async ({ page }) => {
     await page.goto('http://localhost:3000/admin/providers');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
 
     // 等待React hydration
     await page.waitForTimeout(3000);
@@ -76,7 +76,7 @@ test.describe('Admin Providers页面测试', () => {
 test.describe('Admin API Keys页面测试', () => {
   test('api-keys页面可以访问', async ({ page }) => {
     await page.goto('http://localhost:3000/admin/api-keys');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
 
     // 等待React hydration
     await page.waitForTimeout(3000);

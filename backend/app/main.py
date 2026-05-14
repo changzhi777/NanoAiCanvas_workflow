@@ -15,6 +15,7 @@ from app.api.v2 import image as v2_image
 from app.api.v2 import skills as v2_skills
 from app.api.v2 import admin as v2_admin
 from app.api.v2 import glm_proxy as v2_glm
+from app.api.v2 import minimax as v2_minimax
 from app.api.v2 import app_visibility as v2_app_visibility
 from app.api.v2 import workflow_tasks as v2_workflow_tasks
 from app.services.skills_worker import WorkerManager
@@ -85,6 +86,7 @@ app.include_router(v2_image.router)
 app.include_router(v2_skills.router)
 app.include_router(v2_admin.router)
 app.include_router(v2_glm.router)
+app.include_router(v2_minimax.router)
 app.include_router(v2_app_visibility.router)
 app.include_router(v2_workflow_tasks.router)
 from app.api.v2 import generation_log as v2_genlog

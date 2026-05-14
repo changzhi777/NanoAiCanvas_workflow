@@ -28,7 +28,7 @@ async function setupPage(page: import('@playwright/test').Page) {
   await page.goto('/')
   await mockLogin(page)
   await page.reload()
-  await page.waitForLoadState('networkidle')
+  await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
 }
 
 async function openChatDialog(page: import('@playwright.test').Page) {
@@ -75,7 +75,7 @@ test.describe('对话功能 - ChatDialog 基础', () => {
       localStorage.removeItem('nanoai_user')
     })
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await expect(page.locator('button[title="消息"]')).toBeHidden({ timeout: 5000 })
   })
 

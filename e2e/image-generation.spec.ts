@@ -6,7 +6,7 @@ test.describe('Image Generation E2E', () => {
     await page.goto('http://localhost:3000/nano2')
 
     // Wait for page load
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
 
     // Check if logged in, if not login
     const loginButton = page.locator('button:has-text("登录")')

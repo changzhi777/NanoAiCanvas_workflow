@@ -5,8 +5,8 @@ test.describe('主题切换功能测试', () => {
     console.log('\n=== 主题切换功能测试 ===\n');
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(5000);
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(2000);
 
     // 切换到 Workflow 页面
     console.log('1. 切换到 Workflow 页面:');

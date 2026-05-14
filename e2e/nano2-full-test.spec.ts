@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Nano2 Image 完整功能测试', () => {
   test('检查nano2页面核心元素', async ({ page }) => {
     await page.goto('http://localhost:3000/nano2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(3000);
     
     // 检查标题
@@ -31,7 +31,7 @@ test.describe('Nano2 Image 完整功能测试', () => {
   
   test('测试生成图片流程', async ({ page }) => {
     await page.goto('http://localhost:3000/nano2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(3000);
     
     // 输入prompt

@@ -21,7 +21,7 @@ test('Nano2 完整日志调试', async ({ page }) => {
   });
   
   await page.goto('http://localhost:3000/nano2');
-  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(3000);
   
   console.log('=== 1. 尝试登录 ===');

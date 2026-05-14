@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/suchuang-api';
 import { AssetReferenceSelector } from '@/components/ui/AssetLibrary/AssetReferenceSelector';
 import { CharacterConsistencyPanel } from '@/components/ui/AssetLibrary/CharacterConsistencyPanel';
+import { TvcShot } from '@/lib/api/tvc-api';
 
 export interface StoryboardGeneratorData extends WorkflowNodeData {
   params: {
@@ -59,17 +60,17 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
         // 来自 TvcScriptNode 的 screenplay 对象
         const script = sourceResult.script;
         if (script.shots?.length) {
-          return script.shots.map((s: any) => s.scene_description || s.description || '').join('\n');
+          return script.shots.map((s: TvcShot) => s.scene_description || s.description || '').join('\n');
         }
       }
       if (sourceResult?.screenplay?.title) {
         // 来自 StoryboardV2Node 的 screenplay 对象
         const sp = sourceResult.screenplay;
         if (sp.shots?.length) {
-          return sp.shots.map((s: any) => s.description || '').join('\n');
+          return (sp.shots as TvcShot[]).map((s) => s.description || '').join('\n');
         }
         if (sp.scenes?.length) {
-          return sp.scenes.map((s: any) => s.description || '').join('\n');
+          return sp.scenes.map((s: { description?: string }) => s.description || '').join('\n');
         }
       }
     }
@@ -121,7 +122,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
         {
           prompt: fullPrompt,
           size: data.params.quality === 'hd' ? '2K' : '1K',
-          aspectRatio: data.params.aspectRatio as any,
+          aspectRatio: data.params.aspectRatio as '16:9' | '9:16' | '4:3' | '1:1',
         },
         (message, progress) => {
           setProgressMessage(message);

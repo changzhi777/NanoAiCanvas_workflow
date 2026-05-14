@@ -29,7 +29,7 @@ async function navigateToNotificationsPage(page: import('@playwright/test').Page
     page.waitForURL('**/nanoaicanvas/notifications', { timeout: 15000 }),
     page.locator('text=查看全部通知').evaluate(el => (el as HTMLElement).click()),
   ])
-  await page.waitForLoadState('networkidle')
+  await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
   await page.waitForTimeout(2000)
 }
 
@@ -38,7 +38,7 @@ test.describe('消息通知模块 - Popover', () => {
     await page.goto('http://localhost:3000')
     await mockLogin(page)
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
   })
 
   test('小铃铛按钮可见', async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('消息通知模块 - Popover', () => {
       localStorage.removeItem('nanoai_user')
     })
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     const bell = page.locator('button[aria-label="通知"]')
     await expect(bell).toBeHidden({ timeout: 5000 })
   })
@@ -90,7 +90,7 @@ test.describe('消息通知模块 - 通知页面', () => {
     await page.goto('http://localhost:3000')
     await mockLogin(page)
     await page.reload()
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await navigateToNotificationsPage(page)
   })
 
@@ -127,7 +127,7 @@ test.describe('消息通知模块 - 通知页面', () => {
       localStorage.removeItem('nanoai_user')
     })
     await page.goto('http://localhost:3000')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await expect(page.locator('button[aria-label="通知"]')).toBeHidden({ timeout: 5000 })
   })
 })

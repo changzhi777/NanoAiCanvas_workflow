@@ -197,7 +197,7 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
 
     // 如果没有节点，加载默认模板
     if (storeNodes.length === 0 && templates.length > 0) {
-      const defaultTemplate = templates.find(t => t.id === 'storyboard-shot-a-workflow') || templates[0];
+      const defaultTemplate = templates.find(t => t.id === 'tvc-video-01') || templates.find(t => t.id === 'storyboard-shot-a-workflow') || templates[0];
       if (defaultTemplate) {
         console.log('🚀 自动加载默认模板:', defaultTemplate.name);
 
@@ -552,6 +552,10 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   // 快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 输入法组合中时跳过所有快捷键，避免打断中文输入
+      if ('isComposing' in e && e.isComposing) return;
+      if (e.keyCode === 229) return;
+
       // Cmd + S: 保存工作流
       if (e.metaKey && e.key === 's') {
         e.preventDefault();

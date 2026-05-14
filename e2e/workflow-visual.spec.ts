@@ -11,8 +11,8 @@ test.describe('工作流画布视觉效果验证', () => {
     // 清除 localStorage
     await page.evaluate(() => localStorage.clear());
     await page.reload();
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(1000);
 
     console.log('\n1️⃣ 检查背景元素的属性');
     const backgroundElement = page.locator('.react-flow__background');

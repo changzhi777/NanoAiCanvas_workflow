@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('应用可见性管理 - Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:3000')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
   })
 
   test('appVisibilityStore 默认状态：V1/V2 active，其余 disabled', async ({ page }) => {
@@ -96,7 +96,7 @@ test.describe('应用可见性管理 - Workflow', () => {
 test.describe('应用可见性管理 - Nano 2', () => {
   test('Nano 2 store 默认状态：全部 active', async ({ page }) => {
     await page.goto('http://localhost:3000')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
 
     const defaults = await page.evaluate(() => {
       const raw = localStorage.getItem('nanoai-app-visibility')
@@ -123,7 +123,7 @@ test.describe('应用可见性管理 - Nano 2', () => {
 test.describe('管理后台 - 应用管理页面', () => {
   test('Admin 侧边栏显示 Workflow 和 Nano 2 两个管理入口', async ({ page }) => {
     await page.goto('http://localhost:3000/nanoaicanvas/admin')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(1000)
 
     // 检查侧边栏包含两个新入口
@@ -140,7 +140,7 @@ test.describe('管理后台 - 应用管理页面', () => {
     })
 
     await page.goto('http://localhost:3000/nanoaicanvas/admin')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(1000)
 
     // 关闭 vite error overlay
@@ -177,7 +177,7 @@ test.describe('管理后台 - 应用管理页面', () => {
 
   test('Nano 2 管理页面可正常加载', async ({ page }) => {
     await page.goto('http://localhost:3000/nanoaicanvas/admin/apps/nano2')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(2000)
 
     // 页面标题
@@ -191,7 +191,7 @@ test.describe('管理后台 - 应用管理页面', () => {
 
   test('可见性状态切换可正常工作', async ({ page }) => {
     await page.goto('http://localhost:3000/nanoaicanvas/admin/apps/workflow')
-    await page.waitForLoadState('networkidle')
+    await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(2000)
 
     // 找到第一个下拉框并切换状态

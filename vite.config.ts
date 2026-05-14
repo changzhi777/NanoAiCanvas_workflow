@@ -97,6 +97,11 @@ export default defineConfig({
           })
         },
       },
+      '/api/minimax': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: BACKEND,
         changeOrigin: true,

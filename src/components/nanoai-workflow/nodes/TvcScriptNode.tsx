@@ -16,7 +16,8 @@ import { useTheme } from '../ui/Theme';
 import { useToast } from '@/hooks/useToast';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
 import { tvcApi, type TvcScript, type ProductAnalysis } from '@/lib/api/tvc-api';
-import { GLM_CONFIG, type TvcModelKey } from '@/config/glm';
+import { useIMETextarea } from '@/hooks/useIMETextarea';
+import { useTvcExecution } from './useTvcExecution';
 
 // ==================== 类型 ====================
 
@@ -24,7 +25,7 @@ export interface TvcScriptData extends WorkflowNodeData {
   params: {
     inputText: string;
     referenceImage: string | null;
-    optimizeMode: TvcModelKey | string;
+    optimizeMode: string;
     executionMode: 'step' | 'auto';
     style: string;
     quality: string;
@@ -39,12 +40,14 @@ export interface TvcScriptData extends WorkflowNodeData {
   result?: {
     script?: TvcScript;
     analysis?: ProductAnalysis;
+    taskId?: string;
   };
 }
 
 // ==================== 常量 ====================
 
 const OPTIMIZE_MODES = [
+  { key: 'tvc_minimax', label: 'MiniMax 2.7（推荐）' },
   { key: 'tvc_deep', label: '深度分析优化' },
   { key: 'tvc_fast', label: '快速优化' },
   { key: 'tvc_vision', label: '参考图优化' },
@@ -62,9 +65,11 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
   const { toast } = useToast();
   const { updateNodeParams, updateNode } = useNanoaiWorkflowStore();
 
-  const [isExecuting, setIsExecuting] = useState(false);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const ime = useIMETextarea(data.params.inputText);
+
+  const { isExecuting, executeStep, executeAuto } = useTvcExecution(id, data, updateNodeParams, updateNode);
 
   const params = data.params;
   const result = data.result;
@@ -81,21 +86,17 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
       const base64 = reader.result as string;
       updateNodeParams(id, {
         referenceImage: base64,
-        optimizeMode: 'tvc_vision',  // 自动切换到参考图优化
+        optimizeMode: 'tvc_vision',
       });
 
-      // 自动分析参考图
       setAnalysisLoading(true);
       try {
-        const { analysis } = await tvcApi.analyzeProductReference({
-          imageUrl: base64,
-        });
-        updateNode(id, {
-          result: { ...data.result, analysis },
-        });
+        const { analysis } = await tvcApi.analyzeProductReference({ imageUrl: base64 });
+        updateNode(id, { result: { ...data.result, analysis } });
         toast.success('产品参考图分析完成');
-      } catch (err: any) {
-        toast.error(`参考图分析失败: ${err.message}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast.error(`参考图分析失败: ${message}`);
       } finally {
         setAnalysisLoading(false);
       }
@@ -105,7 +106,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
   const handleRemoveImage = useCallback(() => {
     updateNodeParams(id, { referenceImage: null });
-    // 恢复之前的选择（默认深度分析）
     if (params.optimizeMode === 'tvc_vision') {
       updateNodeParams(id, { optimizeMode: 'tvc_deep' });
     }
@@ -117,95 +117,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
     if (file) handleImageUpload(file);
     e.target.value = '';
   }, [handleImageUpload]);
-
-  // ---- 执行 ----
-  const handleExecute = useCallback(async (mode: 'step' | 'auto') => {
-    if (!params.inputText.trim()) {
-      toast.error('请先输入 TVC 描述');
-      return;
-    }
-
-    updateNodeParams(id, { executionMode: mode });
-
-    if (mode === 'auto') {
-      // 一键生成：先积分预检，再提交后台任务
-      try {
-        const styleReference = data.result?.analysis?.tvc_style_reference || undefined;
-        const { client } = await import('@/lib/api/client');
-
-        // 积分预检
-        try {
-          const estimate = await client.post<{
-            total: number; balance: number; sufficient: boolean;
-          }>('/points/tvc-estimate', {
-            shot_count: params.shotCount || 6,
-            include_bgm: true,
-          });
-          if (!estimate.sufficient) {
-            toast.error(`积分不足：需要 ${estimate.total}，当前余额 ${estimate.balance}`);
-            return;
-          }
-        } catch {
-          // 积分服务不可用时放行
-        }
-
-        const response = await client.post<{ task_id: string; status: string }>('/v2/tvc-tasks/submit', {
-          workflow_id: `wf-tvc-${id}`,
-          prompt: params.inputText,
-          shot_count: params.shotCount || 6,
-          shot_duration: params.shotDuration || 5,
-          total_duration: params.totalDuration || 30,
-          mode: 'cinematic',
-          style: params.style,
-          optimize_mode: params.optimizeMode,
-          execution_mode: 'auto',
-          image_model: params.imageModel || 'jimeng',
-          video_model: params.videoModel || 'jimeng',
-          style_reference: styleReference,
-        });
-        toast.success('TVC 后台任务已提交');
-        updateNode(id, {
-          status: NodeStatus.RUNNING,
-          result: { ...data.result, taskId: response.task_id },
-        });
-      } catch (err: any) {
-        toast.error(`任务提交失败: ${err.message}`);
-      }
-      return;
-    }
-
-    // 分步执行：只生成脚本
-    setIsExecuting(true);
-    updateNode(id, { status: NodeStatus.RUNNING });
-
-    try {
-      const styleReference = data.result?.analysis?.tvc_style_reference || undefined;
-      const modeConfig = GLM_CONFIG.TVC_MODEL_LABELS[params.optimizeMode as TvcModelKey];
-      const model = modeConfig?.model || 'glm-5.1';
-
-      const response = await tvcApi.generateScript({
-        prompt: params.inputText,
-        mode: 'cinematic',
-        styleReference,
-        style: params.style,
-        model,
-      });
-
-      updateNode(id, {
-        status: NodeStatus.SUCCESS,
-        result: { ...data.result, script: response.script },
-      });
-      toast.success('TVC 脚本生成完成');
-    } catch (err: any) {
-      updateNode(id, {
-        status: NodeStatus.ERROR,
-        error: err.message,
-      });
-      toast.error(`脚本生成失败: ${err.message}`);
-    } finally {
-      setIsExecuting(false);
-    }
-  }, [id, params, data.result, updateNodeParams, updateNode, toast]);
 
   // ---- 渲染 ----
   const isRunning = data.status === NodeStatus.RUNNING || isExecuting;
@@ -242,8 +153,10 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         {/* 输入区域 */}
         <div className="relative">
           <textarea
-            value={params.inputText}
-            onChange={(e) => updateNodeParams(id, { inputText: e.target.value })}
+            value={ime.value}
+            onChange={ime.createOnChange((v) => updateNodeParams(id, { inputText: v }))}
+            onCompositionStart={ime.onCompositionStart}
+            onCompositionEnd={(e) => ime.handleCompositionEnd(e, (v) => updateNodeParams(id, { inputText: v }))}
             placeholder={INPUT_PLACEHOLDER}
             disabled={isRunning}
             className={cn(
@@ -267,7 +180,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
         {/* 参考图 + 模型选择 */}
         <div className="flex items-center gap-2">
-          {/* 参考图按钮 */}
           <div className="relative">
             <input
               ref={fileInputRef}
@@ -302,7 +214,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
             )}
           </div>
 
-          {/* 模型选择 */}
           <select
             value={params.optimizeMode}
             onChange={(e) => handleModeChange(e.target.value)}
@@ -356,7 +267,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         isDark ? 'border-white/5 bg-slate-900/50' : 'border-gray-100 bg-gray-50/50',
       )}>
         <button
-          onClick={() => handleExecute('step')}
+          onClick={executeStep}
           disabled={isRunning || !params.inputText.trim()}
           className={cn(
             'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
@@ -371,7 +282,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
           分步执行
         </button>
         <button
-          onClick={() => handleExecute('auto')}
+          onClick={executeAuto}
           disabled={isRunning || !params.inputText.trim()}
           className={cn(
             'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
