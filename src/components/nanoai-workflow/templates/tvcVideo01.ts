@@ -3,11 +3,11 @@
  *
  * 工作流步骤：
  * 1. 文案/剧本生成（输入+参考图+提示词优化+剧本）
- *    → 2. 分镜头故事板（生成分镜图片：起始帧+结束帧）
- *    → 3. 视频+音频合成（线性调度逐镜头生成视频 + BGM）
+ *    → 2. 分镜头故事板（生成分镜图片 + 单镜头视频 + BGM）
+ *    → 3. 视频合成（FFmpeg 串联所有镜头 + BGM 混音 → 完整 TVC 预览）
  *
  * 执行模式：分步执行 / 一键生成
- * 默认模型：GLM-5.1(深度分析) + Seedance 2.0(视频) + MiniMax Music(BGM)
+ * 默认模型：GLM-5.1(剧本) + Hailuo-2.3-Fast(视频) + MiniMax Music(BGM)
  */
 
 import { WorkflowNode, WorkflowEdge } from '@/stores/nanoaiWorkflowStore';
@@ -31,7 +31,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
   const horizontalGap = 150;
 
   return [
-    // ==================== 节点 1：文案/剧本（起始节点）====================
+    // ==================== 节点 1：文案/剧本 ====================
     {
       id: 'node-tvc-script',
       type: 'tvc_script',
@@ -39,130 +39,78 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       data: {
         label: 'TVC 文案/剧本',
         params: {
-          // 用户输入
           inputText: '',
-          // 参考图
-          referenceImage: "",
-          // 模型选择（功能名，非模型名）
+          referenceImage: '',
           optimizeMode: 'tvc_deep' as string,
-          // 执行模式
           executionMode: 'auto' as string,
-          // 级联参数
           totalDuration: 30,
-          // 风格
+          shotDuration: 5,
+          shotCount: 6,
           style: 'realistic',
           quality: 'hd',
-          // 温度（GLM-5.1 thinking 模式固定 1.0）
           temperature: 1.0,
           maxLength: 8192,
         },
         inputs: [],
         outputs: [
-          {
-            id: 'output-script',
-            name: '剧本内容',
-            type: 'text',
-            required: false,
-            description: '生成的 TVC 结构化脚本 JSON',
-          },
+          { id: 'output-script', name: '剧本内容', type: 'text', required: false, description: '生成的 TVC 结构化脚本 JSON' },
         ],
         status: 'idle' as any,
       },
     },
 
-    // ==================== 节点 2：分镜头故事板 ====================
+    // ==================== 节点 2：分镜+视频+BGM ====================
     {
       id: 'node-tvc-storyboard',
       type: 'storyboard_generator',
       position: { x: startX + nodeWidth + horizontalGap, y: startY },
       data: {
-        label: '分镜头故事板',
+        label: '分镜+视频+BGM',
         params: {
-          // 场景描述（从上游获取或手动输入）
           dataSource: '',
-          // 风格
           style: 'realistic',
-          // 宽高比
           aspectRatio: '16:9',
-          // 质量
           quality: 'hd' as const,
-          // 数量
           count: 6,
-          // 参考图
-          referenceAssets: [],
-          // 角色一致性
-          characterRefs: [],
+          referenceAssets: [] as string[],
+          characterRefs: [] as any[],
+          videoProvider: 'minimax',
+          videoModel: 'hailuo-2.3-fast-768P',
+          videoDuration: 5,
+          enableBgm: true,
+          enableVoiceover: false,
+          enableAssetSave: true,
         },
         inputs: [
-          {
-            id: 'text-in',
-            name: '剧本内容',
-            type: 'text',
-            required: false,
-            description: '从剧本节点获取 TVC 结构化脚本',
-          },
+          { id: 'text-in', name: '剧本内容', type: 'text', required: false, description: '从剧本节点获取 TVC 结构化脚本' },
         ],
         outputs: [
-          {
-            id: 'result-out',
-            name: '分镜图片',
-            type: 'array',
-            required: false,
-            description: '每镜头图片（共 count 张）',
-          },
+          { id: 'result-out', name: '视频+BGM', type: 'array', required: false, description: '逐镜头视频 + BGM' },
         ],
         status: 'idle' as any,
       },
     },
 
-    // ==================== 节点 3：视频+音频合成 ====================
+    // ==================== 节点 3：FFmpeg 合成整段视频 ====================
     {
-      id: 'node-tvc-video',
+      id: 'node-tvc-compose',
       type: 'storyboard_video',
       position: { x: startX + (nodeWidth + horizontalGap) * 2, y: startY },
       data: {
         label: 'TVC 视频合成',
         params: {
-          // 视频模型（默认 MiniMax Hailuo）
-          apiProvider: 'minimax',
-          model: 'hailuo-2.3-fast-768P',
-          duration: 5,
+          transition: 'fade',
+          outputFormat: 'mp4',
           resolution: '720p',
-          aspectRatio: '16:9',
-          // BGM
-          enableBgm: true,
-          bgmModel: 'music-2.6',
-          // 输出
-          enableDownload: true,
-          enableAssetSave: true,
-          // 资源保障
-          maxRetry: 3,
-          shotTimeout: 300000,
+          enableBgmMix: true,
+          bgmVolume: 0.3,
         },
         inputs: [
-          {
-            id: 'input-script',
-            name: '剧本内容',
-            type: 'text',
-            required: true,
-            description: '时间线 + 提示词',
-          },
-          {
-            id: 'input-storyboard-frames',
-            name: '分镜图片',
-            type: 'array',
-            required: true,
-            description: '每镜头起始帧+结束帧图片',
-          },
+          { id: 'input-videos', name: '镜头视频', type: 'array', required: true, description: '逐镜头视频列表' },
+          { id: 'input-bgm', name: 'BGM', type: 'audio', required: false, description: '背景音乐' },
         ],
         outputs: [
-          {
-            id: 'output-video',
-            name: 'TVC 视频',
-            type: 'array',
-            required: false,
-            description: '逐镜头视频 + BGM',
-          },
+          { id: 'output-video', name: 'TVC 完整视频', type: 'video', required: false, description: 'FFmpeg 合成的完整 TVC' },
         ],
         status: 'idle' as any,
       },
@@ -183,9 +131,9 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       style: { stroke: '#3B82F6', strokeWidth: 2 },
     },
     {
-      id: 'edge-tvc-storyboard-to-video',
+      id: 'edge-tvc-storyboard-to-compose',
       source: 'node-tvc-storyboard',
-      target: 'node-tvc-video',
+      target: 'node-tvc-compose',
       sourceHandle: 'node-tvc-storyboard',
       targetHandle: 'video-in',
       type: 'smoothstep',
@@ -198,7 +146,7 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
 export const tvcVideo01Template: TvcVideo01Template = {
   id: 'tvc-video-01',
   name: 'TVC视频V1',
-  description: '3步TVC广告视频：文案剧本 → 分镜头故事板 → 视频合成(含BGM)',
+  description: '3步TVC广告视频：文案剧本 → 分镜+视频+BGM → FFmpeg合成整段预览',
   category: 'story',
   tags: ['TVC', '视频', '广告', '3步流程', '推荐'],
   createdAt: new Date().toISOString(),

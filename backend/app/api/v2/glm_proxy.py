@@ -641,46 +641,78 @@ TVC_MODE_CONSTRAINTS = {
     "commercial": "经典TVC结构：吸引→展示→利益→行动。品牌露出自然，情感共鸣强烈。",
 }
 
-TVC_SCRIPT_PROMPT = """你是专业的TVC广告脚本专家和提示词优化师。根据用户输入和可选的产品视觉风格约束，生成结构化 TVC 脚本。
+TVC_SCRIPT_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事性的剧本，并且根据该剧本写出分镜头脚本。
 
-## 输出要求
-严格输出以下 JSON 格式，不要添加任何其他文字：
+## 任务
+根据用户的 TVC 广告创意描述，创作一部完整的广告剧本（3000-5000字），并拆分为 {shot_count} 个分镜头脚本。该脚本包含分镜头脚本的所有要素：人物主角、场景、对白、画面构图、镜头运动、光影氛围、BGM 音乐提示词等。
+
+## 剧本文本要求
+1. 总字数 3000-5000 字，不低于 3000 字
+2. 具有完整的三幕结构：吸引注意 → 展示冲突/情感 → 解决/品牌揭示
+3. 人物对话自然，有情感张力
+4. 场景描述画面感强，可直接用于视觉化
+5. 为每个镜头提供 BGM 音乐提示词（风格、情绪、乐器）
+
+## 输出 JSON 格式
+严格输出以下 JSON，不要添加任何其他文字：
 
 {{
   "tvc_title": "TVC 标题",
+  "logline": "一句话故事概要",
   "total_duration": {total_duration},
   "shot_duration": {shot_duration},
   "shot_count": {shot_count},
+  "characters": [
+    {{
+      "name": "角色名",
+      "role": "主角/配角/旁白",
+      "description": "外貌、性格、服装描述",
+      "traits": ["性格特征1", "性格特征2"]
+    }}
+  ],
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "location": "场景地点",
+      "time_of_day": "时间（清晨/正午/黄昏/夜晚）",
+      "description": "场景环境描述（用于场景设计参考）"
+    }}
+  ],
   "shots": [
     {{
       "shot_id": 1,
       "timeline": {{
         "start": "00:00",
         "end": "00:05",
-        "duration": 5,
+        "duration": {shot_duration},
         "transition": "fade_in"
       }},
-      "scene_description": "这个镜头发生了什么（中文，简短叙述）",
-      "video_prompt": "English prompt for video generation, under 200 words. Focus on action, camera movement, lighting, atmosphere.",
-      "start_frame_prompt": "起始帧图片提示词（中文，50字以内，描述镜头第一帧画面）",
-      "end_frame_prompt": "结束帧图片提示词（中文，50字以内，描述镜头最后一帧画面）",
+      "scene_number": 1,
+      "scene_description": "这个镜头发生了什么（中文，简短叙述，包含角色动作和情感）",
+      "dialogue": [
+        {{"character": "角色名", "line": "台词内容"}}
+      ],
+      "video_prompt": "English prompt for video generation, under 200 words. [Subject action] + [Camera movement] + [Environment/Lighting] + cinematic, high quality",
+      "start_frame_prompt": "起始帧图片提示词（中文，50字以内：画面主体+光线+构图，描述镜头第一帧）",
+      "end_frame_prompt": "结束帧图片提示词（中文，50字以内：画面主体+光线+构图，描述镜头最后一帧）",
       "bgm_mood": "风格,情绪,乐器（如：独立民谣,忧郁,吉他主导）"
     }}
   ],
+  "narration": "完整的旁白/画外音文本（如有），或故事线叙述",
   "timeline_summary": {{
-    "total_duration": 30,
-    "shot_count": 6,
-    "shot_duration": 5,
+    "total_duration": {total_duration},
+    "shot_count": {shot_count},
+    "shot_duration": {shot_duration},
     "transitions": ["fade_in", "cut", "cut", "dissolve", "cut", "fade_out"]
   }}
 }}
 
-## video_prompt 编写规则（最重要）
+## video_prompt 编写规则（核心 — 直接用于视频生成）
 1. 必须使用英文
 2. 格式：[主体动作] + [镜头运动] + [环境/光线] + cinematic, high quality
 3. 避免否定描述（no, without）
 4. 不超过 200 词
-5. 起始帧和结束帧之间描述过渡动作
+5. 描述起始帧到结束帧之间的过渡动作
 
 ## start_frame_prompt / end_frame_prompt 编写规则
 1. 使用中文
@@ -693,9 +725,15 @@ TVC_SCRIPT_PROMPT = """你是专业的TVC广告脚本专家和提示词优化师
 格式：[风格],[情绪],[乐器]
 示例：独立民谣,忧郁,吉他主导
 示例：电子合成,欢快,快节奏
+示例：管弦乐,史诗,弦乐+铜管
+
+## dialogue 编写规则
+1. 每个镜头可以有 0-3 句对白
+2. 对白自然、口语化、有情感
+3. 旁白用 character: "旁白" 标记
 
 ## timeline 编写规则
-1. 起始帧 transition 用 fade_in，结尾用 fade_out
+1. 第一个镜头 transition 用 fade_in，最后一个用 fade_out
 2. 中间镜头用 cut 或 dissolve
 3. 时间必须连续，无间隔
 4. duration 必须等于 {shot_duration}"""
@@ -812,16 +850,37 @@ async def generate_tvc_script(
 
         # 校验并补全
         script.setdefault("tvc_title", "未命名TVC")
+        script.setdefault("logline", "")
         script.setdefault("total_duration", req.total_duration)
         script.setdefault("shot_duration", req.shot_duration)
         script.setdefault("shot_count", req.shot_count)
+        script.setdefault("characters", [])
+        script.setdefault("scenes", [])
         script.setdefault("shots", [])
+        script.setdefault("narration", "")
         script.setdefault("timeline_summary", {})
+
+        for idx, char in enumerate(script.get("characters", [])):
+            if not isinstance(char, dict):
+                continue
+            char.setdefault("name", f"角色{idx+1}")
+            char.setdefault("role", "配角")
+            char.setdefault("description", "")
+            char.setdefault("traits", [])
+
+        for idx, scene in enumerate(script.get("scenes", [])):
+            if not isinstance(scene, dict):
+                continue
+            scene.setdefault("scene_number", idx + 1)
+            scene.setdefault("location", "")
+            scene.setdefault("time_of_day", "")
+            scene.setdefault("description", "")
 
         for idx, shot in enumerate(script["shots"]):
             if not isinstance(shot, dict):
                 continue
             shot.setdefault("shot_id", idx + 1)
+            shot.setdefault("scene_number", 1)
             shot.setdefault("timeline", {
                 "start": f"{(idx * req.shot_duration) // 60:02d}:{(idx * req.shot_duration) % 60:02d}",
                 "end": f"{((idx + 1) * req.shot_duration) // 60:02d}:{((idx + 1) * req.shot_duration) % 60:02d}",
@@ -829,6 +888,7 @@ async def generate_tvc_script(
                 "transition": "fade_in" if idx == 0 else ("fade_out" if idx == len(script["shots"]) - 1 else "cut"),
             })
             shot.setdefault("scene_description", "")
+            shot.setdefault("dialogue", [])
             shot.setdefault("video_prompt", "")
             shot.setdefault("start_frame_prompt", "")
             shot.setdefault("end_frame_prompt", "")

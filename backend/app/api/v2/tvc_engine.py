@@ -120,7 +120,7 @@ async def execute_tvc(task_id: str, req, user_id=None):
 # ==================== Step 1: 剧本生成 ====================
 
 async def _call_glm_tvc_script(req, settings) -> dict:
-    from .glm_proxy import TVC_SCRIPT_PROMPT, TVC_MODE_CONSTRAINTS, STYLE_MAP
+    from .glm_proxy import TVC_SCRIPT_PROMPT, TVC_MODE_CONSTRAINTS, STYLE_MAP, _find_balanced, _repair_json
 
     mode = TVC_MODE_CONSTRAINTS.get(req.mode, TVC_MODE_CONSTRAINTS["cinematic"])
     system_prompt = TVC_SCRIPT_PROMPT.format(
@@ -175,7 +175,31 @@ async def _call_glm_tvc_script(req, settings) -> dict:
             match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
             content = match.group(1).strip() if match else rc
 
-    return {"raw_content": content}
+    # 解析 JSON 并返回结构化数据
+    json_str = None
+    m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+    if m:
+        json_str = _find_balanced(m.group(1), '{', '}')
+    if not json_str:
+        m = re.search(r'<output>([\s\S]*?)</output>', content)
+        if m:
+            json_str = _find_balanced(m.group(1), '{', '}')
+    if not json_str:
+        json_str = _find_balanced(content, '{', '}')
+
+    if json_str:
+        try:
+            script = json.loads(json_str)
+        except json.JSONDecodeError:
+            try:
+                cleaned = _repair_json(json_str)
+                script = json.loads(cleaned)
+            except json.JSONDecodeError:
+                script = {}
+    else:
+        script = {}
+
+    return {"raw_content": content, "parsed_script": script}
 
 
 # ==================== Step 2: 提示词优化 ====================

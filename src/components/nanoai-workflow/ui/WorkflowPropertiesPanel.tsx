@@ -623,8 +623,174 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 );
               })()}
 
+              {/* 分镜头故事板 专属配置 */}
+              {selectedNode.type === 'storyboard_generator' && (() => {
+                const p = {
+                  style: 'realistic', aspectRatio: '16:9', quality: 'hd', dataSource: '', count: 6,
+                  referenceAssets: [] as string[], characterRefs: [] as any[],
+                  videoProvider: 'minimax' as const, videoModel: 'hailuo-2.3-fast-768P', videoDuration: 5,
+                  enableBgm: true, enableVoiceover: false, enableAssetSave: true,
+                  ...(editData.params || {}),
+                };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-white/[0.02] border-white/[0.06] text-slate-300' : 'bg-gray-50/50 border-gray-100 text-gray-700');
+                const providerModels: Record<string, { label: string; value: string }[]> = {
+                  minimax: [{ label: 'Hailuo-2.3-Fast', value: 'hailuo-2.3-fast-768P' }, { label: 'Hailuo-2.3', value: 'hailuo-2.3-768P' }],
+                  glm: [{ label: 'CogVideoX-3', value: 'cogvideox-3' }],
+                  jimeng: [{ label: 'Jimeng-Video', value: 'jimeng-video' }],
+                };
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>图片参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">场景描述</Label>
+                        <textarea value={p.dataSource} onChange={e => setP({ dataSource: e.target.value })} rows={3}
+                          placeholder="从上游节点自动获取，或手动输入..."
+                          className={cn('w-full text-xs resize-none rounded-md border px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')} />
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">风格</Label>
+                        <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
+                          <option value="realistic">写实风格</option>
+                          <option value="anime">动漫风格</option>
+                          <option value="watercolor">水彩风格</option>
+                          <option value="oilpainting">油画风格</option>
+                          <option value="3d">3D渲染</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">宽高比</Label>
+                          <select value={p.aspectRatio} onChange={e => setP({ aspectRatio: e.target.value })} className={selectCls}>
+                            <option value="16:9">16:9</option><option value="9:16">9:16</option>
+                            <option value="4:3">4:3</option><option value="1:1">1:1</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">质量</Label>
+                          <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                            <option value="standard">标清</option><option value="hd">高清</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>视频参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">视频 API</Label>
+                        <select value={p.videoProvider} onChange={e => {
+                          const prov = e.target.value;
+                          const defaultModel = providerModels[prov]?.[0]?.value || '';
+                          setP({ videoProvider: prov, videoModel: defaultModel });
+                        }} className={selectCls}>
+                          <option value="minimax">MiniMax Hailuo（推荐）</option>
+                          <option value="glm">智谱 GLM CogVideoX</option>
+                          <option value="jimeng">即梦 Jimeng</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">模型</Label>
+                        <select value={p.videoModel} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
+                          {(providerModels[p.videoProvider] || []).map(m => (
+                            <option key={m.value} value={m.value}>{m.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">单镜头时长: {p.videoDuration}s</Label>
+                        <input type="range" min={3} max={10} step={1} value={p.videoDuration}
+                          onChange={e => setP({ videoDuration: Number(e.target.value) })}
+                          className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+                        <div className="flex justify-between text-[9px] text-muted-foreground"><span>3s</span><span>10s</span></div>
+                      </div>
+                    </div>
+
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>音频</h3>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={p.enableBgm} onChange={e => setP({ enableBgm: e.target.checked })} className="rounded" />
+                        背景音乐（MiniMax Music）
+                      </label>
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={p.enableVoiceover} onChange={e => setP({ enableVoiceover: e.target.checked })} className="rounded" />
+                        配音旁白（MiniMax TTS）
+                      </label>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* TVC 视频合成 专属配置 */}
+              {selectedNode.type === 'storyboard_video' && (() => {
+                const p = {
+                  transition: 'fade', outputFormat: 'mp4', resolution: '720p',
+                  enableBgmMix: true, bgmVolume: 0.3,
+                  ...(editData.params || {}),
+                };
+                const setP = (update: Record<string, any>) => {
+                  const newParams = { ...p, ...update };
+                  handleInputChange('params', newParams);
+                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
+                };
+                const selectCls = cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-white/[0.02] border-white/[0.06] text-slate-300' : 'bg-gray-50/50 border-gray-100 text-gray-700');
+                return (
+                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
+                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>合成参数</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">镜头转场</Label>
+                        <select value={p.transition} onChange={e => setP({ transition: e.target.value })} className={selectCls}>
+                          <option value="fade">淡入淡出</option>
+                          <option value="dissolve">溶解</option>
+                          <option value="cut">硬切</option>
+                          <option value="wipe">擦除</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">分辨率</Label>
+                          <select value={p.resolution} onChange={e => setP({ resolution: e.target.value })} className={selectCls}>
+                            <option value="720p">720p</option>
+                            <option value="1080p">1080p</option>
+                            <option value="480p">480p</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">格式</Label>
+                          <select value={p.outputFormat} onChange={e => setP({ outputFormat: e.target.value })} className={selectCls}>
+                            <option value="mp4">MP4</option>
+                            <option value="webm">WebM</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>音频</h3>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2 text-xs cursor-pointer">
+                        <input type="checkbox" checked={p.enableBgmMix} onChange={e => setP({ enableBgmMix: e.target.checked })} className="rounded" />
+                        混合背景音乐
+                      </label>
+                      {p.enableBgmMix && (
+                        <div>
+                          <Label className="text-xs mb-1 block text-muted-foreground">BGM 音量: {Math.round(p.bgmVolume * 100)}%</Label>
+                          <input type="range" min={0} max={1} step={0.05} value={p.bgmVolume}
+                            onChange={e => setP({ bgmVolume: Number(e.target.value) })}
+                            className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* 节点参数（已有专属配置的节点跳过通用区域） */}
-              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && selectedNode.type !== 'storyboard_video' && selectedNode.type !== 'tvc_script' && (
+              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && selectedNode.type !== 'storyboard_video' && selectedNode.type !== 'tvc_script' && selectedNode.type !== 'storyboard_generator' && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',

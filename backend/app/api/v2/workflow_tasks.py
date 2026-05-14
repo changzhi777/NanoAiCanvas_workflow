@@ -201,3 +201,154 @@ async def stream_progress(task_id: str):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ==================== FFmpeg 视频合成 ====================
+
+import os
+import tempfile
+import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class ComposeRequest(BaseModel):
+    video_urls: list[str]
+    bgm_url: Optional[str] = None
+    bgm_volume: float = 0.3
+    transition: str = "fade"
+    resolution: str = "720p"
+    output_format: str = "mp4"
+
+
+RESOLUTION_MAP = {
+    "480p": "854x480",
+    "720p": "1280x720",
+    "1080p": "1920x1080",
+}
+
+
+@router.post("/compose")
+async def compose_tvc_video(
+    req: ComposeRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """FFmpeg 合成：多镜头视频拼接 + BGM 混音 → 完整 TVC"""
+    import httpx
+
+    if not req.video_urls:
+        raise HTTPException(status_code=400, detail="至少需要一个视频")
+
+    resolution = RESOLUTION_MAP.get(req.resolution, "1280x720")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # 1. 下载所有视频
+        video_files: list[str] = []
+        async with httpx.AsyncClient(timeout=120) as http:
+            for i, url in enumerate(req.video_urls):
+                path = os.path.join(tmpdir, f"shot_{i:03d}.mp4")
+                try:
+                    resp = await http.get(url)
+                    resp.raise_for_status()
+                    with open(path, "wb") as f:
+                        f.write(resp.content)
+                    video_files.append(path)
+                except Exception as e:
+                    logger.error(f"下载视频 {i+1} 失败: {e}")
+                    raise HTTPException(status_code=502, detail=f"视频 {i+1} 下载失败: {e}")
+
+        if not video_files:
+            raise HTTPException(status_code=502, detail="所有视频下载失败")
+
+        # 2. 统一格式（保证拼接兼容）
+        normalized: list[str] = []
+        for i, vf in enumerate(video_files):
+            norm_path = os.path.join(tmpdir, f"norm_{i:03d}.mp4")
+            cmd = [
+                "ffmpeg", "-y", "-i", vf,
+                "-vf", f"scale={resolution}:force_original_aspect_ratio=decrease,pad={resolution}:(ow-iw)/2:(oh-ih)/2",
+                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                "-an", norm_path,
+            ]
+            proc = subprocess.run(cmd, capture_output=True, timeout=60)
+            if proc.returncode != 0:
+                logger.error(f"ffmpeg normalize failed: {proc.stderr.decode()[-500:]}")
+                raise HTTPException(status_code=500, detail=f"视频 {i+1} 格式化失败")
+            normalized.append(norm_path)
+
+        # 3. 拼接（concat demuxer）
+        concat_list = os.path.join(tmpdir, "concat.txt")
+        with open(concat_list, "w") as f:
+            for nf in normalized:
+                f.write(f"file '{nf}'\n")
+
+        concat_path = os.path.join(tmpdir, f"concat.{req.output_format}")
+        concat_cmd = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", concat_list,
+            "-c", "copy", concat_path,
+        ]
+        proc = subprocess.run(concat_cmd, capture_output=True, timeout=120)
+        if proc.returncode != 0:
+            logger.error(f"ffmpeg concat failed: {proc.stderr.decode()[-500:]}")
+            raise HTTPException(status_code=500, detail="视频拼接失败")
+
+        # 4. 混音（可选）
+        final_path = concat_path
+        if req.bgm_url:
+            bgm_path = os.path.join(tmpdir, "bgm.mp3")
+            try:
+                async with httpx.AsyncClient(timeout=60) as http:
+                    resp = await http.get(req.bgm_url)
+                    resp.raise_for_status()
+                    with open(bgm_path, "wb") as f:
+                        f.write(resp.content)
+
+                mixed_path = os.path.join(tmpdir, f"final.{req.output_format}")
+                vol = max(0, min(1, req.bgm_volume))
+                mix_cmd = [
+                    "ffmpeg", "-y",
+                    "-i", concat_path,
+                    "-i", bgm_path,
+                    "-filter_complex", f"[1:a]volume={vol}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]",
+                    "-map", "0:v", "-map", "[aout]",
+                    "-c:v", "copy", "-c:a", "aac",
+                    mixed_path,
+                ]
+                proc = subprocess.run(mix_cmd, capture_output=True, timeout=120)
+                if proc.returncode == 0:
+                    final_path = mixed_path
+                else:
+                    logger.warning(f"BGM mix failed, using no BGM: {proc.stderr.decode()[-300:]}")
+            except Exception as e:
+                logger.warning(f"BGM download/mix failed: {e}")
+
+        # 5. 获取时长
+        probe_cmd = ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", final_path]
+        proc = subprocess.run(probe_cmd, capture_output=True, timeout=10)
+        duration = float(proc.stdout.decode().strip() or "0")
+
+        # 6. 保存到 asset-uploads 目录，返回 URL
+        upload_base = os.environ.get(
+            "ASSET_UPLOAD_DIR",
+            os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets"),
+        )
+        os.makedirs(upload_base, exist_ok=True)
+        output_filename = f"tvc_{uuid.uuid4().hex[:8]}.{req.output_format}"
+        output_path = os.path.join(upload_base, output_filename)
+
+        import shutil
+        shutil.copy2(final_path, output_path)
+
+        # 构建 URL
+        from app.config import get_settings
+        settings = get_settings()
+        base_url = getattr(settings, "API_BASE_URL", "") or ""
+        if base_url:
+            video_url = f"{base_url}/asset-uploads/{output_filename}"
+        else:
+            # 从请求中推断
+            video_url = f"/asset-uploads/{output_filename}"
+
+        return {"url": video_url, "duration": duration}

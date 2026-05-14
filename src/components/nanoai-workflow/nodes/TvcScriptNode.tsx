@@ -5,19 +5,20 @@
  * 模式：分步执行(显示下游节点执行按钮) / 一键生成(隐藏下游节点执行按钮)
  */
 
-import { memo, useCallback, useState, useRef } from 'react';
+import { memo, useCallback, useState, useRef, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   FileText, X, Image as ImageIcon,
-  Play, Zap, Loader2,
+  Play, Zap, Loader2, Coins,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
 import { useToast } from '@/hooks/useToast';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { tvcApi, type TvcScript, type ProductAnalysis } from '@/lib/api/tvc-api';
+import { tvcApi, type TvcScript, type ProductAnalysis, type TvcCharacter, type TvcScene } from '@/lib/api/tvc-api';
 import { useIMETextarea } from '@/hooks/useIMETextarea';
 import { useTvcExecution } from './useTvcExecution';
+import { calcTvcParams } from '@/lib/tvc-cascade';
 
 // ==================== 类型 ====================
 
@@ -117,6 +118,12 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
     if (file) handleImageUpload(file);
     e.target.value = '';
   }, [handleImageUpload]);
+
+  // ---- 积分预估 ----
+  const costEstimate = useMemo(() => {
+    const calc = calcTvcParams(params.totalDuration || 30);
+    return calc;
+  }, [params.totalDuration]);
 
   // ---- 渲染 ----
   const isRunning = data.status === NodeStatus.RUNNING || isExecuting;
@@ -245,20 +252,80 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         {/* 脚本结果预览 */}
         {hasScript && result.script && (
           <div className={cn(
-            'rounded-lg p-2.5 text-[11px] space-y-1 max-h-[100px] overflow-y-auto',
+            'rounded-lg p-2.5 text-[11px] space-y-2 max-h-[160px] overflow-y-auto',
             isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200',
           )}>
             <div className="font-semibold text-green-600">
               {result.script.tvc_title} · {result.script.shots?.length || 0} 镜头
             </div>
+            {result.script.logline && (
+              <div className="text-muted-foreground italic">{result.script.logline}</div>
+            )}
+            {/* 人物 */}
+            {(result.script.characters as TvcCharacter[])?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {(result.script.characters as TvcCharacter[]).map((c, i) => (
+                  <span key={i} className={cn(
+                    'px-1.5 py-0.5 rounded text-[10px]',
+                    c.role === '主角' ? 'bg-blue-500/20 text-blue-500' : 'bg-slate-500/20 text-muted-foreground',
+                  )}>
+                    {c.name}({c.role})
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* 镜头列表 */}
             {result.script.shots?.map((shot, i) => (
-              <div key={i} className="flex gap-1 text-muted-foreground">
-                <span className="text-green-500 w-8">#{shot.shot_id}</span>
-                <span className="truncate">{shot.scene_description}</span>
+              <div key={i} className="space-y-0.5">
+                <div className="flex gap-1 text-muted-foreground">
+                  <span className="text-green-500 w-8 shrink-0">#{shot.shot_id}</span>
+                  <span className="truncate">{shot.scene_description}</span>
+                </div>
+                {(shot.dialogue ?? []).length > 0 && (
+                  <div className="pl-8 text-muted-foreground/70">
+                    {(shot.dialogue ?? []).map((d, j) => (
+                      <span key={j} className="mr-1.5">{d.character}:「{d.line}」</span>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
+            {result.script.narration && (
+              <div className="text-muted-foreground border-t border-green-500/20 pt-1 mt-1 italic">
+                旁白：{result.script.narration.slice(0, 80)}...
+              </div>
+            )}
           </div>
         )}
+
+        {/* 积分成本预估 */}
+        <div className={cn(
+          'rounded-lg p-2.5 text-[11px] space-y-1.5',
+          isDark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200',
+        )}>
+          <div className="flex items-center gap-1 font-semibold text-amber-600">
+            <Coins className="w-3.5 h-3.5" />
+            积分成本预估
+            <span className="ml-auto font-mono text-amber-500">{params.totalDuration || 30}s</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
+            <span>文本生成</span>
+            <span className="text-right font-mono">{costEstimate.costBreakdown.text} 分</span>
+            <span>生图 ×{costEstimate.imageCount}（首帧+尾帧）</span>
+            <span className="text-right font-mono">{costEstimate.costBreakdown.image} 分</span>
+            <span>视频 ×{costEstimate.shotCount}</span>
+            <span className="text-right font-mono">{costEstimate.costBreakdown.video} 分</span>
+            <span>BGM</span>
+            <span className="text-right font-mono">{costEstimate.costBreakdown.bgm} 分</span>
+          </div>
+          <div className={cn(
+            'flex justify-between items-center pt-1.5 border-t font-semibold',
+            isDark ? 'border-amber-500/20' : 'border-amber-200',
+          )}>
+            <span className="text-amber-700">预估总计</span>
+            <span className="font-mono text-amber-600 text-sm">{costEstimate.estimatedCost} 分</span>
+          </div>
+        </div>
       </div>
 
       {/* 底部双模式按钮 */}

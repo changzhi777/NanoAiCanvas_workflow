@@ -117,36 +117,68 @@ STYLE_MAP = {
     "chinese": "中国水墨画风格，留白意境，淡雅笔触",
 }
 
-SCREENPLAY_PROMPT = """你是一个专业的电影编剧和分镜设计师。根据用户提供的故事梗概，生成一份完整的 TVC 广告剧本。
+SCREENPLAY_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事性的剧本，并且根据该剧本写出分镜头脚本。
 
-## 输出要求
+## 任务
+根据用户的 TVC 广告创意描述，创作一部完整的广告剧本（3000-5000字），并拆分为 {shot_count} 个分镜头脚本。该脚本包含分镜头脚本的所有要素：人物主角、场景、对白、画面构图、镜头运动、光影氛围、BGM 音乐提示词等。
+
+## 剧本文本要求
+1. 总字数 3000-5000 字，不低于 3000 字
+2. 具有完整的三幕结构：吸引注意 → 展示冲突/情感 → 解决/品牌揭示
+3. 人物对话自然，有情感张力
+4. 场景描述画面感强，可直接用于视觉化
+5. 为每个镜头提供 BGM 音乐提示词
+
+## 输出 JSON 格式
 严格按以下 JSON 格式输出，不要添加任何其他文字：
 
 {{
   "tvc_title": "广告标题",
+  "logline": "一句话故事概要",
   "total_duration": {total_duration},
   "shot_duration": {shot_duration},
   "shot_count": {shot_count},
+  "characters": [
+    {{
+      "name": "角色名",
+      "role": "主角/配角/旁白",
+      "description": "外貌、性格、服装描述",
+      "traits": ["性格特征1", "性格特征2"]
+    }}
+  ],
+  "scenes": [
+    {{
+      "scene_number": 1,
+      "location": "场景地点",
+      "time_of_day": "时间（清晨/正午/黄昏/夜晚）",
+      "description": "场景环境描述"
+    }}
+  ],
   "shots": [
     {{
       "shot_id": 1,
       "timeline": {{
         "start": "00:00",
         "end": "00:05",
-        "duration": 5,
+        "duration": {shot_duration},
         "transition": "fade_in"
       }},
-      "scene_description": "这个镜头发生了什么（中文，简短）",
-      "video_prompt": "English prompt for video generation, under 200 words. Focus on action, camera movement, lighting, atmosphere.",
-      "start_frame_prompt": "起始帧图片提示词（中文，50字以内）",
-      "end_frame_prompt": "结束帧图片提示词（中文，50字以内）",
+      "scene_number": 1,
+      "scene_description": "这个镜头发生了什么（中文，简短，包含角色动作和情感）",
+      "dialogue": [
+        {{"character": "角色名", "line": "台词内容"}}
+      ],
+      "video_prompt": "English prompt for video generation, under 200 words. [Subject action] + [Camera movement] + [Environment/Lighting] + cinematic, high quality",
+      "start_frame_prompt": "起始帧图片提示词（中文，50字以内：画面主体+光线+构图）",
+      "end_frame_prompt": "结束帧图片提示词（中文，50字以内：画面主体+光线+构图）",
       "bgm_mood": "风格,情绪,乐器"
     }}
   ],
+  "narration": "完整的旁白/画外音文本（如有），或故事线叙述",
   "timeline_summary": {{
-    "total_duration": 30,
-    "shot_count": 6,
-    "shot_duration": 5,
+    "total_duration": {total_duration},
+    "shot_count": {shot_count},
+    "shot_duration": {shot_duration},
     "transitions": ["fade_in", "cut", "cut", "dissolve", "cut", "fade_out"]
   }}
 }}
@@ -167,8 +199,15 @@ SCREENPLAY_PROMPT = """你是一个专业的电影编剧和分镜设计师。根
 2. 包含：画面主体 + 光线 + 构图
 3. 起始帧和结束帧之间有视觉连续性
 
+## dialogue 编写规则
+1. 每个镜头可以有 0-3 句对白
+2. 对白自然、口语化、有情感
+3. 旁白用 character: "旁白" 标记
+
 ## bgm_mood 格式
-[风格],[情绪],[乐器]"""
+[风格],[情绪],[乐器]
+示例：独立民谣,忧郁,吉他主导
+示例：电子合成,欢快,快节奏"""
 
 
 @router.post("/screenplay")
@@ -253,16 +292,37 @@ async def generate_minimax_screenplay(
 
         # Validate and fill defaults
         screenplay.setdefault("tvc_title", "未命名TVC")
+        screenplay.setdefault("logline", "")
         screenplay.setdefault("total_duration", total_duration)
         screenplay.setdefault("shot_duration", shot_duration)
         screenplay.setdefault("shot_count", req.shot_count)
+        screenplay.setdefault("characters", [])
+        screenplay.setdefault("scenes", [])
         screenplay.setdefault("shots", [])
+        screenplay.setdefault("narration", "")
         screenplay.setdefault("timeline_summary", {})
+
+        for idx, char in enumerate(screenplay.get("characters", [])):
+            if not isinstance(char, dict):
+                continue
+            char.setdefault("name", f"角色{idx+1}")
+            char.setdefault("role", "配角")
+            char.setdefault("description", "")
+            char.setdefault("traits", [])
+
+        for idx, scene in enumerate(screenplay.get("scenes", [])):
+            if not isinstance(scene, dict):
+                continue
+            scene.setdefault("scene_number", idx + 1)
+            scene.setdefault("location", "")
+            scene.setdefault("time_of_day", "")
+            scene.setdefault("description", "")
 
         for idx, shot in enumerate(screenplay["shots"]):
             if not isinstance(shot, dict):
                 continue
             shot.setdefault("shot_id", idx + 1)
+            shot.setdefault("scene_number", 1)
             shot.setdefault("timeline", {
                 "start": f"{(idx * shot_duration) // 60:02d}:{(idx * shot_duration) % 60:02d}",
                 "end": f"{((idx + 1) * shot_duration) // 60:02d}:{((idx + 1) * shot_duration) % 60:02d}",
@@ -270,6 +330,7 @@ async def generate_minimax_screenplay(
                 "transition": "fade_in" if idx == 0 else ("fade_out" if idx == len(screenplay["shots"]) - 1 else "cut"),
             })
             shot.setdefault("scene_description", "")
+            shot.setdefault("dialogue", [])
             shot.setdefault("video_prompt", "")
             shot.setdefault("start_frame_prompt", "")
             shot.setdefault("end_frame_prompt", "")

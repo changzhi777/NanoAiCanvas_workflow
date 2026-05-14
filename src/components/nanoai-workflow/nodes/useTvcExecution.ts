@@ -55,6 +55,7 @@ export function useTvcExecution(
     try {
       const response = await tvcApi.generateScript({
         prompt: params.inputText,
+        shotCount: params.shotCount,
         style: params.style,
         modelProvider: config.provider,
         model: config.model,

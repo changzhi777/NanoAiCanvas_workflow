@@ -24,6 +24,12 @@ export interface TvcCalcResult {
   estimatedTimeMin: number  // 预估最小耗时（秒）
   estimatedTimeMax: number  // 预估最大耗时（秒）
   estimatedCost: number     // 预估积分消耗（粗略）
+  costBreakdown: {
+    text: number            // 文本生成（脚本）
+    image: number           // 图片生成（首帧+尾帧）
+    video: number           // 视频生成
+    bgm: number             // BGM
+  }
 }
 
 export function calcTvcParams(
@@ -55,8 +61,13 @@ export function calcTvcParams(
   const estimatedTimeMin = scriptTime + optimizeTime + breakdownTime + imageTime + videoTime + bgmTime
   const estimatedTimeMax = Math.round(estimatedTimeMin * 1.8)
 
-  // 预估积分（文本 2 + 图片 5×imageCount + 视频 15×shotCount + BGM 3）
-  const estimatedCost = 2 + 5 * imageCount + 15 * shotCount + 3
+  const costBreakdown = {
+    text: 2,
+    image: 5 * imageCount,
+    video: 15 * shotCount,
+    bgm: 3,
+  }
+  const estimatedCost = costBreakdown.text + costBreakdown.image + costBreakdown.video + costBreakdown.bgm
 
   return {
     totalDuration,
@@ -67,6 +78,7 @@ export function calcTvcParams(
     estimatedTimeMin: Math.round(estimatedTimeMin),
     estimatedTimeMax,
     estimatedCost,
+    costBreakdown,
   }
 }
 

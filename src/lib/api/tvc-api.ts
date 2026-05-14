@@ -19,10 +19,31 @@ export interface TvcTimeline {
   transition: string;
 }
 
+export interface TvcDialogue {
+  character: string;
+  line: string;
+}
+
+export interface TvcCharacter {
+  name: string;
+  role: string;
+  description: string;
+  traits: string[];
+}
+
+export interface TvcScene {
+  scene_number: number;
+  location: string;
+  time_of_day: string;
+  description: string;
+}
+
 export interface TvcShot {
   shot_id: number;
   timeline: TvcTimeline;
+  scene_number?: number;
   scene_description: string;
+  dialogue?: TvcDialogue[];
   video_prompt: string;
   start_frame_prompt: string;
   end_frame_prompt: string;
@@ -31,10 +52,14 @@ export interface TvcShot {
 
 export interface TvcScript {
   tvc_title: string;
+  logline?: string;
   total_duration: number;
   shot_duration: number;
   shot_count: number;
+  characters?: TvcCharacter[];
+  scenes?: TvcScene[];
   shots: TvcShot[];
+  narration?: string;
   timeline_summary: {
     total_duration: number;
     shot_count: number;
