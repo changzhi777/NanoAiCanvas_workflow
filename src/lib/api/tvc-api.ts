@@ -143,8 +143,8 @@ export const tvcApi = {
    */
   async generateScript(params: GenerateScriptParams): Promise<{ script: TvcScript }> {
     const endpoint = params.modelProvider === 'minimax'
-      ? '/api/minimax/screenplay'
-      : '/api/glm/screenplay';
+      ? '/minimax/screenplay'
+      : '/glm/screenplay';
 
     const body = params.modelProvider === 'minimax'
       ? {
@@ -167,7 +167,7 @@ export const tvcApi = {
    * 分析产品参考图（GLM-5V-Turbo）
    */
   async analyzeProductReference(params: AnalyzeProductParams): Promise<{ analysis: ProductAnalysis }> {
-    return client.post('/api/glm/product-reference', {
+    return client.post('/glm/product-reference', {
       image_url: params.imageUrl,
       intent: params.intent ?? 'tvc',
       model: params.model ?? 'glm-5v-turbo',
