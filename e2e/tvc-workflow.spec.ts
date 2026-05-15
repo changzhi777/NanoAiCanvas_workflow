@@ -213,7 +213,7 @@ test.describe('TVC 工作流', () => {
 
     await page.waitForTimeout(1500)
     const bodyText = await page.locator('body').textContent()
-    expect(bodyText).toContain('积分不足')
+    expect(bodyText).toContain('积分不足：需要')
   })
 
   test('执行中状态指示器应显示脉冲动画', async ({ page }) => {
