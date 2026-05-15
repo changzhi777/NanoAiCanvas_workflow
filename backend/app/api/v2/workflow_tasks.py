@@ -33,7 +33,7 @@ class SubmitRequest(BaseModel):
     optimize_mode: str = "tvc_deep"
     execution_mode: str = "auto"
     image_model: str = "jimeng"
-    video_model: str = "jimeng"
+    video_model: str = "minimax"
     style_reference: Optional[str] = None
     reference_image: Optional[str] = None
 

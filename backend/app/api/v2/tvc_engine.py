@@ -342,7 +342,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     if bgm_subtask:
         bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings))
 
-    video_model = getattr(req, "video_model", "jimeng") or "jimeng"
+    video_model = getattr(req, "video_model", "minimax") or "minimax"
     submit_fn, provider_name = get_video_provider(video_model, settings)
 
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
