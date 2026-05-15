@@ -21,7 +21,7 @@ export function getTvcModelConfig(mode: string): TvcModelConfig {
   const allLabels = GLM_CONFIG.TVC_MODEL_LABELS as Record<string, any>;
   const entry = allLabels[mode];
   if (!entry) {
-    return { label: '深度分析优化', model: 'MiniMax-M2.7', provider: 'minimax', thinking: true };
+    return { label: '深度分析优化', model: 'glm-5.1', provider: 'glm', thinking: true };
   }
   return {
     label: entry.label as string,
