@@ -192,7 +192,7 @@ def _submit_video_minimax(settings: Settings) -> Callable:
 
     api_key = settings.MINIMAX_API_KEY
     base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
-    model = "MiniMax-Hailuo-02"
+    model = "MiniMax-Hailuo-2.3-Fast"
 
     async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
         if not api_key:
@@ -202,8 +202,8 @@ def _submit_video_minimax(settings: Settings) -> Callable:
             "model": model,
             "prompt": f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质",
             "first_frame_image": first_url,
-            "duration": duration,
-            "resolution": "1080P",
+            "duration": 6,
+            "resolution": "768P",
         }
         if last_url:
             body["last_frame_image"] = last_url
@@ -286,7 +286,7 @@ def _submit_video_glm(settings: Settings) -> Callable:
 
 
 VIDEO_PROVIDER_NAMES = {
-    "minimax": "MiniMax Hailuo",
+    "minimax": "MiniMax Hailuo 2.3-Fast",
     "glm": "CogVideoX-3",
     "seedance": "Seedance",
     "jimeng": "Seedance",
