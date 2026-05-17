@@ -82,6 +82,8 @@ export interface APIKey {
   last_error: string | null
   created_at: string
   key_preview: string
+  detected_models: string[]
+  last_scan_at: string | null
 }
 
 export interface APIKeyCreate {
@@ -264,6 +266,32 @@ export async function testAPIKey(keyId: number): Promise<{
 export async function heartbeatAPIKey(keyId: number): Promise<{ ok: boolean; last_heartbeat_at: string }> {
   const response = await client.post<{ ok: boolean; last_heartbeat_at: string }>(`${API_KEYS_BASE}/${keyId}/heartbeat`, {})
   return response
+}
+
+/**
+ * 扫描指定 Key 可用模型
+ */
+export async function scanKeyModels(keyId: number): Promise<{
+  key_id: number
+  detected_models: string[]
+  scanned_at: string
+}> {
+  return client.post(`${API_KEYS_BASE}/${keyId}/scan-models`, {})
+}
+
+/**
+ * 批量扫描所有 active Key 可用模型
+ */
+export async function scanAllKeyModels(): Promise<{
+  total_scanned: number
+  results: Array<{
+    key_id: number
+    name: string
+    provider_id: number
+    detected_models: string[]
+  }>
+}> {
+  return client.post(`${API_KEYS_BASE}/scan-all-models`, {})
 }
 
 /**

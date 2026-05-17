@@ -13,6 +13,7 @@ from app.database import get_db
 from app.models.api_key import Provider, Model, ModelUsageLog, APIKey, ModelRoute
 from app.models import User
 from app.api.auth import require_admin
+from app.services.model_scanner import scan_models_for_key
 
 router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
 
@@ -126,6 +127,8 @@ class APIKeyOut(BaseModel):
     last_response_ms: Optional[int] = None
     last_error: Optional[str] = None
     key_preview: str = ""
+    detected_models: List[str] = []
+    last_scan_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
 
 class ToggleRequest(BaseModel):
@@ -201,6 +204,8 @@ def _apikey_to_out(k: APIKey) -> dict:
         "last_response_ms": k.last_response_ms,
         "last_error": k.last_error,
         "key_preview": preview,
+        "detected_models": k.detected_models if isinstance(getattr(k, 'detected_models', None), list) else [],
+        "last_scan_at": k.last_scan_at.isoformat() if getattr(k, 'last_scan_at', None) else None,
         "created_at": k.created_at.isoformat() if k.created_at else None,
     }
 
@@ -418,6 +423,55 @@ async def delete_api_key(key_id: int, admin: User = Depends(require_admin), db: 
     await db.delete(k)
     await db.commit()
     return {"message": "已删除"}
+
+
+@router.post("/api-keys/{key_id}/scan-models")
+async def scan_key_models(key_id: int, admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """扫描指定 Key 可用的模型列表"""
+    k = await db.get(APIKey, key_id)
+    if not k:
+        raise HTTPException(404, "密钥不存在")
+
+    provider = await db.get(Provider, k.provider_id)
+    models = await scan_models_for_key(k, provider)
+
+    k.detected_models = models
+    k.last_scan_at = datetime.utcnow()
+    await db.commit()
+
+    return {
+        "key_id": key_id,
+        "detected_models": models,
+        "scanned_at": k.last_scan_at.isoformat(),
+    }
+
+
+@router.post("/api-keys/scan-all-models")
+async def scan_all_key_models(admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    """批量扫描所有 active Key 的可用模型"""
+    stmt = select(APIKey).where(APIKey.status == "active")
+    result = await db.execute(stmt)
+    keys = result.scalars().all()
+
+    scan_results = []
+    for k in keys:
+        provider = await db.get(Provider, k.provider_id)
+        models = await scan_models_for_key(k, provider)
+        k.detected_models = models
+        k.last_scan_at = datetime.utcnow()
+        scan_results.append({
+            "key_id": k.id,
+            "name": k.name,
+            "provider_id": k.provider_id,
+            "detected_models": models,
+        })
+
+    await db.commit()
+
+    return {
+        "total_scanned": len(scan_results),
+        "results": scan_results,
+    }
 
 
 @router.post("/api-keys/{key_id}/test")

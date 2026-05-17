@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Search, Key, Copy, Trash2, RefreshCw, TestTube2, Loader2, Heart, Activity } from 'lucide-react'
+import { Plus, Search, Key, Copy, Trash2, RefreshCw, TestTube2, Loader2, Heart, Activity, Radar } from 'lucide-react'
 import { useToast } from '@/hooks/useToast'
 import {
   getAPIKeys,
@@ -17,6 +17,8 @@ import {
   updateAPIKey,
   testAPIKey,
   heartbeatAPIKey,
+  scanKeyModels,
+  scanAllKeyModels,
   getHealthSummary,
   getProviders,
   type APIKey,
@@ -60,6 +62,7 @@ export default function ApiKeyPoolPage() {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [scanningAll, setScanningAll] = useState(false)
   const [testResult, setTestResult] = useState<{
     keyId: number
     keyName: string
@@ -165,6 +168,32 @@ export default function ApiKeyPoolPage() {
     }
   }
 
+  const handleScanModels = async (id: number, name: string) => {
+    setActionLoading(id)
+    try {
+      const result = await scanKeyModels(id)
+      toast.success(`${name}：检测到 ${result.detected_models.length} 个模型`)
+      setKeys(prev => prev.map(k => k.id === id ? { ...k, detected_models: result.detected_models, last_scan_at: result.scanned_at } : k))
+    } catch {
+      toast.error('扫描失败')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleScanAll = async () => {
+    setScanningAll(true)
+    try {
+      const result = await scanAllKeyModels()
+      toast.success(`扫描完成：${result.total_scanned} 个 Key`)
+      loadData()
+    } catch {
+      toast.error('批量扫描失败')
+    } finally {
+      setScanningAll(false)
+    }
+  }
+
   const handleCopy = (preview: string) => {
     navigator.clipboard.writeText(preview)
     toast.success('已复制')
@@ -222,6 +251,10 @@ export default function ApiKeyPoolPage() {
           <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
           刷新
         </Button>
+        <Button variant="outline" onClick={handleScanAll} disabled={scanningAll}>
+          {scanningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Radar className="w-4 h-4 mr-2" />}
+          {scanningAll ? '扫描中...' : '扫描全部'}
+        </Button>
       </div>
 
       <Card>
@@ -244,7 +277,7 @@ export default function ApiKeyPoolPage() {
                 <TableRow>
                   <TableHead>名称</TableHead>
                   <TableHead>渠道商</TableHead>
-                  <TableHead>Key 预览</TableHead>
+                  <TableHead>可用模型</TableHead>
                   <TableHead>健康</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>优先级</TableHead>
@@ -261,7 +294,17 @@ export default function ApiKeyPoolPage() {
                       <TableCell className="font-medium">{key.name}</TableCell>
                       <TableCell>{getProviderName(key.provider_id)}</TableCell>
                       <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded">{key.key_preview || '***'}</code>
+                        <div className="flex flex-wrap gap-1 max-w-[240px]">
+                          {(key.detected_models || []).length > 0 ? (
+                            key.detected_models.map((m: string) => (
+                              <Badge key={m} variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                                {m}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">未扫描</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5" title={h.label}>
@@ -308,6 +351,9 @@ export default function ApiKeyPoolPage() {
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleCopy(key.key_preview || '')} title="复制">
                             <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleScanModels(key.id, key.name)} disabled={actionLoading === key.id} title="扫描模型">
+                            {actionLoading === key.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Radar className="w-3.5 h-3.5" />}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => handleTest(key.id, key.name)} disabled={actionLoading === key.id} title="测试">
                             {actionLoading === key.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <TestTube2 className="w-3.5 h-3.5" />}
