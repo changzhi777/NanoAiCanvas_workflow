@@ -41,6 +41,10 @@ class SubmitRequest(BaseModel):
     optimize_model: Optional[str] = None
     bgm_model: Optional[str] = None
     quality: Optional[str] = None
+    # Seedance 2.0 提示词增强参数
+    camera_movement: Optional[str] = None
+    light_style: Optional[str] = None
+    negative_prompts: Optional[list[str]] = None
     force_personal_points: bool = False  # 团队不足时确认用个人积分
 
 
@@ -62,7 +66,7 @@ async def submit_task(
                 video_price = await resolve_price(db, node_type_to_model_type("storyboard_video"))
                 bgm_price = await resolve_price(db, node_type_to_model_type("background_music"))
 
-                total = text_price * 3 + image_price * req.shot_count * 2 + video_price * req.shot_count + bgm_price
+                total = text_price * 3 + image_price * 2 + video_price * req.shot_count + bgm_price
 
                 # 团队优先检查
                 team_id = await get_user_team(db, current_user.id)
@@ -137,16 +141,13 @@ def _build_nodes(req: SubmitRequest) -> list:
         },
         {
             "id": "step-images",
-            "label": "生图",
+            "label": "参考图生成",
             "type": "images",
             "status": "pending",
             "progress": 0,
             "subtasks": [
-                {"id": f"shot-{i+1}-start", "label": f"镜头 {i+1}/{req.shot_count}: 起始帧", "status": "pending", "progress": 0}
-                for i in range(req.shot_count)
-            ] + [
-                {"id": f"shot-{i+1}-end", "label": f"镜头 {i+1}/{req.shot_count}: 结束帧", "status": "pending", "progress": 0}
-                for i in range(req.shot_count)
+                {"id": "character-ref", "label": "主参考图（人物/产品）", "status": "pending", "progress": 0},
+                {"id": "scene-ref", "label": "场景设计图", "status": "pending", "progress": 0},
             ],
         },
         {

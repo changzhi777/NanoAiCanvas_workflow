@@ -6,9 +6,7 @@ import json
 import asyncio
 import logging
 import re
-import uuid
 import httpx
-from typing import Optional
 
 from app.config import get_settings
 from app.services import workflow_executor
@@ -72,7 +70,7 @@ async def deduct_points(user_id, req, force_personal: bool = False) -> int:
         bgm_price = await resolve_price(db, node_type_to_model_type("background_music"))
 
         text_cost = text_price * 3
-        image_cost = image_price * req.shot_count * 2
+        image_cost = image_price * 2  # 主参考图 + 场景设计图
         video_cost = video_price * req.shot_count
         total = text_cost + image_cost + video_cost + bgm_price
 
@@ -315,16 +313,16 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
     raw = script_result.get("raw_content", "")
     cfg = (config or {}).get("step2_optimize", {})
 
-    system_prompt = f"""你是 TVC 广告分镜提示词专家。根据以下 TVC 脚本，为每个镜头生成：
-1. start_frame_prompt: 起始帧画面描述（英文，用于图片生成，50-80词）
-2. end_frame_prompt: 结束帧画面描述（英文，用于图片生成，50-80词）
-3. scene_description: 镜头场景中文概述（20字以内）
-4. visual_prompt: 视频动态描述（英文，用于视频生成提示词，30-50词）
+    system_prompt = f"""你是 TVC 广告分镜提示词专家。根据以下 TVC 脚本，生成：
+
+1. character_ref_prompt: 主参考图描述（英文，描述核心人物或推广产品外观，用于图片生成，60-100词）
+2. scene_ref_prompt: 场景设计图描述（英文，描述整体场景氛围、环境和光影，用于图片生成，60-100词）
+3. shots: 每个镜头的 visual_prompt（英文，该镜头的具体动作、运镜和动态描述，30-50词）
 
 风格：{req.style}，模式：{req.mode}
 
-严格返回 JSON 数组，每个元素对应一个镜头：
-[{{"start_frame_prompt": "...", "end_frame_prompt": "...", "scene_description": "...", "visual_prompt": "..."}}]
+严格返回 JSON：
+{{"character_ref_prompt": "...", "scene_ref_prompt": "...", "shots": [{{"visual_prompt": "..."}}]}}
 
 只返回 JSON，不要其他内容。"""
 
@@ -347,13 +345,17 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
         raise Exception(f"GLM optimize error: {resp.status_code}")
 
     content = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    json_match = re.search(r'\[.*\]', content, re.DOTALL)
+
+    # 优先匹配 JSON 对象 {\"character_ref_prompt\": ..., \"shots\": [...]}
+    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+    if not json_match:
+        json_match = re.search(r'\[.*\]', content, re.DOTALL)
     if not json_match:
         raise Exception("提示词优化返回无法解析的内容")
 
     try:
-        shots = json.loads(json_match.group())
-        return {"shots": shots}
+        result = json.loads(json_match.group())
+        return result
     except json.JSONDecodeError:
         raise Exception("提示词优化返回无效 JSON")
 
@@ -361,72 +363,67 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
 # ==================== Step 3: 分镜头拆分 ====================
 
 def _breakdown_shots(optimized: dict, shot_count: int, shot_duration: int) -> dict:
+    character_prompt = optimized.get("character_ref_prompt", "")
+    scene_prompt = optimized.get("scene_ref_prompt", "")
     shots = optimized.get("shots", [])
     if len(shots) < shot_count:
         logger.warning(f"分镜头不足：期望 {shot_count}，实际 {len(shots)}，补齐中")
     while len(shots) < shot_count:
         idx = len(shots) + 1
         shots.append({
-            "start_frame_prompt": f"Cinematic shot {idx} opening frame, high quality, film grain",
-            "end_frame_prompt": f"Cinematic shot {idx} closing frame, high quality, film grain",
-            "scene_description": f"镜头{idx}",
             "visual_prompt": f"Smooth cinematic transition, shot {idx}, {shot_duration}s",
         })
     shots = shots[:shot_count]
-    return {"shot_count": shot_count, "shot_duration": shot_duration, "shots": shots}
+    return {
+        "shot_count": shot_count,
+        "shot_duration": shot_duration,
+        "character_ref_prompt": character_prompt,
+        "scene_ref_prompt": scene_prompt,
+        "shots": shots,
+    }
 
 
 # ==================== Step 4: 生图（并行） ====================
 
 async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict, req, settings, config: dict = None):
-    """每批 3 张真正并行 + 重试"""
+    """生成主参考图 + 场景设计图（共 2 张）"""
     state = await workflow_executor.load_task(task_id)
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
-    shots = breakdown.get("shots", [])
 
     cfg = (config or {}).get("step4_image", {})
     image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2")
     gen_one = get_image_provider(image_model, settings)
 
-    batch_size = 3
     max_retries = 3
 
-    for batch_start in range(0, len(subtasks), batch_size):
-        batch = subtasks[batch_start:batch_start + batch_size]
+    prompt_map = {
+        "character-ref": breakdown.get("character_ref_prompt", ""),
+        "scene-ref": breakdown.get("scene_ref_prompt", ""),
+    }
 
-        async def _process_one(st, idx):
-            shot_num = (idx // 2) + 1
-            is_start = "start" in st["id"]
-            prompt_key = "start_frame_prompt" if is_start else "end_frame_prompt"
-            shot_data = shots[shot_num - 1] if shot_num - 1 < len(shots) else {}
-            prompt = shot_data.get(prompt_key, shot_data.get("scene_description", ""))
-            if not prompt:
-                prompt = f"TVC shot {shot_num} {'start' if is_start else 'end'} frame, cinematic, high quality"
-
-            for attempt in range(1, max_retries + 1):
-                try:
+    async def _process_one(st):
+        prompt = prompt_map.get(st["id"], "")
+        if not prompt:
+            prompt = "High quality cinematic reference image for TVC commercial"
+        for attempt in range(1, max_retries + 1):
+            try:
+                await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                    "status": "running", "progress": 30,
+                    "message": f"生成中 ({image_model}, 尝试 {attempt}/{max_retries})...",
+                })
+                result = await gen_one(st, prompt)
+                await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                    "status": "success", "progress": 100, "result": result,
+                })
+                return
+            except Exception as e:
+                if attempt == max_retries:
                     await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                        "status": "running", "progress": 30,
-                        "message": f"生成中 ({image_model}, 尝试 {attempt}/{max_retries})...",
+                        "status": "error", "progress": 0, "error": str(e),
                     })
-                    result = await gen_one(st, prompt)
-                    await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                        "status": "success", "progress": 100, "result": result,
-                    })
-                    return
-                except Exception as e:
-                    if attempt == max_retries:
-                        await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                            "status": "error", "progress": 0, "error": str(e),
-                        })
 
-        # 真正并行
-        await asyncio.gather(*[
-            _process_one(st, batch_start + i)
-            for i, st in enumerate(batch)
-        ])
-
+    await asyncio.gather(*[_process_one(st) for st in subtasks])
     await workflow_executor.update_node(task_id, node_idx, {"status": "success", "progress": 100})
 
 
@@ -437,14 +434,21 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
 
+    # 从 Step 4 获取 2 张参考图 URL
     image_node = state["nodes"][node_idx - 1]
     image_subtasks = image_node.get("subtasks", [])
-    image_map: dict[str, str] = {}
+    character_ref_url = ""
+    scene_ref_url = ""
     for ist in image_subtasks:
         result = ist.get("result", {})
         url = result.get("image_url", "")
         if url and not url.startswith("placeholder_"):
-            image_map[ist["id"]] = url
+            if ist["id"] == "character-ref":
+                character_ref_url = url
+            elif ist["id"] == "scene-ref":
+                scene_ref_url = url
+
+    shots = breakdown.get("shots", [])
 
     bgm_subtask = next((st for st in subtasks if st["id"] == "bgm"), None)
     bgm_task = None
@@ -452,35 +456,37 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
         bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
     video_cfg = (config or {}).get("step5_video", {})
-    primary_model = getattr(req, "video_model", None) or video_cfg.get("default_provider", "minimax") or "minimax"
+    primary_model = getattr(req, "video_model", None) or video_cfg.get("default_provider", "minimax")
     video_resolution = getattr(req, "quality", None) or "720p"
 
-    # fallback 链：主模型失败后尝试备选
     fallback_chain = [primary_model]
-    for fb in ["minimax", "glm", "seedance"]:
+    for fb in ["minimax", "seedance"]:
         if fb not in fallback_chain:
             fallback_chain.append(fb)
 
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
 
-    async def _try_video_provider(shot_num, first_url, last_url, duration, model_name, st_id):
-        """提交单个 provider，返回 (success, result_or_error)"""
+    async def _try_video_provider(shot_num, first_url, last_url, duration, model_name, st_id, visual_prompt=""):
         submit_fn, provider_name = get_video_provider(model_name, settings, resolution=video_resolution)
         await workflow_executor.update_subtask(task_id, node_idx, st_id, {
             "status": "running", "progress": 10,
             "message": f"提交{provider_name}视频任务",
         })
-        result = await submit_fn(shot_num, first_url, last_url, duration)
+        result = await submit_fn(shot_num, first_url, last_url, duration, prompt=visual_prompt)
         return result
 
     async def _process_video(i: int, st: dict):
         shot_num = i + 1
-        first_url = image_map.get(f"shot-{shot_num}-start", "")
-        last_url = image_map.get(f"shot-{shot_num}-end", "")
+        first_url = character_ref_url
+        last_url = scene_ref_url
+        visual_prompt = shots[i].get("visual_prompt", "") if i < len(shots) else ""
 
         for model_name in fallback_chain:
             try:
-                result = await _try_video_provider(shot_num, first_url, last_url, req.shot_duration, model_name, st["id"])
+                result = await _try_video_provider(
+                    shot_num, first_url, last_url, req.shot_duration,
+                    model_name, st["id"], visual_prompt=visual_prompt,
+                )
                 await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                     "status": "success", "progress": 100, "result": result,
                 })
@@ -499,7 +505,10 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
                             "status": "running", "progress": 10,
                             "message": "Seedance 首帧重试（去除尾帧）",
                         })
-                        result = await _try_video_provider(shot_num, first_url, "", req.shot_duration, model_name, st["id"])
+                        result = await _try_video_provider(
+                            shot_num, first_url, "", req.shot_duration,
+                            model_name, st["id"], visual_prompt=visual_prompt,
+                        )
                         await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                             "status": "success", "progress": 100, "result": result,
                         })
@@ -517,7 +526,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
                 else:
                     continue
 
-    # 并行生成所有视频（最大化配额利用率）
+    # 并行生成所有视频
     await asyncio.gather(*[_process_video(i, st) for i, st in enumerate(video_subtasks)])
 
     if bgm_task:

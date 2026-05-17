@@ -155,12 +155,13 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
     ark_base = settings.ARK_API_BASE_URL.rstrip("/")
     model = "doubao-seedance-2-0-260128"
 
-    async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
+    async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
         if not ark_key or not first_url:
             raise Exception(f"缺少 ARK_API_KEY 或首帧图片 (shot {shot_num})")
 
+        text_prompt = prompt or f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质"
         content = [
-            {"type": "text", "text": f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质"},
+            {"type": "text", "text": text_prompt},
             {"type": "image_url", "image_url": {"url": first_url}, "role": "first_frame"},
         ]
         if last_url:
@@ -199,13 +200,13 @@ def _submit_video_minimax(settings: Settings) -> Callable:
     base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
     model = "MiniMax-Hailuo-2.3"
 
-    async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
+    async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
         if not api_key:
             raise Exception("MINIMAX_API_KEY not configured")
 
         body: dict = {
             "model": model,
-            "prompt": f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质",
+            "prompt": prompt or f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质",
             "first_frame_image": first_url,
             "duration": 6,
             "resolution": "768P",
@@ -249,50 +250,8 @@ def _submit_video_minimax(settings: Settings) -> Callable:
     return _run
 
 
-def _submit_video_glm(settings: Settings) -> Callable:
-    from .tvc_polling import poll_glm_video
-
-    api_key = settings.GLM_API_KEY
-    base_url = settings.GLM_API_BASE_URL.rstrip("/")
-    model = "cogvideox-3"
-
-    async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
-        if not api_key or not first_url:
-            raise Exception(f"缺少 GLM_API_KEY 或首帧图片 (shot {shot_num})")
-
-        image_url: str | list[str] = first_url
-        if last_url:
-            image_url = [first_url, last_url]
-
-        body: dict = {
-            "model": model,
-            "prompt": f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质",
-            "image_url": image_url,
-            "quality": "quality",
-            "size": "1920x1080",
-            "fps": 30,
-        }
-
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(f"{base_url}/videos/generations", json=body, headers=headers)
-        if resp.status_code != 200:
-            raise Exception(f"CogVideoX-3 submit error: {resp.status_code} {resp.text}")
-
-        task_id = resp.json().get("id", "")
-        if not task_id:
-            raise Exception(f"No task_id in CogVideoX-3 response: {resp.text}")
-
-        video_url = await poll_glm_video(api_key, base_url, task_id)
-        return {"video_url": video_url, "provider_task_id": task_id}
-
-    return _run
-
-
 VIDEO_PROVIDER_NAMES = {
     "minimax": "MiniMax Hailuo 2.3",
-    "glm": "CogVideoX-3",
     "seedance": "Seedance 2.0",
     "jimeng": "Seedance 2.0",
 }
@@ -301,7 +260,6 @@ VIDEO_PROVIDER_NAMES = {
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
     factories = {
         "minimax": _submit_video_minimax,
-        "glm": _submit_video_glm,
     }
     if video_model in factories:
         provider_name = VIDEO_PROVIDER_NAMES.get(video_model, video_model)
