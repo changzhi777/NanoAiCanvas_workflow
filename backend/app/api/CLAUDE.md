@@ -121,7 +121,7 @@ backend/app/api/
 
 ### V2 API 路由列表
 
-V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 14 个路由文件。
+V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 16 个路由文件。
 
 | 路由前缀 | 文件 | 功能 | 说明 |
 |----------|------|------|------|
@@ -139,6 +139,8 @@ V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 14 个路由文件�
 | `/api/v2/tvc-polling/*` | `tvc_polling.py` | TVC 视频轮询 | GLM/Seedance/MiniMax |
 | `/api/v2/tvc-config/*` | `tvc_config.py` | TVC 配置管理 | 全局/用户配置 |
 | `/api/v2/generation-logs/*` | `generation_log.py` | 生成日志 | 调用记录查询 |
+| `/api/v2/tvc-projects/*` | `tvc_projects.py` | TVC 项目管理 | CRUD + 镜头 |
+| `/api/v2/library/*` | `library.py` | V2 资产库 | 浏览/搜索/批量 |
 
 > 详细文档见 [v2/CLAUDE.md](./v2/CLAUDE.md)
 
@@ -477,8 +479,9 @@ A: 通过 Redis Pub/Sub。发送端发布消息到频道，接收端（Connectio
 ## 变更记录 (Changelog)
 
 ### 2026-05-17
-- V2 API 新增 tvc_config.py 配置管理路由
-- V2 API 路由文件从 9 个扩展到 14 个
+- V2 API 新增 tvc_projects.py TVC 项目管理路由
+- V2 API 新增 library.py V2 资产库路由
+- V2 API 路由文件从 14 个扩展到 16 个
 - 更新 V2 API 路由列表
 
 ### 2026-05-15

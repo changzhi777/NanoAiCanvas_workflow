@@ -40,6 +40,9 @@ export interface TvcScriptData extends WorkflowNodeData {
     scriptModel?: string;
     optimizeModel?: string;
     bgmModel?: string;
+    cameraMovement?: string;
+    lightStyle?: string;
+    negativePrompts?: string[];
   };
   result?: {
     script?: TvcScript;

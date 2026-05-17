@@ -104,9 +104,14 @@ export interface TvcTaskProgress {
 export interface GenerateScriptParams {
   prompt: string;
   shotCount?: number;
+  shotDuration?: number;
+  totalDuration?: number;
   style?: string;
   modelProvider?: 'glm' | 'minimax';
   model?: string;
+  cameraMovement?: string;
+  lightStyle?: string;
+  negativePrompts?: string[];
 }
 
 export interface AnalyzeProductParams {
@@ -132,6 +137,10 @@ export interface SubmitTaskParams {
   optimizeModel?: string;
   bgmModel?: string;
   quality?: string;
+  cameraMovement?: string;
+  lightStyle?: string;
+  negativePrompts?: string[];
+  forcePersonalPoints?: boolean;
 }
 
 export interface EstimatePointsParams {
@@ -154,13 +163,23 @@ export const tvcApi = {
       ? {
           premise: params.prompt,
           shot_count: params.shotCount ?? 6,
+          shot_duration: params.shotDuration ?? 5,
+          total_duration: params.totalDuration ?? 30,
           style: params.style ?? 'realistic',
           model: params.model || 'MiniMax-M2.7',
+          camera_movement: params.cameraMovement,
+          light_style: params.lightStyle,
+          negative_prompts: params.negativePrompts,
         }
       : {
           premise: params.prompt,
           shot_count: params.shotCount ?? 6,
+          shot_duration: params.shotDuration ?? 5,
+          total_duration: params.totalDuration ?? 30,
           style: params.style ?? 'realistic',
+          camera_movement: params.cameraMovement,
+          light_style: params.lightStyle,
+          negative_prompts: params.negativePrompts,
         };
 
     const data = await client.post<{ screenplay: TvcScript }>(endpoint, body);
@@ -210,6 +229,10 @@ export const tvcApi = {
       optimize_model: params.optimizeModel,
       bgm_model: params.bgmModel,
       quality: params.quality,
+      camera_movement: params.cameraMovement,
+      light_style: params.lightStyle,
+      negative_prompts: params.negativePrompts,
+      force_personal_points: params.forcePersonalPoints ?? false,
     });
   },
 

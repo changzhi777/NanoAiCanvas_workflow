@@ -49,3 +49,4 @@ class User(Base):
     team_memberships = relationship("TeamMember", back_populates="user")
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", foreign_keys="Notification.receiver_id", back_populates="receiver", cascade="all, delete-orphan")
+    tvc_projects = relationship("TvcProject", back_populates="user", cascade="all, delete-orphan")

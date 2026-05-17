@@ -8,11 +8,13 @@ import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_PARAMS, optimizePromptWithGLM, SIZE_OPTIONS, getDefaultSize } from '../nodes/StoryboardShotA.shared';
-import { calcTvcParams } from '@/lib/tvc-cascade';
+import { calcTvcParams, getModelDurationOptions } from '@/lib/tvc-cascade';
+import { CAMERA_MOVEMENTS, LIGHT_DESCRIPTIONS, VIDEO_STYLES, NEGATIVE_PROMPTS } from '@/lib/seedance-prompt';
+import { StoryboardVideoPanel } from './StoryboardVideoPanel';
 
 const CUSTOM_PANEL_NODE_TYPES = new Set([
   'storyboard_shot_a', 'image_preview', 'storyboard_v2', 'shot_ref_image',
-  'character_design_image', 'scene_design_image', 'script_table',
+  'character_design_image', 'scene_design_image',
   'storyboard_video', 'tvc_script', 'storyboard_generator',
 ]);
 
@@ -23,6 +25,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, any>>({});
+  const [modelsOpen, setModelsOpen] = useState(false);
 
   const notifyPanelState = useCallback((open: boolean) => {
     window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open } }));
@@ -572,7 +575,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                   if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
                 };
                 const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
-                const [modelsOpen, setModelsOpen] = useState(false);
                 return (
                   <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
                     <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>TVC 参数配置</h3>
@@ -598,10 +600,9 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <div>
                           <Label className="text-xs mb-1.5 block text-muted-foreground">总时长</Label>
                           <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
-                            <option value={15}>15s</option>
-                            <option value={30}>30s</option>
-                            <option value={45}>45s</option>
-                            <option value={60}>60s</option>
+                            {getModelDurationOptions(p.videoModel || 'seedance').map(d => (
+                              <option key={d} value={d}>{d < 60 ? `${d}s` : `${d / 60}m`}</option>
+                            ))}
                           </select>
                         </div>
                         <div>
@@ -615,12 +616,48 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">画面风格</Label>
                         <select value={p.style} onChange={e => setP({ style: e.target.value })} className={selectCls}>
-                          <option value="realistic">写实</option>
-                          <option value="anime">动画</option>
-                          <option value="comic">漫画</option>
-                          <option value="oil_painting">油画</option>
-                          <option value="chinese">水墨</option>
+                          {VIDEO_STYLES.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
                         </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">默认镜头运动</Label>
+                        <select value={p.cameraMovement || 'push-in'} onChange={e => setP({ cameraMovement: e.target.value })} className={selectCls}>
+                          {CAMERA_MOVEMENTS.map(c => (
+                            <option key={c.value} value={c.value}>{c.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">光线风格</Label>
+                        <select value={p.lightStyle || 'golden_hour'} onChange={e => setP({ lightStyle: e.target.value })} className={selectCls}>
+                          {LIGHT_DESCRIPTIONS.map(l => (
+                            <option key={l.value} value={l.value}>{l.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">负面约束</Label>
+                        <div className="space-y-1">
+                          {NEGATIVE_PROMPTS.map(np => (
+                            <label key={np.value} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={(p.negativePrompts || ['avoid_jitter', 'avoid_bent_limbs']).includes(np.value)}
+                                onChange={e => {
+                                  const current: string[] = p.negativePrompts || ['avoid_jitter', 'avoid_bent_limbs']
+                                  const next = e.target.checked
+                                    ? [...current, np.value]
+                                    : current.filter(v => v !== np.value)
+                                  setP({ negativePrompts: next })
+                                }}
+                                className="rounded"
+                              />
+                              {np.label}
+                            </label>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -801,68 +838,10 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 );
               })()}
 
-              {/* TVC 视频合成 专属配置 */}
-              {selectedNode.type === 'storyboard_video' && (() => {
-                const p = {
-                  transition: 'fade', outputFormat: 'mp4', resolution: '720p',
-                  enableBgmMix: true, bgmVolume: 0.3,
-                  ...(editData.params || {}),
-                };
-                const setP = (update: Record<string, any>) => {
-                  const newParams = { ...p, ...update };
-                  handleInputChange('params', newParams);
-                  if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
-                };
-                const selectCls = cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-white/[0.02] border-white/[0.06] text-slate-300' : 'bg-gray-50/50 border-gray-100 text-gray-700');
-                return (
-                  <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
-                    <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>合成参数</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-xs mb-1.5 block text-muted-foreground">镜头转场</Label>
-                        <select value={p.transition} onChange={e => setP({ transition: e.target.value })} className={selectCls}>
-                          <option value="fade">淡入淡出</option>
-                          <option value="dissolve">溶解</option>
-                          <option value="cut">硬切</option>
-                          <option value="wipe">擦除</option>
-                        </select>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs mb-1.5 block text-muted-foreground">分辨率</Label>
-                          <select value={p.resolution} onChange={e => setP({ resolution: e.target.value })} className={selectCls}>
-                            <option value="720p">720p</option>
-                            <option value="1080p">1080p</option>
-                            <option value="480p">480p</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-xs mb-1.5 block text-muted-foreground">格式</Label>
-                          <select value={p.outputFormat} onChange={e => setP({ outputFormat: e.target.value })} className={selectCls}>
-                            <option value="mp4">MP4</option>
-                            <option value="webm">WebM</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <h3 className={cn('text-sm font-semibold pt-2 border-t', isDark ? 'text-slate-200 border-white/10' : 'text-gray-700 border-gray-200')}>音频</h3>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 text-xs cursor-pointer">
-                        <input type="checkbox" checked={p.enableBgmMix} onChange={e => setP({ enableBgmMix: e.target.checked })} className="rounded" />
-                        混合背景音乐
-                      </label>
-                      {p.enableBgmMix && (
-                        <div>
-                          <Label className="text-xs mb-1 block text-muted-foreground">BGM 音量: {Math.round(p.bgmVolume * 100)}%</Label>
-                          <input type="range" min={0} max={1} step={0.05} value={p.bgmVolume}
-                            onChange={e => setP({ bgmVolume: Number(e.target.value) })}
-                            className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* TVC 视频合成 — 抽离为独立组件（含 AI 剪辑 Chat Tab） */}
+              {selectedNode.type === 'storyboard_video' && (
+                <StoryboardVideoPanel nodeId={selectedNodeId!} isDark={isDark} />
+              )}
 
               {/* 节点参数（已有专属配置的节点跳过通用区域） */}
               {!CUSTOM_PANEL_NODE_TYPES.has(selectedNode.type || '') && (

@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '012_asset_type_category_simplify'
-down_revision = '011_apikey_health_fields'
+down_revision = '011'
 branch_labels = None
 depends_on = None
 

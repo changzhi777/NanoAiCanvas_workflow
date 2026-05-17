@@ -2,13 +2,42 @@
 
 > 基于 React Flow 的无限画布 Workflow 任务工作流系统，支持多 AI 服务集成
 
-**项目版本**: 2.12.308
-**最后更新**: 2026-05-17
+**项目版本**: 2.12.313
+**最后更新**: 2026-05-18
 **技术栈**: React 19.2.4 + TypeScript 5.9.3 + Vite 5.2.11 + FastAPI + PostgreSQL + Redis
 
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-18 - 视频合成 CLI + AI 剪辑 Chat（v2.12.313）
+- 新增 cli-agent/ 独立子包（18 文件，1281 行）
+- FFmpeg 7 操作封装：concat/amix/overlay/subtitles/normalize/compare/extractAudio
+- 4 阶段管线编排：拼接→对比→字幕→混音+多规格（1080p+4K）
+- CLI 5 命令：compose/concat/compare/subtitle/bgm + mcp + serve
+- MCP Server（stdio）：4 Tools（compose/concat/compare/status）
+- Fastify HTTP API：compose/tasks/health
+- VideoComposeSkill 标准接口（可对接不同 Agent）
+- 前端 VideoChatPanel 可复用对话组件（244 行）
+- 前端 StoryboardVideoPanel Tab 面板集成到 TVC 第3节点属性面板
+- 后端 glm_proxy 新增 `POST /tvc-video-agent` + `POST /tvc-video-agent/stream`（SSE）
+- Agent 使用 glm-4.5-air 解析用户意图返回结构化 JSON 指令
+- WorkflowPropertiesPanel 从 1256→1199 行（内联替换为组件引用）
+- cli-agent 测试 9 + 前端测试 23 = 32 全通过，Vite 构建通过
+
+### 2026-05-17 - TVC项目管理 + 模型检测 + 资产库升级（v2.12.312）
+- 新增 TVC 项目数据模型（`TvcProject` + `TvcProjectShot`）：项目级组织，关联文案→剧本→镜头→成片
+- 新增 TVC 项目管理 API（`tvc_projects.py`）：CRUD + 镜头管理 + 任务结果关联
+- 新增 V2 资产库 API（`library.py`）：资产浏览/搜索/批量操作
+- 新增 API Key 模型扫描服务（`model_scanner.py`）：按 Provider 类型检测可用模型并标记
+- 新增 Alembic 迁移 `014_tvc_projects.py`、`014_api_key_detected_models.py`
+- 新增前端 TVC 项目面板（`TvcProjectPanel` + `TvcProjectDetail`）
+- 新增团队资产导入组件（`TeamAssetImport`）
+- 新增前端 API 客户端 `tvc-projects-api.ts`
+- 新增管理后台页面 `tvc-config`
+- User 模型新增 `tvc_projects` 关系
+- 数据模型从 17 个增长到 19 个
+- **扫描覆盖率：100%（530+ 核心文件）**
 
 ### 2026-05-17 - TVC配置管理 + 模型切换（v2.12.308）
 - 新增 TVC 工作流配置 API（`tvc_config.py`）：全局配置+用户配置+配置解析
@@ -65,13 +94,13 @@
 ### 核心特性
 
 - **无限画布**: 基于 React Flow，支持平滑缩放、平移、小地图导航
-- **50+ 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
+- **55+ 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
 - **14+ 内置模板**: 故事板、角色设计、场景设计、快速分镜、TVC、文生图、Skills 等
-- **管理后台**: 25+ 管理页面，用户/团队/积分/模型/渠道商全流程管理
+- **管理后台**: 26+ 管理页面，用户/团队/积分/模型/渠道商/TVC配置全流程管理
 - **Garden Skills**: 4 个 Skills 插件 + 90+ 参考模板
 - **Chat 系统**: 实时聊天 + WebSocket + 文件上传 + Redis Pub/Sub
 - **双重状态管理**: Redux Toolkit（全局）+ Zustand（Workflow/业务）
-- **后端 V2 API**: 多 Provider 图片生成、Key 映射、TVC 工作流任务、Skills 队列
+- **后端 V2 API**: 多 Provider 图片生成、Key 映射、TVC 项目管理、Skills 队列
 - **积分系统**: 自动计价引擎 + 余额校验 + 统计仪表盘
 - **主题系统**: Base Nova 暗色主题 + OKLCH 颜色空间
 - **国际化**: 完整的中英文切换支持
@@ -116,7 +145,7 @@ graph TB
     end
 
     subgraph "前端组件 (src/components/)"
-        C1["nanoai-workflow<br/>50+ 节点 + 14 模板"]
+        C1["nanoai-workflow<br/>55+ 节点 + 14 模板"]
         C2["admin<br/>AdminSidebar/Header/AppConfig"]
         C3["storyboard<br/>25 故事板组件"]
         C4["canvas<br/>画布基础"]
@@ -127,7 +156,7 @@ graph TB
     end
 
     subgraph "前端状态 (src/stores/)"
-        S1["22 Zustand Stores<br/>Workflow/Chat/StoryBoard<br/>Points/Notification/..."]
+        S1["23 Zustand Stores<br/>Workflow/Chat/StoryBoard<br/>Points/Notification/..."]
         S2["Redux Store<br/>canvas/ui/settings"]
     end
 
@@ -152,6 +181,8 @@ graph TB
         V8["generation_log.py 生成日志"]
         V9["tvc_config.py TVC配置"]
         V10["minimax.py MiniMax代理"]
+        V11["tvc_projects.py TVC项目"]
+        V12["library.py 资产库V2"]
     end
 
     subgraph "后端服务层 (services/)"
@@ -161,10 +192,11 @@ graph TB
         SV4["api_key_service<br/>Key热加载"]
         SV5["points_service<br/>积分计价引擎"]
         SV6["pubsub<br/>Redis Pub/Sub"]
+        SV7["model_scanner<br/>模型检测"]
     end
 
     subgraph "数据层"
-        DB["PostgreSQL<br/>17 Models"]
+        DB["PostgreSQL<br/>19 Models"]
         RD["Redis<br/>Session/Queue/PubSub"]
     end
 
@@ -201,12 +233,13 @@ graph TB
 
 ```mermaid
 graph TD
-    A["NanoAiCanvas<br/>v2.12.273"] --> B["src/"]
+    A["NanoAiCanvas<br/>v2.12.313"] --> B["src/"]
     A --> BA["backend/"]
     A --> GS["garden-skills/"]
+    A --> CA["cli-agent/"]
 
     B --> C["components/"]
-    B --> D["stores/ (22)"]
+    B --> D["stores/ (23)"]
     B --> E["store/ Redux"]
     B --> F["hooks/ (18)"]
     B --> G["lib/api/ (40+)"]
@@ -233,17 +266,23 @@ graph TD
 
     BA --> BA1["app/api/ (V1)"]
     BA --> BA2["app/api/v2/ (V2)"]
-    BA --> BA3["app/models/ (17)"]
+    BA --> BA3["app/models/ (19)"]
     BA --> BA4["app/services/"]
     BA --> BA5["app/providers/"]
     BA --> BA6["app/cli/"]
     BA --> BA7["app/core/"]
-    BA --> BA8["alembic/"]
+    BA --> BA8["alembic/ (14)"]
 
     GS --> GS1["gpt-image-2<br/>90+ 参考模板"]
     GS --> GS2["kb-retriever"]
     GS --> GS3["web-design-engineer"]
     GS --> GS4["web-video-presentation"]
+
+    CA --> CA1["core/ffmpeg<br/>7 操作封装"]
+    CA --> CA2["core/pipeline<br/>4 阶段管线"]
+    CA --> CA3["mcp/server<br/>MCP 4 Tools"]
+    CA --> CA4["api/server<br/>Fastify HTTP"]
+    CA --> CA5["skill/interface<br/>Skill 标准接口"]
 
     click C1 "./src/components/nanoai-workflow/CLAUDE.md" "Workflow 模块"
     click D "./src/stores/CLAUDE.md" "Zustand Stores"
@@ -258,6 +297,7 @@ graph TD
     style B fill:#168,80%,55%
     style BA fill:#293,80%,60%
     style GS fill:#c62,80%,55%
+    style CA fill:#825,80%,55%
     style C1 fill:#293,90%,65%
 ```
 
@@ -269,7 +309,7 @@ graph TD
 
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
-| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，50+ 节点 + 14 模板 + 20 Skills 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
+| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，55+ 节点 + 14 模板 + 20 Skills 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
 | **Admin 组件** | `src/components/admin` | 管理后台 UI 组件 | - |
 | **Storyboard** | `src/components/storyboard` | 故事板面板，25 组件 | - |
 | **Canvas** | `src/components/canvas` | 无限画布基础组件 | [查看](./src/components/canvas/CLAUDE.md) |
@@ -279,28 +319,28 @@ graph TD
 | **UI Components** | `src/components/ui` | shadcn/ui 基础组件 | - |
 | **Edges** | `src/components/edges` | 自定义边连线 | - |
 | **Animations** | `src/components/animations` | 动画组件 | - |
-| **Zustand Stores** | `src/stores` | 22 个业务状态管理 | [查看](./src/stores/CLAUDE.md) |
+| **Zustand Stores** | `src/stores` | 23 个业务状态管理 | [查看](./src/stores/CLAUDE.md) |
 | **Redux Store** | `src/store` | 全局状态管理 | [查看](./src/store/CLAUDE.md) |
 | **Hooks** | `src/hooks` | 18 个自定义 Hooks（自动保存、ChatSocket、IME、MQTT、通知等） | [查看](./src/hooks/CLAUDE.md) |
-| **Lib/API** | `src/lib/api` | 39 API 客户端模块 + 4 适配器 | - |
+| **Lib/API** | `src/lib/api` | 42 API 客户端模块 + 4 适配器 | - |
 | **Lib/DB** | `src/lib/db` | IndexedDB 本地存储 | - |
 | **Lib/Sync** | `src/lib/sync` | 离线同步 | - |
 | **Types** | `src/types` | TypeScript 类型定义 | - |
 | **Locales** | `src/locales` | 国际化 zh-CN/en-US | - |
-| **App Pages** | `src/app` | 页面路由（admin 25+ 页面） | - |
+| **App Pages** | `src/app` | 页面路由（admin 26+ 页面） | - |
 
 ### 后端模块（backend/）
 
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
 | **V1 API** | `backend/app/api/` | 核心业务 API（15 路由） | [查看](./backend/app/api/CLAUDE.md) |
-| **V2 API** | `backend/app/api/v2/` | 新版 API（14 路由） | [查看](./backend/app/api/v2/CLAUDE.md) |
+| **V2 API** | `backend/app/api/v2/` | 新版 API（16 路由） | [查看](./backend/app/api/v2/CLAUDE.md) |
 | **Services** | `backend/app/services/` | 业务服务层 | - |
 | **Providers** | `backend/app/providers/` | AI 服务提供商 | - |
-| **Models** | `backend/app/models/` | 17 个数据模型 | - |
+| **Models** | `backend/app/models/` | 19 个数据模型 | - |
 | **Core** | `backend/app/core/` | 安全/配置工具 | - |
 | **CLI** | `backend/app/cli/` | 命令行工具 | - |
-| **Alembic** | `backend/alembic/` | 13 个数据库迁移 | - |
+| **Alembic** | `backend/alembic/` | 14 个数据库迁移 | - |
 
 ### Garden Skills 模块
 
@@ -310,6 +350,16 @@ graph TD
 | **KB-Retriever** | `garden-skills/skills/kb-retriever/` | 知识库检索 Skill |
 | **Web-Design** | `garden-skills/skills/web-design-engineer/` | Web 设计工程 Skill |
 | **Web-Video** | `garden-skills/skills/web-video-presentation/` | Web 视频演示 Skill |
+
+### CLI Agent 模块
+
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| **Core** | `cli-agent/src/core/` | FFmpeg 7 操作 + 4 阶段管线编排 + 配置管理 |
+| **CLI** | `cli-agent/src/cli/` | 5 个命令：compose/concat/compare/subtitle/bgm |
+| **MCP Server** | `cli-agent/src/mcp/` | MCP stdio Server（4 Tools） |
+| **HTTP API** | `cli-agent/src/api/` | Fastify 服务（compose/tasks/health） |
+| **Skill** | `cli-agent/src/skill/` | VideoComposeSkill 标准接口 |
 
 ---
 
@@ -392,6 +442,8 @@ graph TD
 | `/api/v2/glm-proxy/*` | `glm_proxy.py` | GLM 提示词优化代理 |
 | `/api/v2/minimax-proxy/*` | `minimax.py` | MiniMax 文本代理 |
 | `/api/v2/generation-logs/*` | `generation_log.py` | 生成任务日志 |
+| `/api/v2/tvc-projects/*` | `tvc_projects.py` | TVC 项目管理 CRUD + 镜头管理 |
+| `/api/v2/library/*` | `library.py` | V2 资产库浏览/搜索/批量操作 |
 
 ### 后端服务层
 
@@ -404,6 +456,7 @@ graph TD
 | **PointsService** | `services/points_service.py` | 积分自动计价引擎 |
 | **PubSub** | `services/pubsub.py` | Redis Pub/Sub 封装 |
 | **HealthChecker** | `services/health_checker.py` | API Key 健康检查 |
+| **ModelScanner** | `services/model_scanner.py` | API Key 模型检测（按 Provider 类型扫描可用模型） |
 | **ImageDownloader** | `services/image_downloader.py` | 图片下载服务 |
 | **EmailService** | `services/email.py` | 邮件发送 |
 
@@ -415,7 +468,7 @@ graph TD
 | **Wuyinkeji** | `providers/wuyinkeji.py` | 速创 API（NanoBanana 系列） |
 | **Caohua-Jimeng** | `providers/caohua_jimeng.py` | 即梦 API |
 
-### 数据模型（17 个）
+### 数据模型（19 个）
 
 | 模型 | 文件 | 描述 |
 |------|------|------|
@@ -435,6 +488,7 @@ graph TD
 | **PromptRestriction** | `models/prompt_restrictions.py` | 提示词限制 |
 | **Tag** | `models/tag.py` | 标签 |
 | **TvcWorkflowConfig** | `models/tvc_config.py` | TVC 工作流配置（global/user scope） |
+| **TvcProject / TvcProjectShot** | `models/tvc_project.py` | TVC 项目 + 镜头（项目级组织，关联文案→剧本→镜头→成片） |
 
 ---
 
@@ -504,5 +558,5 @@ SECRET_KEY=...
 
 **文档维护**: 本文档应随项目更新同步维护
 **最后更新**: 2026-05-17
-**扫描覆盖率**: 100%（500+ 核心文件）
+**扫描覆盖率**: 100%（530+ 核心文件）
 **生成者**: BB小子 🤙

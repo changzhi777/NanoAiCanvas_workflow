@@ -6,6 +6,7 @@ GLM API 代理路由 - 提示词优化
 
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
+from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -193,19 +194,30 @@ class StoryboardScriptRequest(BaseModel):
 class ScreenplayRequest(BaseModel):
     premise: str
     shot_count: int = 6
+    shot_duration: int = 5
+    total_duration: int = 30
     style: Optional[str] = "realistic"
     quality: Optional[str] = "hd"
     model: str = "glm-4.5-air"
     temperature: float = 0.7
+    camera_movement: Optional[str] = None
+    light_style: Optional[str] = None
+    negative_prompts: Optional[list[str]] = None
 
 
 STYLE_MAP = {
-    "realistic": "写实风格，真实照片级，电影级光影",
+    "realistic": "写实风格，真实照片级，自然质感",
     "anime": "日系动画风格，赛璐璐上色，鲜明色彩",
     "comic": "美式漫画风格，粗犷线条，动态构图",
     "watercolor": "水彩画风格，柔和晕染，轻盈通透",
     "oil_painting": "油画风格，厚涂质感，丰富肌理，经典艺术",
     "chinese": "中国水墨画风格，留白意境，淡雅笔触",
+    "cinematic": "电影感风格，cinematic film tone, 35mm 质感，电影级光影和色调",
+    "commercial": "商业广告风格，clean commercial look，产品展示质感，明亮通透",
+    "vintage": "复古胶片风格，film grain, analog vintage look，胶片颗粒感",
+    "dreamy": "梦幻风格，dreamy, ethereal, soft focus，柔焦梦幻感",
+    "documentary": "纪录片风格，documentary, handheld, natural light，自然纪实感",
+    "moody": "情绪暗调风格，moody, desaturated, low-key lighting，低饱和暗调",
 }
 
 QUALITY_MAP = {
@@ -519,6 +531,16 @@ async def generate_screenplay(
         if quality_instruction:
             system_prompt += f"。{quality_instruction}"
 
+    # Seedance 2.0 提示词增强
+    from .seedance_constants import build_seedance_hints
+    seedance_hints = build_seedance_hints(
+        camera_movement=req.camera_movement,
+        light_style=req.light_style,
+        negative_prompts=req.negative_prompts,
+    )
+    if seedance_hints:
+        system_prompt += "\n\n## Seedance 2.0 提示词增强约束\n" + "\n".join(f"- {h}" for h in seedance_hints)
+
     if req.model.startswith("glm-4.7"):
         system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中"
 
@@ -692,7 +714,7 @@ TVC_SCRIPT_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
       "dialogue": [
         {{"character": "角色名", "line": "台词内容"}}
       ],
-      "video_prompt": "English prompt for video generation, under 200 words. [Subject action] + [Camera movement] + [Environment/Lighting] + cinematic, high quality",
+      "video_prompt": "A young woman in white dress turns slowly, wind gently blows her hem. Soft golden hour lighting, beach at dusk with warm amber glow. Camera slow push-in, cinematic film tone 35mm. Avoid jitter and bent limbs.",
       "start_frame_prompt": "起始帧图片提示词（中文，50字以内：画面主体+光线+构图，描述镜头第一帧）",
       "end_frame_prompt": "结束帧图片提示词（中文，50字以内：画面主体+光线+构图，描述镜头最后一帧）",
       "bgm_mood": "风格,情绪,乐器（如：独立民谣,忧郁,吉他主导）"
@@ -707,12 +729,17 @@ TVC_SCRIPT_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
   }}
 }}
 
-## video_prompt 编写规则（核心 — 直接用于视频生成）
-1. 必须使用英文
-2. 格式：[主体动作] + [镜头运动] + [环境/光线] + cinematic, high quality
-3. 避免否定描述（no, without）
-4. 不超过 200 词
-5. 描述起始帧到结束帧之间的过渡动作
+## video_prompt 编写规则（核心 — Seedance 2.0 六步公式）
+1. 必须使用英文，60-100 词为佳，不超过 150 词
+2. 标准公式：[主体动作] + [环境/光线] + [镜头运动] + [风格] + [负面约束]
+3. 只写一个主镜头运动（push-in / pull-out / tracking / orbit / aerial / fixed / handheld）
+4. 镜头运动和主体运动必须分开描述，不可混淆（如错误："spinning camera around a dancing person"）
+5. 用节奏词描述速度（slow / gentle / smooth / gradual），不用技术参数（fps / ISO / 焦距）
+6. 光线描述是提升画质最有效的元素（golden hour / rim light / backlit / neon / natural light）
+7. 必须包含负面约束："avoid jitter and bent limbs"（人物视频必加）
+8. 避免使用模糊形容词（epic / amazing / beautiful），用具体视觉描述替代
+9. 描述起始帧到结束帧之间的过渡动作
+10. 避免否定描述（no, without），改用 "avoid ..." 格式
 
 ## start_frame_prompt / end_frame_prompt 编写规则
 1. 使用中文
@@ -748,6 +775,10 @@ class TvcScriptRequest(BaseModel):
     style_reference: Optional[str] = None
     style: Optional[str] = "realistic"
     model: str = "glm-5.1"
+    # Seedance 2.0 提示词增强
+    camera_movement: Optional[str] = None
+    light_style: Optional[str] = None
+    negative_prompts: Optional[list[str]] = None
 
 
 @router.post("/tvc-script")
@@ -780,6 +811,16 @@ async def generate_tvc_script(
     # 注入产品视觉风格约束（来自 5V-Turbo 分析）
     if req.style_reference:
         system_prompt += f"\n\n## 产品视觉风格约束（必须遵循）\n{req.style_reference}"
+
+    # 注入 Seedance 2.0 提示词增强参数
+    from .seedance_constants import build_seedance_hints
+    seedance_hints = build_seedance_hints(
+        camera_movement=getattr(req, 'camera_movement', None),
+        light_style=getattr(req, 'light_style', None),
+        negative_prompts=getattr(req, 'negative_prompts', None),
+    )
+    if seedance_hints:
+        system_prompt += "\n\n## Seedance 2.0 提示词增强约束\n" + "\n".join(f"- {h}" for h in seedance_hints)
 
     # thinking 模型使用 <output> 标签
     is_thinking = req.model.startswith("glm-5")
@@ -1016,3 +1057,164 @@ async def analyze_product_reference(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== AI 视频剪辑 Agent ====================
+
+VIDEO_AGENT_SYSTEM_PROMPT = """你是一个专业的 AI 视频剪辑助手。用户会告诉你他们想对视频做什么操作，你需要解析他们的意图并返回结构化的 JSON 指令。
+
+当前项目有 {clip_count} 个镜头视频{bgm_info}。
+
+支持的操作：
+1. concat — 拼接视频片段。参数: clips(片段索引数组, 如[0,1,2])
+2. compare — 前后对比分屏。参数: original_index, result_index, layout(side-by-side/top-bottom/pip)
+3. subtitle — 添加字幕。参数: text(字幕文本), start(秒), end(秒)
+4. bgm — 更换/调整BGM。参数: volume(0-1), action(set/adjust)
+5. compose — 完整合成管线。参数: transition(fade/dissolve/cut/wipe), resolution(720p/1080p/4k), enable_bgm(bool)
+
+你必须返回如下 JSON 格式：
+{"message": "对用户说的话", "command": {"action": "操作名", "params": {参数}, "description": "操作描述"}}
+
+如果用户只是闲聊或不涉及视频操作，只返回 message，不包含 command。
+只输出 JSON，不要输出其他内容。"""
+
+
+class VideoAgentRequest(BaseModel):
+    messages: list[dict]
+    context: dict
+
+
+@router.post("/tvc-video-agent")
+async def video_agent_chat(
+    req: VideoAgentRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """AI 视频剪辑 Agent — GLM-4.5-air 解析用户意图返回结构化指令"""
+    import json
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    clip_count = len(req.context.get("clips", []))
+    has_bgm = bool(req.context.get("bgmUrl"))
+    bgm_info = " + BGM" if has_bgm else ""
+
+    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.format(clip_count=clip_count, bgm_info=bgm_info)
+
+    messages = [{"role": "system", "content": system_msg}] + req.messages
+
+    api_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.GLM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "glm-4.5-air",
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 512,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as http:
+            resp = await http.post(api_url, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        content = data["choices"][0]["message"]["content"]
+
+        # 尝试解析为 JSON
+        repaired = _repair_json(content)
+        parsed = _find_balanced(repaired, "{", "}")
+
+        if parsed:
+            result = json.loads(parsed)
+            return {
+                "message": result.get("message", ""),
+                "command": result.get("command"),
+            }
+
+        return {"message": content, "command": None}
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Agent 响应超时")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent 错误: {str(e)}")
+
+
+@router.post("/tvc-video-agent/stream")
+async def video_agent_stream(
+    req: VideoAgentRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """AI 视频剪辑 Agent — SSE 流式响应"""
+    import json
+    settings = get_settings()
+    if not settings.GLM_API_KEY:
+        raise HTTPException(status_code=500, detail="GLM API Key 未配置")
+
+    clip_count = len(req.context.get("clips", []))
+    has_bgm = bool(req.context.get("bgmUrl"))
+    bgm_info = " + BGM" if has_bgm else ""
+
+    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.format(clip_count=clip_count, bgm_info=bgm_info)
+    messages = [{"role": "system", "content": system_msg}] + req.messages
+
+    api_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.GLM_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "model": "glm-4.5-air",
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "stream": True,
+    }
+
+    async def event_stream():
+        try:
+            async with httpx.AsyncClient(timeout=60) as http:
+                async with http.stream("POST", api_url, headers=headers, json=payload) as resp:
+                    resp.raise_for_status()
+
+                    buffer = ""
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            break
+
+                        try:
+                            chunk = json.loads(data)
+                            delta = chunk.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                buffer += content
+                                yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
+                        except json.JSONDecodeError:
+                            continue
+
+                    # 流结束后解析完整 JSON
+                    repaired = _repair_json(buffer)
+                    parsed = _find_balanced(repaired, "{", "}")
+                    if parsed:
+                        try:
+                            result = json.loads(parsed)
+                            command = result.get("command")
+                            yield f"data: {json.dumps({'type': 'done', 'message': result.get('message', ''), 'command': command})}\n\n"
+                        except json.JSONDecodeError:
+                            yield f"data: {json.dumps({'type': 'done', 'message': buffer, 'command': None})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'type': 'done', 'message': buffer, 'command': None})}\n\n"
+
+                    yield "data: [DONE]\n\n"
+
+        except httpx.TimeoutException:
+            yield f"data: {json.dumps({'type': 'error', 'message': 'Agent 响应超时'})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

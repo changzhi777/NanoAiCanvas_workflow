@@ -133,18 +133,43 @@ async def generate_video_thumbnail(
         raise HTTPException(status_code=400, detail="Asset has no video URL")
 
     import os
-    from app.services.video_thumbnail import download_and_extract
+    from app.services.video_thumbnail import download_and_extract, extract_keyframe, get_video_duration
 
+    _app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     upload_dir = os.environ.get(
         "ASSET_UPLOAD_DIR",
-        os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets"),
+        os.path.join(_app_dir, "chat-uploads", "assets"),
     )
     os.makedirs(upload_dir, exist_ok=True)
 
     thumb_filename = f"thumb_{asset.id}.jpg"
     thumb_path = os.path.join(upload_dir, thumb_filename)
 
-    success = await download_and_extract(asset.url, thumb_path)
+    # 相对路径直接用本地文件，完整URL走下载
+    success = False
+    if asset.url.startswith("/"):
+        filename = asset.url.split("/")[-1]
+        # 尝试多个可能的本地路径
+        candidates = [
+            os.path.join(upload_dir, filename),
+            os.path.join(upload_dir, "..", "..", "chat-uploads", "assets", filename),
+            os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets", filename),
+        ]
+        import logging
+        logging.getLogger(__name__).info(f"Searching for local video: {filename}, candidates: {candidates}")
+        for local_video in candidates:
+            local_video = os.path.realpath(local_video)
+            if os.path.exists(local_video):
+                duration = get_video_duration(local_video)
+                ts = max(1.0, duration * 0.1) if duration > 0 else 1.0
+                success = extract_keyframe(local_video, thumb_path, timestamp=ts)
+                if success:
+                    break
+        if not success:
+            logging.getLogger(__name__).warning(f"Video file not found locally: {filename}")
+    else:
+        success = await download_and_extract(asset.url, thumb_path)
+
     if not success:
         raise HTTPException(status_code=500, detail="Failed to extract keyframe")
 
@@ -166,7 +191,7 @@ async def batch_generate_thumbnails(
 ):
     """批量生成所有缺少缩略图的视频资产的关键帧"""
     import os
-    from app.services.video_thumbnail import download_and_extract
+    from app.services.video_thumbnail import download_and_extract, extract_keyframe, get_video_duration
 
     stmt = select(Asset).where(
         Asset.is_deleted == False,
@@ -177,9 +202,10 @@ async def batch_generate_thumbnails(
     result = await db.execute(stmt)
     assets = result.scalars().all()
 
+    _app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     upload_dir = os.environ.get(
         "ASSET_UPLOAD_DIR",
-        os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets"),
+        os.path.join(_app_dir, "chat-uploads", "assets"),
     )
     os.makedirs(upload_dir, exist_ok=True)
 
@@ -194,7 +220,27 @@ async def batch_generate_thumbnails(
         thumb_filename = f"thumb_{asset.id}.jpg"
         thumb_path = os.path.join(upload_dir, thumb_filename)
 
-        success = await download_and_extract(asset.url, thumb_path)
+        # 相对路径直接用本地文件，完整URL走下载
+        success = False
+        if asset.url.startswith("/"):
+            filename = asset.url.split("/")[-1]
+            candidates = [
+                os.path.join(upload_dir, filename),
+                os.path.join(upload_dir, "..", "..", "chat-uploads", "assets", filename),
+                os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets", filename),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "chat-uploads", "assets", filename)),
+            ]
+            for local_video in candidates:
+                local_video = os.path.realpath(local_video)
+                if os.path.exists(local_video):
+                    duration = get_video_duration(local_video)
+                    ts = max(1.0, duration * 0.1) if duration > 0 else 1.0
+                    success = extract_keyframe(local_video, thumb_path, timestamp=ts)
+                    if success:
+                        break
+        else:
+            success = await download_and_extract(asset.url, thumb_path)
+
         if success:
             thumb_url = f"{base_url}/asset-uploads/{thumb_filename}" if base_url else f"/asset-uploads/{thumb_filename}"
             asset.thumbnail_url = thumb_url

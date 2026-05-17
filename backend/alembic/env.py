@@ -8,8 +8,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.models import User, Asset, Workflow, WorkflowVersion, Operation, Template, Category, Tag, Folder, GenerationLog
 from app.database import Base
+import app.models  # noqa: F401 — ensure all models registered on Base.metadata
 
 config = context.config
 if config.config_file_name is not None:

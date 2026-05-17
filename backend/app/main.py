@@ -98,6 +98,9 @@ app.include_router(v2_tvc_config.router)
 from app.api.v2 import library as v2_library
 app.include_router(v2_library.router)
 
+from app.api.v2 import tvc_projects as v2_tvc_projects
+app.include_router(v2_tvc_projects.router)
+
 
 @app.websocket("/ws/tasks/{task_id}")
 async def ws_task_status(websocket: WebSocket, task_id: str):

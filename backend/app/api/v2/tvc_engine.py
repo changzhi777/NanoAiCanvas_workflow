@@ -158,6 +158,10 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
         await _generate_videos(task_id, 4, breakdown, req, settings, config)
 
+        # Step 6: 保存资产到资产库
+        if user_id:
+            await _save_assets(task_id, user_id, req, breakdown)
+
         await workflow_executor.complete_task(task_id, "completed")
 
     except Exception as e:
@@ -460,7 +464,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     video_resolution = getattr(req, "quality", None) or "720p"
 
     fallback_chain = [primary_model]
-    for fb in ["minimax", "seedance"]:
+    for fb in ["seedance"]:
         if fb not in fallback_chain:
             fallback_chain.append(fb)
 
@@ -592,3 +596,86 @@ async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, setting
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
             "status": "error", "progress": 0, "error": error_msg,
         })
+
+
+# ==================== Step 6: 保存资产 ====================
+
+async def _save_assets(task_id: str, user_id, req, breakdown: dict):
+    """将生成的参考图、视频、BGM 保存到资产库"""
+    from app.database import async_session_maker
+    from app.models.asset import Asset
+
+    state = await workflow_executor.load_task(task_id)
+    nodes = state.get("nodes", [])
+
+    # Step 4 的 subtasks（参考图）
+    image_node = nodes[3]
+    image_subtasks = image_node.get("subtasks", [])
+
+    # Step 5 的 subtasks（视频 + BGM）
+    video_node = nodes[4]
+    video_subtasks = video_node.get("subtasks", [])
+
+    assets_to_save = []
+
+    # 收集参考图
+    for st in image_subtasks:
+        result = st.get("result", {})
+        url = result.get("image_url", "")
+        if url and not url.startswith("placeholder_"):
+            label = "主参考图" if st["id"] == "character-ref" else "场景设计图"
+            assets_to_save.append({
+                "type": "image",
+                "name": f"TVC_{label}_{task_id}",
+                "url": url,
+                "category": "tvc",
+                "meta": {"source": "tvc_workflow", "task_id": task_id, "ref_type": st["id"]},
+            })
+
+    # 收集视频
+    for st in video_subtasks:
+        if st["id"] == "bgm":
+            continue
+        result = st.get("result", {})
+        url = result.get("video_url", "")
+        if url:
+            shot_num = st["id"].split("-")[1] if "-" in st["id"] else "0"
+            assets_to_save.append({
+                "type": "video",
+                "name": f"TVC_镜头{shot_num}_{task_id}",
+                "url": url,
+                "category": "tvc",
+                "meta": {"source": "tvc_workflow", "task_id": task_id, "shot_num": int(shot_num)},
+            })
+
+    # 收集 BGM
+    bgm_subtask = next((st for st in video_subtasks if st["id"] == "bgm"), None)
+    if bgm_subtask:
+        result = bgm_subtask.get("result", {})
+        url = result.get("audio_url", "")
+        if url:
+            assets_to_save.append({
+                "type": "audio",
+                "name": f"TVC_BGM_{task_id}",
+                "url": url,
+                "category": "tvc",
+                "meta": {"source": "tvc_workflow", "task_id": task_id, "asset_role": "bgm"},
+            })
+
+    if not assets_to_save:
+        return
+
+    async with async_session_maker() as db:
+        for item in assets_to_save:
+            asset = Asset(
+                user_id=user_id,
+                type=item["type"],
+                name=item["name"],
+                url=item["url"],
+                thumbnail_url=item["url"] if item["type"] == "image" else None,
+                category=item["category"],
+                meta_data=item["meta"],
+            )
+            db.add(asset)
+        await db.commit()
+        logger.info(f"TVC task {task_id}: saved {len(assets_to_save)} assets for user {user_id}")

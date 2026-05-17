@@ -7,6 +7,7 @@ import { useCallback, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { NodeStatus } from '@/stores/nanoaiWorkflowStore';
 import { tvcApi } from '@/lib/api/tvc-api';
+import { tvcProjectsApi } from '@/lib/api/tvc-projects-api';
 import { GLM_CONFIG } from '@/config/glm';
 import type { TvcScriptData } from './TvcScriptNode';
 
@@ -56,15 +57,54 @@ export function useTvcExecution(
       const response = await tvcApi.generateScript({
         prompt: params.inputText,
         shotCount: params.shotCount,
+        shotDuration: params.shotDuration,
+        totalDuration: params.totalDuration,
         style: params.style,
         modelProvider: config.provider,
         model: config.model,
+        cameraMovement: params.cameraMovement,
+        lightStyle: params.lightStyle,
+        negativePrompts: params.negativePrompts,
       });
 
       updateNode(nodeId, {
         status: NodeStatus.SUCCESS,
         result: { ...data.result, script: response.script },
       });
+
+      // 自动创建/更新 TVC 项目
+      try {
+        const script = response.script;
+        const projectId = data.result?.tvcProjectId;
+        const shots = (script?.shots || []).map((s: any, i: number) => ({
+          shot_index: i,
+          scene_number: s.scene_number,
+          scene_description: s.scene_description,
+          video_prompt: s.video_prompt,
+          start_frame_prompt: s.start_frame_prompt,
+          end_frame_prompt: s.end_frame_prompt,
+          bgm_mood: s.bgm_mood,
+          duration: script.shot_duration || 5,
+          dialogue: s.dialogue,
+          status: 'pending' as const,
+        }));
+
+        if (projectId) {
+          await tvcProjectsApi.linkTaskResult(projectId, { script, shots });
+        } else {
+          const created = await tvcProjectsApi.create({
+            name: script?.tvc_title || `TVC ${new Date().toLocaleDateString('zh-CN')}`,
+            original_text: params.inputText,
+          });
+          await tvcProjectsApi.linkTaskResult(created.id, { script, shots });
+          updateNode(nodeId, {
+            result: { ...data.result, script, tvcProjectId: created.id },
+          });
+        }
+      } catch {
+        // 项目创建失败不影响主流程
+      }
+
       toast.success('TVC 脚本生成完成');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -101,7 +141,7 @@ export function useTvcExecution(
         // 积分服务不可用时放行
       }
 
-      const response = await tvcApi.submitTask({
+      const submitParams = {
         workflowId: `wf-tvc-${nodeId}`,
         prompt: params.inputText,
         shotCount: params.shotCount || 6,
@@ -116,12 +156,49 @@ export function useTvcExecution(
         optimizeModel: params.optimizeModel,
         bgmModel: params.bgmModel,
         quality: params.quality,
-      });
+        cameraMovement: params.cameraMovement,
+        lightStyle: params.lightStyle,
+        negativePrompts: params.negativePrompts,
+      };
+
+      let response;
+      try {
+        response = await tvcApi.submitTask(submitParams);
+      } catch (submitErr: any) {
+        // 团队积分不足，确认后用个人积分重试
+        const msg = submitErr?.message || String(submitErr);
+        if (submitErr?.status === 402 && msg.includes('团队积分不足')) {
+          const confirmed = window.confirm(`${msg}\n\n是否使用个人积分支付？`);
+          if (!confirmed) return;
+          response = await tvcApi.submitTask({
+            ...submitParams,
+            forcePersonalPoints: true,
+          });
+        } else {
+          throw submitErr;
+        }
+      }
 
       toast.success('TVC 后台任务已提交');
+
+      // 自动创建 TVC 项目
+      let tvcProjectId = data.result?.tvcProjectId;
+      try {
+        if (!tvcProjectId) {
+          const created = await tvcProjectsApi.create({
+            name: `TVC ${new Date().toLocaleDateString('zh-CN')}`,
+            original_text: params.inputText,
+          });
+          tvcProjectId = created.id;
+        }
+        await tvcProjectsApi.update(tvcProjectId, { task_id: response.task_id, status: 'processing' });
+      } catch {
+        // 项目创建失败不影响主流程
+      }
+
       updateNode(nodeId, {
         status: NodeStatus.RUNNING,
-        result: { ...data.result, taskId: response.task_id },
+        result: { ...data.result, taskId: response.task_id, tvcProjectId },
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

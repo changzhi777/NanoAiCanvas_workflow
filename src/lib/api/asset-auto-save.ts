@@ -85,6 +85,7 @@ export async function autoSaveNodeResult(
   if (!token) return false
 
   const prompt = result?.prompt || result?.rawPrompt || ''
+  const tvcProjectId = result?.tvcProjectId || ''
 
   const tasks = urls.map(url => () =>
     assets.create({
@@ -96,6 +97,7 @@ export async function autoSaveNodeResult(
         prompt,
         enhancedPrompt: result?.enhancedPrompt || '',
         params: { model: result?.model || nodeType, ...(result?.params || {}) },
+        ...(tvcProjectId ? { tvc_project_id: tvcProjectId } : {}),
       },
       source_node_id: nodeId,
     }, token)

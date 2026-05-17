@@ -21,6 +21,8 @@ V2 API 模块负责：
 - TVC Provider 工厂（3 个图片 Provider + 3 个视频 Provider）
 - TVC 视频结果轮询（GLM/Seedance/MiniMax Hailuo）
 - TVC 工作流配置管理（全局配置 + 用户配置 + 配置解析）
+- TVC 项目管理（CRUD + 镜头管理 + 任务结果关联）
+- V2 资产库（浏览/搜索/批量操作）
 - Skills 任务队列（Redis 队列 + Worker）
 - 管理后台（渠道商/模型/密钥/用量统计）
 - 应用可见性控制（三态管理）
@@ -56,7 +58,9 @@ backend/app/api/v2/
 ├── tvc_engine.py         # TVC 执行引擎：5步编排+积分扣退+批量并行
 ├── tvc_providers.py      # TVC Provider 工厂：3图片+3视频Provider
 ├── tvc_polling.py        # TVC 视频轮询：GLM/Seedance/MiniMax
-├── tvc_config.py         # TVC 工作流配置：全局/用户配置管理 ★ 新增
+├── tvc_config.py         # TVC 工作流配置：全局/用户配置管理
+├── tvc_projects.py       # TVC 项目管理：CRUD + 镜头管理 ★ 新增
+├── library.py            # V2 资产库：浏览/搜索/批量操作 ★ 新增
 ├── glm_proxy.py          # GLM API 代理（958 行）
 ├── admin.py              # 管理后台 CRUD（735 行）
 ├── app_visibility.py     # 应用可见性控制（456 行）
@@ -86,6 +90,8 @@ backend/app/api/v2/
 | `/v2/image/*` | `image.py` | 图片生成任务（多Provider） | 可选 |
 | `/api/v2/minimax/*` | `minimax.py` | MiniMax 文本/剧本代理 | 可选 |
 | `/api/v2/generation-logs/*` | `generation_log.py` | 生成日志记录与查询 | 可选 |
+| `/api/v2/tvc-projects/*` | `tvc_projects.py` | TVC 项目 CRUD + 镜头管理 | 可选 | ★ 新增
+| `/api/v2/library/*` | `library.py` | V2 资产库浏览/搜索/批量操作 | 可选 | ★ 新增
 
 ---
 
@@ -221,6 +227,28 @@ AI 生成任务的日志记录与查询。
 - 状态枚举：GenerationStatus
 - 支持统计聚合
 
+### tvc_projects.py — TVC 项目管理 ★ 新增
+
+TVC 项目级组织，关联文案→剧本→镜头→成片。
+
+- `POST /api/v2/tvc-projects` — 创建项目
+- `GET /api/v2/tvc-projects` — 项目列表（分页）
+- `GET /api/v2/tvc-projects/{id}` — 项目详情（含镜头）
+- `PUT /api/v2/tvc-projects/{id}` — 更新项目
+- `DELETE /api/v2/tvc-projects/{id}` — 删除项目
+- `PUT /api/v2/tvc-projects/{id}/shots` — 批量更新镜头
+- `POST /api/v2/tvc-projects/{id}/shots` — 添加单个镜头
+- `DELETE /api/v2/tvc-projects/{id}/shots/{shot_id}` — 删除镜头
+- **数据模型**: TvcProject + TvcProjectShot，状态枚举 TvcProjectStatus/TvcShotStatus
+
+### library.py — V2 资产库 ★ 新增
+
+V2 版资产浏览/搜索/批量操作 API。
+
+- 资产浏览与搜索
+- 批量操作接口
+- 与 V1 assets.py 互补，提供更丰富的查询能力
+
 ---
 
 ## 依赖服务
@@ -241,6 +269,9 @@ V2 API 依赖以下后端服务：
 ## 变更记录 (Changelog)
 
 ### 2026-05-17
+- 新增 tvc_projects.py：TVC 项目管理 CRUD + 镜头管理
+- 新增 library.py：V2 资产库浏览/搜索/批量操作
+- 目录结构从 14 个文件扩展到 16 个文件
 - 新增 tvc_config.py：TVC 工作流配置管理（全局/用户配置+解析）
 - MiniMax 视频模型切换为 Hailuo-2.3-Fast（高速版 768P）
 - MiniMax API 路径重复 `/api` 前缀 404 修复

@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers
 revision = '003'
-down_revision = '002_add_categories_teams'
+down_revision = '002'
 branch_labels = None
 depends_on = None
 

@@ -53,6 +53,16 @@ lerna-debug.log*
 # Claude
 .claude/memory/
 
+# Python
+__pycache__/
+*.pyc
+
+# Uploads
+backend/chat-uploads/
+
+# cli-agent config
+.nanoairc.json
+
 # Playwright CLI
 .playwright-cli/
 .playwright-mcp/

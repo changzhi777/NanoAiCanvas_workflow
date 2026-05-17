@@ -8,11 +8,37 @@
  */
 
 // 视频模型时长限制
-const MODEL_DURATION_LIMITS: Record<string, number[]> = {
+export const MODEL_DURATION_LIMITS: Record<string, number[]> = {
   'jimeng-video-01': [4, 5, 8, 10, 15],       // Seedance 2.0
   'hailuo-2.3-fast-768P': [6],                  // MiniMax fast
   'hailuo-2.3-768P': [6, 10],                   // MiniMax
   'cogvideox-3': [5, 10],                       // CogVideoX-3
+}
+
+// 短 ID → 标准 model ID 映射（属性面板用短 ID，API 用标准 ID）
+const MODEL_ALIASES: Record<string, string> = {
+  seedance: 'jimeng-video-01',
+  minimax: 'hailuo-2.3-768P',
+  glm: 'cogvideox-3',
+}
+
+export function resolveModelId(model: string): string {
+  return MODEL_ALIASES[model] || model
+}
+
+// 根据模型单镜头最大时长，生成可用总时长选项
+export function getModelDurationOptions(model: string = 'jimeng-video-01'): number[] {
+  const resolved = resolveModelId(model)
+  const durations = MODEL_DURATION_LIMITS[resolved] || [5]
+  const maxShotDur = Math.max(...durations)
+  const options: number[] = []
+  for (let shots = 2; shots <= 12; shots++) {
+    const total = shots * maxShotDur
+    if (total > 120) break
+    options.push(total)
+  }
+  // 去重 + 排序
+  return [...new Set(options)].sort((a, b) => a - b)
 }
 
 export interface TvcCalcResult {

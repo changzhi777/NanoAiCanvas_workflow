@@ -168,7 +168,7 @@ SCREENPLAY_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
       "dialogue": [
         {{"character": "角色名", "line": "台词内容"}}
       ],
-      "video_prompt": "English prompt for video generation, under 200 words. [Subject action] + [Camera movement] + [Environment/Lighting] + cinematic, high quality",
+      "video_prompt": "A young woman in white dress turns slowly, wind gently blows her hem. Soft golden hour lighting, beach at dusk with warm amber glow. Camera slow push-in, cinematic film tone 35mm. Avoid jitter and bent limbs.",
       "start_frame_prompt": "起始帧图片提示词（中文，50字以内：画面主体+光线+构图）",
       "end_frame_prompt": "结束帧图片提示词（中文，50字以内：画面主体+光线+构图）",
       "bgm_mood": "风格,情绪,乐器"
@@ -183,11 +183,15 @@ SCREENPLAY_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
   }}
 }}
 
-## video_prompt 编写规则
-1. 必须使用英文
-2. 格式：[主体动作] + [镜头运动] + [环境/光线] + cinematic, high quality
-3. 不超过 200 词
-4. 包含：画面主体、光线、构图、情绪
+## video_prompt 编写规则（Seedance 2.0 六步公式）
+1. 必须使用英文，60-100 词为佳，不超过 150 词
+2. 标准公式：[主体动作] + [环境/光线] + [镜头运动] + [风格] + [负面约束]
+3. 只写一个主镜头运动（push-in / pull-out / tracking / orbit / aerial / fixed / handheld）
+4. 镜头运动和主体运动分开描述，不可混淆
+5. 用节奏词描述速度（slow / gentle / smooth / gradual），不用技术参数
+6. 光线描述是提升画质最有效的元素（golden hour / rim light / backlit / neon）
+7. 必须包含负面约束："avoid jitter and bent limbs"（人物视频必加）
+8. 避免模糊形容词（epic / amazing / beautiful），用具体视觉描述替代
 
 ## scene_description 编写规则
 1. 使用中文

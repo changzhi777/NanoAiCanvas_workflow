@@ -382,3 +382,63 @@ async def delete_team(
     await db.commit()
 
     return {"message": "团队已删除"}
+
+
+# ==================== 团队资产导入 ====================
+
+class AssetImportRequest(BaseModel):
+    asset_ids: List[UUID]
+
+
+@router.post("/{team_id}/assets/import")
+async def import_assets_to_team(
+    team_id: int,
+    req: AssetImportRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """将个人资产导入团队（复制式 — 创建 TeamAsset 关联）"""
+    # 验证团队成员身份
+    member_stmt = select(TeamMember).where(
+        TeamMember.team_id == team_id,
+        TeamMember.user_id == current_user.id,
+    )
+    member_result = await db.execute(member_stmt)
+    if not member_result.scalar_one_or_none():
+        raise HTTPException(403, "仅团队成员可导入资产")
+
+    # 验证资产归属当前用户
+    assets_stmt = select(Asset).where(
+        Asset.id.in_(req.asset_ids),
+        Asset.user_id == current_user.id,
+        Asset.is_deleted == False,
+    )
+    assets_result = await db.execute(assets_stmt)
+    user_assets = assets_result.scalars().all()
+    if len(user_assets) != len(req.asset_ids):
+        found_ids = {a.id for a in user_assets}
+        missing = [str(aid) for aid in req.asset_ids if aid not in found_ids]
+        raise HTTPException(400, f"资产不存在或不属于你: {missing}")
+
+    # 检查重复导入
+    existing_stmt = select(TeamAsset).where(
+        TeamAsset.team_id == team_id,
+        TeamAsset.asset_id.in_(req.asset_ids),
+    )
+    existing_result = await db.execute(existing_stmt)
+    existing_ids = {ta.asset_id for ta in existing_result.scalars().all()}
+
+    imported = 0
+    for asset in user_assets:
+        if asset.id in existing_ids:
+            continue
+        team_asset = TeamAsset(
+            team_id=team_id,
+            asset_id=asset.id,
+            added_by=current_user.id,
+        )
+        db.add(team_asset)
+        imported += 1
+
+    await db.commit()
+    return {"imported": imported, "skipped": len(req.asset_ids) - imported}

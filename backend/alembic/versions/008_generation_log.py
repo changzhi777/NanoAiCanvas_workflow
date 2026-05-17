@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM
 
 revision = '008_generation_log'
-down_revision = '007_user_avatar'
+down_revision = '007'
 branch_labels = None
 depends_on = None
 

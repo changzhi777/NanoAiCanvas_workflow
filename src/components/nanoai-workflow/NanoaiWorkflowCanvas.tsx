@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef, Component, type ReactNode } from 'react';
 import ReactFlow, {
   ReactFlowProvider,
   Background,
@@ -40,6 +40,25 @@ import { DeveloperTools } from './ui/DeveloperTools';
 import { WorkflowPropertiesPanel } from './ui/WorkflowPropertiesPanel';
 import { ImportConfirmDialog } from './ui/ImportConfirmDialog';
 import { useToast } from '@/hooks/useToast';
+
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  handleReset = () => { this.setState({ error: null }); };
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 24, color: '#f87171', background: '#1e1e2e', minHeight: '100vh', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+          <h2>Workflow 渲染崩溃</h2>
+          <p>{this.state.error.message}</p>
+          <button onClick={this.handleReset} style={{ marginTop: 12, padding: '8px 16px', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 14 }}>重试</button>
+          <details style={{ marginTop: 12 }}>{this.state.error.stack}</details>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { cn } from '@/lib/utils';
 import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X } from 'lucide-react';
 import type { WorkflowNodeType, NodePort } from '@/stores/nanoaiWorkflowStore';
@@ -90,9 +109,11 @@ interface NanoaiWorkflowCanvasProps {
 
 export function NanoaiWorkflowCanvas({ className }: NanoaiWorkflowCanvasProps) {
   return (
-    <ReactFlowProvider>
-      <NanoaiWorkflowCanvasInner className={className} />
-    </ReactFlowProvider>
+    <CanvasErrorBoundary>
+      <ReactFlowProvider>
+        <NanoaiWorkflowCanvasInner className={className} />
+      </ReactFlowProvider>
+    </CanvasErrorBoundary>
   );
 }
 

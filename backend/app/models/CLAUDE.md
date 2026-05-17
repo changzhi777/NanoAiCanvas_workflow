@@ -1,4 +1,4 @@
-# Models 模块 - 数据模型层（17 个模型）
+# Models 模块 - 数据模型层（19 个模型）
 
 导航面包屑：[根目录](../../../CLAUDE.md) > [backend](../../) > [app](../) > **models**
 
@@ -58,7 +58,8 @@
 | 文件 | 行数 | 模型 | 说明 |
 |------|------|------|------|
 | tvc_config.py | - | TvcWorkflowConfig | scope 区分 global/user，单表存全局配置和用户覆盖配置 |
+| tvc_project.py | 88 | TvcProject, TvcProjectShot | TVC 项目级组织：文案→剧本→镜头→成片，含状态枚举 |
 
 ## 数据库迁移
 
-13 个 Alembic 版本，位于 `backend/alembic/versions/`
+14 个 Alembic 版本，位于 `backend/alembic/versions/`
