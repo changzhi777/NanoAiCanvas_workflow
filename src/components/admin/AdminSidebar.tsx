@@ -18,6 +18,8 @@ import {
   Plug,
   Activity,
   LayoutGrid,
+  Bell,
+  TrendingUp,
 } from 'lucide-react'
 
 // 简单的 Link 组件替代 next/link
