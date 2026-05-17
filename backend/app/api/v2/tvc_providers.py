@@ -193,12 +193,5 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
     return _run
 
 
-VIDEO_PROVIDER_NAMES = {
-    "seedance": "Seedance 2.0",
-    "jimeng": "Seedance 2.0",
-}
-
-
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
-    provider_name = VIDEO_PROVIDER_NAMES.get(video_model, "Seedance 2.0")
-    return _submit_video_seedance(settings, resolution=resolution), provider_name
+    return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"

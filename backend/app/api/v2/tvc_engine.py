@@ -453,31 +453,15 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
                 scene_ref_url = url
 
     shots = breakdown.get("shots", [])
+    video_resolution = getattr(req, "quality", None) or "720p"
 
     bgm_subtask = next((st for st in subtasks if st["id"] == "bgm"), None)
     bgm_task = None
     if bgm_subtask:
         bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
-    video_cfg = (config or {}).get("step5_video", {})
-    primary_model = getattr(req, "video_model", None) or video_cfg.get("default_provider", "minimax")
-    video_resolution = getattr(req, "quality", None) or "720p"
-
-    fallback_chain = [primary_model]
-    for fb in ["seedance"]:
-        if fb not in fallback_chain:
-            fallback_chain.append(fb)
-
+    submit_fn, provider_name = get_video_provider("seedance", settings, resolution=video_resolution)
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
-
-    async def _try_video_provider(shot_num, first_url, last_url, duration, model_name, st_id, visual_prompt=""):
-        submit_fn, provider_name = get_video_provider(model_name, settings, resolution=video_resolution)
-        await workflow_executor.update_subtask(task_id, node_idx, st_id, {
-            "status": "running", "progress": 10,
-            "message": f"提交{provider_name}视频任务",
-        })
-        result = await submit_fn(shot_num, first_url, last_url, duration, prompt=visual_prompt)
-        return result
 
     async def _process_video(i: int, st: dict):
         shot_num = i + 1
@@ -485,52 +469,42 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
         last_url = scene_ref_url
         visual_prompt = shots[i].get("visual_prompt", "") if i < len(shots) else ""
 
-        for model_name in fallback_chain:
-            try:
-                result = await _try_video_provider(
-                    shot_num, first_url, last_url, req.shot_duration,
-                    model_name, st["id"], visual_prompt=visual_prompt,
-                )
-                await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                    "status": "success", "progress": 100, "result": result,
-                })
-                return
-            except Exception as e:
-                err_msg = str(e)
-                is_quota = "usage limit" in err_msg or "配额" in err_msg or "limit exceeded" in err_msg
-                is_sensitive = "SensitiveContent" in err_msg or "PrivacyInformation" in err_msg
-                logger.warning(f"Video shot {shot_num} failed with {model_name}: {err_msg[:120]}")
+        try:
+            await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                "status": "running", "progress": 10,
+                "message": f"提交{provider_name}视频任务",
+            })
+            result = await submit_fn(shot_num, first_url, last_url, req.shot_duration, prompt=visual_prompt)
+            await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                "status": "success", "progress": 100, "result": result,
+            })
+            return
+        except Exception as e:
+            err_msg = str(e)
+            is_sensitive = "SensitiveContent" in err_msg or "PrivacyInformation" in err_msg
+            logger.warning(f"Video shot {shot_num} failed: {err_msg[:120]}")
 
-                # Seedance 隐私拦截：去掉尾帧只用首帧重试一次
-                if is_sensitive and last_url and model_name == "seedance":
-                    try:
-                        logger.info(f"Shot {shot_num}: Seedance sensitive detected, retry with first-frame only")
-                        await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                            "status": "running", "progress": 10,
-                            "message": "Seedance 首帧重试（去除尾帧）",
-                        })
-                        result = await _try_video_provider(
-                            shot_num, first_url, "", req.shot_duration,
-                            model_name, st["id"], visual_prompt=visual_prompt,
-                        )
-                        await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                            "status": "success", "progress": 100, "result": result,
-                        })
-                        return
-                    except Exception as retry_err:
-                        logger.warning(f"Shot {shot_num}: Seedance first-frame retry also failed: {str(retry_err)[:120]}")
-
-                if model_name == fallback_chain[-1]:
+            # Seedance 隐私拦截：去掉尾帧只用首帧重试一次
+            if is_sensitive and last_url:
+                try:
+                    logger.info(f"Shot {shot_num}: Seedance sensitive detected, retry with first-frame only")
                     await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                        "status": "error", "progress": 0, "error": err_msg,
+                        "status": "running", "progress": 10,
+                        "message": "Seedance 首帧重试（去除尾帧）",
                     })
-                elif is_quota:
-                    logger.info(f"Quota exhausted for {model_name}, falling back")
-                    continue
-                else:
-                    continue
+                    result = await submit_fn(shot_num, first_url, "", req.shot_duration, prompt=visual_prompt)
+                    await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                        "status": "success", "progress": 100, "result": result,
+                    })
+                    return
+                except Exception as retry_err:
+                    err_msg = str(retry_err)
+                    logger.warning(f"Shot {shot_num}: first-frame retry also failed: {err_msg[:120]}")
 
-    # 并行生成所有视频
+            await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
+                "status": "error", "progress": 0, "error": err_msg,
+            })
+
     await asyncio.gather(*[_process_video(i, st) for i, st in enumerate(video_subtasks)])
 
     if bgm_task:
