@@ -194,6 +194,16 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     if req.style_reference:
         system_prompt += f"\n\n## 产品视觉风格约束（必须遵循）\n{req.style_reference}"
 
+    # Seedance 2.0 提示词增强
+    from .seedance_constants import build_seedance_hints
+    seedance_hints = build_seedance_hints(
+        camera_movement=getattr(req, 'camera_movement', None),
+        light_style=getattr(req, 'light_style', None),
+        negative_prompts=getattr(req, 'negative_prompts', None),
+    )
+    if seedance_hints:
+        system_prompt += "\n\n## Seedance 2.0 提示词增强约束\n" + "\n".join(f"- {h}" for h in seedance_hints)
+
     is_thinking = req.optimize_mode in ("tvc_deep", "tvc_vision")
     if is_thinking:
         system_prompt += "\n\n重要：请将最终 JSON 结果放在 <output> 标签中"
@@ -443,6 +453,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
 
     video_cfg = (config or {}).get("step5_video", {})
     primary_model = getattr(req, "video_model", None) or video_cfg.get("default_provider", "minimax") or "minimax"
+    video_resolution = getattr(req, "quality", None) or "720p"
 
     # fallback 链：主模型失败后尝试备选
     fallback_chain = [primary_model]
@@ -459,7 +470,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
 
         for model_name in fallback_chain:
             try:
-                submit_fn, provider_name = get_video_provider(model_name, settings)
+                submit_fn, provider_name = get_video_provider(model_name, settings, resolution=video_resolution)
                 await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                     "status": "running", "progress": 10,
                     "message": f"提交{provider_name}视频任务",

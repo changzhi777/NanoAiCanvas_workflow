@@ -148,7 +148,7 @@ def get_image_provider(image_model: str, settings: Settings) -> Callable:
 
 # ==================== 视频 Provider ====================
 
-def _submit_video_seedance(settings: Settings) -> Callable:
+def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Callable:
     from .tvc_polling import poll_seedance
 
     ark_key = settings.ARK_API_KEY
@@ -169,7 +169,7 @@ def _submit_video_seedance(settings: Settings) -> Callable:
         body = {
             "model": model,
             "content": content,
-            "resolution": "720p",
+            "resolution": resolution,
             "duration": max(4, min(15, duration)),
         }
 
@@ -298,11 +298,13 @@ VIDEO_PROVIDER_NAMES = {
 }
 
 
-def get_video_provider(video_model: str, settings: Settings) -> tuple[Callable, str]:
+def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
     factories = {
         "minimax": _submit_video_minimax,
         "glm": _submit_video_glm,
     }
-    factory = factories.get(video_model, _submit_video_seedance)
-    provider_name = VIDEO_PROVIDER_NAMES.get(video_model, "Seedance")
-    return factory(settings), provider_name
+    if video_model in factories:
+        provider_name = VIDEO_PROVIDER_NAMES.get(video_model, video_model)
+        return factories[video_model](settings), provider_name
+    provider_name = VIDEO_PROVIDER_NAMES.get(video_model, "Seedance 2.0")
+    return _submit_video_seedance(settings, resolution=resolution), provider_name
