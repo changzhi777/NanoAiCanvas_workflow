@@ -193,76 +193,12 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
     return _run
 
 
-def _submit_video_minimax(settings: Settings) -> Callable:
-    from .tvc_polling import poll_minimax_video
-
-    api_key = settings.MINIMAX_API_KEY
-    base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
-    model = "MiniMax-Hailuo-2.3"
-
-    async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
-        if not api_key:
-            raise Exception("MINIMAX_API_KEY not configured")
-
-        body: dict = {
-            "model": model,
-            "prompt": prompt or f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质",
-            "first_frame_image": first_url,
-            "duration": 6,
-            "resolution": "768P",
-        }
-        if last_url:
-            body["last_frame_image"] = last_url
-
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(f"{base_url}/video_generation", json=body, headers=headers)
-        if resp.status_code != 200:
-            raise Exception(f"MiniMax video submit error: {resp.status_code} {resp.text}")
-
-        data = resp.json()
-        base_resp = data.get("base_resp", {})
-        if base_resp.get("status_code", 0) != 0:
-            raise Exception(f"MiniMax video submit failed: {base_resp.get('status_msg', 'unknown')}")
-
-        task_id = data.get("task_id", "")
-        if not task_id:
-            raise Exception(f"No task_id in MiniMax response: {resp.text}")
-
-        file_id = await poll_minimax_video(api_key, base_url, task_id)
-
-        async with httpx.AsyncClient(timeout=30) as client:
-            dl_resp = await client.get(
-                f"{base_url}/files/retrieve?file_id={file_id}",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-        if dl_resp.status_code != 200:
-            raise Exception(f"MiniMax file download error: {dl_resp.status_code} {dl_resp.text}")
-
-        dl_data = dl_resp.json()
-        video_url = dl_data.get("file", {}).get("download_url", "")
-        if not video_url:
-            raise Exception(f"No download_url in MiniMax file response: {dl_resp.text}")
-
-        return {"video_url": video_url, "provider_task_id": task_id}
-
-    return _run
-
-
 VIDEO_PROVIDER_NAMES = {
-    "minimax": "MiniMax Hailuo 2.3",
     "seedance": "Seedance 2.0",
     "jimeng": "Seedance 2.0",
 }
 
 
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
-    factories = {
-        "minimax": _submit_video_minimax,
-    }
-    if video_model in factories:
-        provider_name = VIDEO_PROVIDER_NAMES.get(video_model, video_model)
-        return factories[video_model](settings), provider_name
     provider_name = VIDEO_PROVIDER_NAMES.get(video_model, "Seedance 2.0")
     return _submit_video_seedance(settings, resolution=resolution), provider_name
