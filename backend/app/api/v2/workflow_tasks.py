@@ -41,6 +41,7 @@ class SubmitRequest(BaseModel):
     optimize_model: Optional[str] = None
     bgm_model: Optional[str] = None
     quality: Optional[str] = None
+    force_personal_points: bool = False  # 团队不足时确认用个人积分
 
 
 @router.post("/submit")
@@ -52,24 +53,47 @@ async def submit_task(
     # 积分预检（仅检查余额，实际扣减在引擎中）
     if current_user:
         try:
-            from app.services.points_service import node_type_to_model_type, resolve_price
+            from app.services.points_service import node_type_to_model_type, resolve_price, get_user_team, get_team_account, get_or_create_account
             from app.database import async_session_maker
-            from app.api.points import get_or_create_user_account
 
             async with async_session_maker() as db:
-                account = await get_or_create_user_account(db, current_user.id)
                 text_price = await resolve_price(db, node_type_to_model_type("script_generator"))
                 image_price = await resolve_price(db, node_type_to_model_type("storyboard_generator"))
                 video_price = await resolve_price(db, node_type_to_model_type("storyboard_video"))
                 bgm_price = await resolve_price(db, node_type_to_model_type("background_music"))
 
                 total = text_price * 3 + image_price * req.shot_count * 2 + video_price * req.shot_count + bgm_price
-                if account.balance < total:
-                    raise HTTPException(
-                        status_code=402,
-                        detail=f"积分不足，需要 {total}，当前余额 {account.balance}",
-                        headers={"X-Insufficient-Balance": "true"},
-                    )
+
+                # 团队优先检查
+                team_id = await get_user_team(db, current_user.id)
+                if team_id:
+                    team_account = await get_team_account(db, team_id)
+                    if team_account and team_account.balance >= total:
+                        pass  # 团队余额充足
+                    elif not req.force_personal_points:
+                        team_bal = team_account.balance if team_account else 0
+                        raise HTTPException(
+                            status_code=402,
+                            detail=f"团队积分不足(余额{team_bal})，需要{total}。是否使用个人积分支付？",
+                            headers={"X-Insufficient-Balance": "true", "X-Team-Insufficient": "true"},
+                        )
+                    else:
+                        # 用户确认用个人积分
+                        account = await get_or_create_account(db, current_user.id)
+                        if account.balance < total:
+                            raise HTTPException(
+                                status_code=402,
+                                detail=f"个人积分不足，需要 {total}，当前余额 {account.balance}",
+                                headers={"X-Insufficient-Balance": "true"},
+                            )
+                else:
+                    account = await get_or_create_account(db, current_user.id)
+                    if account.balance < total:
+                        raise HTTPException(
+                            status_code=402,
+                            detail=f"积分不足，需要 {total}，当前余额 {account.balance}",
+                            headers={"X-Insufficient-Balance": "true"},
+                        )
         except HTTPException:
             raise
         except Exception:

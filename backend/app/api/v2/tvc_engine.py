@@ -60,14 +60,12 @@ async def _resolve_tvc_config(user_id=None, req=None) -> dict:
 
 # ==================== 积分管理 ====================
 
-async def deduct_points(user_id, req) -> int:
-    """预扣积分，返回扣除金额。失败时抛异常"""
-    from app.services.points_service import node_type_to_model_type, resolve_price
+async def deduct_points(user_id, req, force_personal: bool = False) -> int:
+    """预扣积分（团队优先），返回扣除金额"""
+    from app.services.points_service import node_type_to_model_type, resolve_price, deduct_team_first
     from app.database import async_session_maker
-    from app.api.points import get_or_create_user_account
 
     async with async_session_maker() as db:
-        account = await get_or_create_user_account(db, user_id)
         text_price = await resolve_price(db, node_type_to_model_type("script_generator"))
         image_price = await resolve_price(db, node_type_to_model_type("storyboard_generator"))
         video_price = await resolve_price(db, node_type_to_model_type("storyboard_video"))
@@ -78,21 +76,28 @@ async def deduct_points(user_id, req) -> int:
         video_cost = video_price * req.shot_count
         total = text_cost + image_cost + video_cost + bgm_price
 
-        if account.balance < total:
-            raise ValueError(f"积分不足：需要 {total}，当前余额 {account.balance}")
-
-        account.balance -= total
-        await db.commit()
+        result = await deduct_team_first(
+            db, user_id, total,
+            description=f"TVC工作流预扣（{req.shot_count}镜头）",
+            force_personal=force_personal,
+        )
         return total
 
 
 async def refund_points(user_id, amount: int):
-    """退还积分"""
+    """退还积分（退回原扣减账户）"""
     from app.database import async_session_maker
-    from app.api.points import get_or_create_user_account
+    from app.services.points_service import get_user_team, get_team_account, get_or_create_account
 
     async with async_session_maker() as db:
-        account = await get_or_create_user_account(db, user_id)
+        team_id = await get_user_team(db, user_id)
+        if team_id:
+            team_account = await get_team_account(db, team_id)
+            if team_account:
+                team_account.balance += amount
+                await db.commit()
+                return
+        account = await get_or_create_account(db, user_id)
         account.balance += amount
         await db.commit()
 
@@ -110,7 +115,7 @@ async def execute_tvc(task_id: str, req, user_id=None):
 
         # 积分预扣
         if user_id:
-            deducted = await deduct_points(user_id, req)
+            deducted = await deduct_points(user_id, req, force_personal=req.force_personal_points)
 
         state = await workflow_executor.load_task(task_id)
         state["status"] = "running"
