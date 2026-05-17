@@ -9,7 +9,7 @@ import { memo, useCallback, useState, useRef, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   FileText, X, Image as ImageIcon,
-  Play, Zap, Loader2, Coins,
+  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
@@ -45,6 +45,7 @@ export interface TvcScriptData extends WorkflowNodeData {
     script?: TvcScript;
     analysis?: ProductAnalysis;
     taskId?: string;
+    tvcProjectId?: string;
   };
 }
 
@@ -69,6 +70,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
   const { updateNodeParams, updateNode } = useNanoaiWorkflowStore();
 
   const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [costExpanded, setCostExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ime = useIMETextarea(data.params.inputText);
 
@@ -164,7 +166,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
             placeholder={INPUT_PLACEHOLDER}
             disabled={isRunning}
             className={cn(
-              'w-full min-h-[120px] max-h-[120px] rounded-xl px-3 py-2.5 text-sm resize-none',
+              'w-full min-h-[90px] max-h-[120px] rounded-xl px-3 py-2.5 text-sm resize-none',
               'border focus:outline-none focus:ring-2 focus:ring-blue-500/40',
               'placeholder:text-muted-foreground/50',
               isDark
@@ -242,7 +244,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         {/* 脚本结果预览 */}
         {hasScript && result.script && (
           <div className={cn(
-            'rounded-lg p-2.5 text-[11px] space-y-2 max-h-[160px] overflow-y-auto',
+            'rounded-lg p-2.5 text-[11px] space-y-2 max-h-[120px] overflow-y-auto',
             isDark ? 'bg-green-500/10 border border-green-500/20' : 'bg-green-50 border border-green-200',
           )}>
             <div className="font-semibold text-green-600">
@@ -290,31 +292,33 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
         {/* 积分成本预估 */}
         <div className={cn(
-          'rounded-lg p-2.5 text-[11px] space-y-1.5',
+          'rounded-lg text-[11px]',
           isDark ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-amber-50 border border-amber-200',
         )}>
-          <div className="flex items-center gap-1 font-semibold text-amber-600">
+          <button
+            onClick={() => setCostExpanded(!costExpanded)}
+            className="w-full flex items-center gap-1 font-semibold text-amber-600 px-2.5 py-2"
+          >
+            {costExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             <Coins className="w-3.5 h-3.5" />
-            积分成本预估
-            <span className="ml-auto font-mono text-amber-500">{params.totalDuration || 30}s</span>
-          </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
-            <span>文本生成</span>
-            <span className="text-right font-mono">{costEstimate.costBreakdown.text} 分</span>
-            <span>生图 ×{costEstimate.imageCount}（首帧+尾帧）</span>
-            <span className="text-right font-mono">{costEstimate.costBreakdown.image} 分</span>
-            <span>视频 ×{costEstimate.shotCount}</span>
-            <span className="text-right font-mono">{costEstimate.costBreakdown.video} 分</span>
-            <span>BGM</span>
-            <span className="text-right font-mono">{costEstimate.costBreakdown.bgm} 分</span>
-          </div>
-          <div className={cn(
-            'flex justify-between items-center pt-1.5 border-t font-semibold',
-            isDark ? 'border-amber-500/20' : 'border-amber-200',
-          )}>
-            <span className="text-amber-700">预估总计</span>
-            <span className="font-mono text-amber-600 text-sm">{costEstimate.estimatedCost} 分</span>
-          </div>
+            积分预估
+            <span className="ml-auto font-mono text-amber-600 text-sm">{costEstimate.estimatedCost} 分</span>
+            <span className="font-mono text-amber-500">·{params.totalDuration || 30}s</span>
+          </button>
+          {costExpanded && (
+            <div className="px-2.5 pb-2 space-y-1.5">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-muted-foreground">
+                <span>文本生成</span>
+                <span className="text-right font-mono">{costEstimate.costBreakdown.text} 分</span>
+                <span>生图 ×{costEstimate.imageCount}（首帧+尾帧）</span>
+                <span className="text-right font-mono">{costEstimate.costBreakdown.image} 分</span>
+                <span>视频 ×{costEstimate.shotCount}</span>
+                <span className="text-right font-mono">{costEstimate.costBreakdown.video} 分</span>
+                <span>BGM</span>
+                <span className="text-right font-mono">{costEstimate.costBreakdown.bgm} 分</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -25,10 +25,10 @@ export interface TvcVideo01Template {
 }
 
 export const createTvcVideo01Nodes = (): WorkflowNode[] => {
-  const startX = 100;
-  const startY = 300;
+  const startX = 80;
+  const startY = 280;
   const nodeWidth = 280;
-  const horizontalGap = 150;
+  const horizontalGap = 280;
 
   return [
     // ==================== 节点 1：文案/剧本 ====================
@@ -37,7 +37,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       type: 'tvc_script',
       position: { x: startX, y: startY },
       data: {
-        label: 'TVC 文案/剧本',
+        label: '① TVC 文案/剧本',
         params: {
           inputText: '',
           referenceImage: '',
@@ -65,7 +65,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       type: 'storyboard_generator',
       position: { x: startX + nodeWidth + horizontalGap, y: startY },
       data: {
-        label: '分镜+视频+BGM',
+        label: '② 分镜+视频+BGM',
         params: {
           dataSource: '',
           style: 'realistic',
@@ -98,7 +98,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       type: 'storyboard_video',
       position: { x: startX + (nodeWidth + horizontalGap) * 2, y: startY },
       data: {
-        label: 'TVC 视频合成',
+        label: '③ TVC 视频合成',
         params: {
           transition: 'fade',
           outputFormat: 'mp4',
@@ -129,7 +129,10 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       targetHandle: 'node-tvc-storyboard',
       type: 'smoothstep',
       animated: true,
-      style: { stroke: '#3B82F6', strokeWidth: 2 },
+      label: '脚本 JSON',
+      labelBgStyle: { fill: '#1e293b', fillOpacity: 0.85, rx: 6, ry: 6 },
+      labelStyle: { fill: '#93c5fd', fontSize: 11, fontWeight: 600 },
+      style: { stroke: '#3B82F6', strokeWidth: 2.5 },
     },
     {
       id: 'edge-tvc-storyboard-to-compose',
@@ -139,7 +142,10 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       targetHandle: 'video-in',
       type: 'smoothstep',
       animated: true,
-      style: { stroke: '#3ecf8e', strokeWidth: 2 },
+      label: '视频 + BGM',
+      labelBgStyle: { fill: '#1e293b', fillOpacity: 0.85, rx: 6, ry: 6 },
+      labelStyle: { fill: '#86efac', fontSize: 11, fontWeight: 600 },
+      style: { stroke: '#3ecf8e', strokeWidth: 2.5 },
     },
   ];
 };

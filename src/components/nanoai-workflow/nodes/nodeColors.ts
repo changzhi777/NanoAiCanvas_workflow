@@ -134,6 +134,8 @@ export const NODE_TYPE_TO_CATEGORY: Record<string, NodeFunctionCategory> = {
   'character_designer': NodeFunctionCategory.AI_GENERATOR,
   'scene_designer': NodeFunctionCategory.AI_GENERATOR,
   'screenwriter_agent': NodeFunctionCategory.AI_GENERATOR,
+  'tvc_script': NodeFunctionCategory.AI_GENERATOR,
+  'storyboard_video': NodeFunctionCategory.AI_GENERATOR,
 
   // 输出节点 - 橙色
   'output_preview': NodeFunctionCategory.OUTPUT,
