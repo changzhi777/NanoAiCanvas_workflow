@@ -141,7 +141,7 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Video className="w-4 h-4 text-primary shrink-0" />
-              <h3 className="font-semibold text-foreground truncate text-xs">TVC 视频合成</h3>
+              <h3 className="font-semibold text-foreground truncate text-xs">{data?.label || "TVC 视频合成"}</h3>
             </div>
             <div className="flex items-center gap-1.5">
               {data.result?.savedToAsset && <ShieldCheck className="w-3 h-3 text-green-500" />}

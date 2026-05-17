@@ -143,7 +143,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
       )}>
         <FileText className="w-4 h-4 text-blue-500" />
         <span className={cn('text-sm font-semibold flex-1', isDark ? 'text-slate-100' : 'text-gray-800')}>
-          TVC 文案/剧本
+          {data.label || 'TVC 文案/剧本'}
         </span>
         <div className={cn(
           'w-2.5 h-2.5 rounded-full',
