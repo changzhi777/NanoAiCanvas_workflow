@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Upload, Download, Loader2, Sparkles, Volume2, Play, Pause, FileText, FileJson, RefreshCw, Edit2, Check, X, SkipForward } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, Sparkles, Volume2, Play, Pause, FileText, FileJson, Edit2, Check, X, SkipForward } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useStoryboardWizardStore, type DialogueLine } from '@/stores/nanoImageStoryboardWizardStore'
+import { useStoryboardWizardStore } from '@/stores/nanoImageStoryboardWizardStore'
 import { cn } from '@/lib/utils'
-import { showNotification, generateUniqueId } from '@/lib/utils/wizard-helpers'
+import { showNotification } from '@/lib/utils/wizard-helpers'
 
 // 情绪选项
 const EMOTION_OPTIONS = [
@@ -209,7 +209,7 @@ export function Step3Dialogue() {
     }
 
     const data = {
-      dialogues: dialogues.map(({ audioUrl, ...rest }) => rest),
+      dialogues: dialogues.map(({ audioUrl: _audioUrl, ...rest }) => rest),
       exportedAt: new Date().toISOString(),
     }
     const json = JSON.stringify(data, null, 2)

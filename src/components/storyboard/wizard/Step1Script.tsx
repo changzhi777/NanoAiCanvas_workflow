@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Upload, Download, Loader2, Sparkles, FileText, FileJson, FileType } from 'lucide-react'
+import { useState } from 'react'
+import { Upload, Loader2, Sparkles, FileText, FileType } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useStoryboardWizardStore } from '@/stores/nanoImageStoryboardWizardStore'
 import { cn } from '@/lib/utils'
-import { showNotification, generateUniqueId } from '@/lib/utils/wizard-helpers'
-import { parseJsonStoryboard, parseMarkdownStoryboard, parseMarkdownScript, exportToJson, exportToMarkdownStoryboard } from '@/lib/utils/file-parser'
+import { showNotification } from '@/lib/utils/wizard-helpers'
+import { parseJsonStoryboard, parseMarkdownStoryboard, parseMarkdownScript } from '@/lib/utils/file-parser'
 
 // 复用主故事板的风格选项
 const STYLE_OPTIONS = [

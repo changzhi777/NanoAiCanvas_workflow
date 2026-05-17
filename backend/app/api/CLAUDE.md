@@ -6,7 +6,7 @@
 
 > 后端 API 路由模块，包含认证、资产管理、工作流、积分、聊天、通知等核心 API
 
-**最后更新**: 2026-05-14
+**最后更新**: 2026-05-17
 **维护者**: NanoAiCanvas Backend Team
 
 ---
@@ -121,7 +121,7 @@ backend/app/api/
 
 ### V2 API 路由列表
 
-V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 9 个路由文件。
+V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 14 个路由文件。
 
 | 路由前缀 | 文件 | 功能 | 说明 |
 |----------|------|------|------|
@@ -133,7 +133,12 @@ V2 API 已独立到 `backend/app/api/v2/` 子目录，包含 9 个路由文件�
 | `/api/v2/key-mapper/*` | `key_mapper.py` | API Key 映射 | 热加载配置 |
 | `/api/v2/minimax/*` | `minimax.py` | MiniMax 集成 | 文本/语音/视频 |
 | `/api/v2/skills/*` | `skills.py` | Skills 任务队列 | Redis 队列 Worker |
-| `/api/v2/workflow-tasks/*` | `workflow_tasks.py` | 工作流任务 | 任务执行引擎 |
+| `/api/v2/tvc-tasks/*` | `workflow_tasks.py` | TVC 工作流任务 | 任务提交/查询/取消 |
+| `/api/v2/tvc-engine/*` | `tvc_engine.py` | TVC 执行引擎 | 5步编排+积分管理 |
+| `/api/v2/tvc-providers/*` | `tvc_providers.py` | TVC Provider 工厂 | 3图片+3视频Provider |
+| `/api/v2/tvc-polling/*` | `tvc_polling.py` | TVC 视频轮询 | GLM/Seedance/MiniMax |
+| `/api/v2/tvc-config/*` | `tvc_config.py` | TVC 配置管理 | 全局/用户配置 |
+| `/api/v2/generation-logs/*` | `generation_log.py` | 生成日志 | 调用记录查询 |
 
 > 详细文档见 [v2/CLAUDE.md](./v2/CLAUDE.md)
 
@@ -368,6 +373,9 @@ async def auth_headers(client, test_user):
 - `tests/test_auth.py` - 认证测试
 - `tests/test_assets.py` - 资产测试
 - `tests/test_workflows.py` - 工作流测试
+- `tests/test_tvc_engine.py` - TVC 执行引擎测试 ★ 新增
+- `tests/test_tvc_providers.py` - TVC Provider 工厂测试 ★ 新增
+- `tests/test_user_approval.py` - 用户审批测试
 
 ### 运行测试
 
@@ -467,6 +475,16 @@ A: 通过 Redis Pub/Sub。发送端发布消息到频道，接收端（Connectio
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-17
+- V2 API 新增 tvc_config.py 配置管理路由
+- V2 API 路由文件从 9 个扩展到 14 个
+- 更新 V2 API 路由列表
+
+### 2026-05-15
+- 新增测试文件：test_tvc_engine.py、test_tvc_providers.py
+- 新增 test_user_approval.py 用户审批测试
+- V2 API 目录新增 3 个 TVC 模块（engine/polling/providers）
 
 ### 2026-05-14
 - 新增 chat.py 即时聊天模块（REST + WebSocket）

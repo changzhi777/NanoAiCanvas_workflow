@@ -192,7 +192,7 @@ def _submit_video_minimax(settings: Settings) -> Callable:
 
     api_key = settings.MINIMAX_API_KEY
     base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
-    model = "MiniMax-Hailuo-2.3-Fast"
+    model = "MiniMax-Hailuo-2.3"
 
     async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
         if not api_key:
@@ -286,7 +286,7 @@ def _submit_video_glm(settings: Settings) -> Callable:
 
 
 VIDEO_PROVIDER_NAMES = {
-    "minimax": "MiniMax Hailuo 2.3-Fast",
+    "minimax": "MiniMax Hailuo 2.3",
     "glm": "CogVideoX-3",
     "seedance": "Seedance",
     "jimeng": "Seedance",

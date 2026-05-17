@@ -69,12 +69,12 @@ export function TaskQueueTab({ onCopyAndExecute, onViewTask }: TaskQueueTabProps
     loadAssets: loadStoryboardAssets,
     cancelTask: cancelStoryboardTask,
     deleteTask: deleteStoryboardTask,
-    runningTaskId,
+    runningTaskId: _runningTaskId,
     subTasks: storyboardSubTasksMap,
   } = useStoryboardTaskStore()
   const [tasks, setTasks] = useState<TaskQueueItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [expandedStoryboardTaskId, setExpandedStoryboardTaskId] = useState<string | null>(null)
+  const [expandedStoryboardTaskId] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // 加载所有任务（图片生成 + 故事板）
@@ -188,7 +188,6 @@ export function TaskQueueTab({ onCopyAndExecute, onViewTask }: TaskQueueTabProps
             // Render storyboard task - 使用独立动画组件
             if (task.type === 'storyboard') {
               const sbTask = task as StoryboardTask & { type: 'storyboard' }
-              const isRunning = sbTask.id === runningTaskId
               const isActive = sbTask.status !== 'success' && sbTask.status !== 'error'
               const isExpanded = expandedStoryboardTaskId === sbTask.id
               // 从 store 的 Map 中获取子任务数据

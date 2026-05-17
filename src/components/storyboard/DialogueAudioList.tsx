@@ -88,7 +88,7 @@ export function DialogueAudioList({ dialogues, scenes }: DialogueAudioListProps)
   return (
     <div className="space-y-2">
       {dialogueAudios.map((audio) => {
-        const dialogue = dialogues.find(d => d.id === audio.dialogueId)
+        const _dialogue = dialogues.find(d => d.id === audio.dialogueId)
         const isPlaying = playingId === audio.dialogueId
 
         return (

@@ -148,19 +148,24 @@ export default function AssetLibraryPanel({
         const db = await getDB();
         let localAssets = await db.getAll('assets');
         if (categoryFilter !== 'all') {
-          localAssets = localAssets.filter((a: Asset) =>
+          localAssets = localAssets.filter((a: any) =>
             a.type?.toLowerCase() === categoryFilter || a.category === categoryFilter
           );
         }
-        if (starredOnly) localAssets = localAssets.filter((a: Asset) => a.is_starred);
+        if (starredOnly) localAssets = localAssets.filter((a: any) => a.is_starred);
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
-          localAssets = localAssets.filter((a: Asset) =>
-            a.name.toLowerCase().includes(q) || a.tags.some(t => t.toLowerCase().includes(q))
+          localAssets = localAssets.filter((a: any) =>
+            a.name.toLowerCase().includes(q) || a.tags.some((t: string) => t.toLowerCase().includes(q))
           );
         }
-        setAssetsList(localAssets as Asset[]);
-        setTotal(localAssets.length);
+        // AssetRecord(IndexedDB, meta) → Asset(API, metadata) 映射
+        const mapped = localAssets.map((a: any) => ({
+          ...a,
+          metadata: a.metadata || a.meta || {},
+        })) as Asset[];
+        setAssetsList(mapped);
+        setTotal(mapped.length);
       }
     } catch (error) {
       console.error('Failed to load assets:', error);
@@ -559,7 +564,7 @@ function AssetCard({
   multiSelectMode: boolean;
 }) {
   const [imageError, setImageError] = useState(false);
-  const meta = (asset as any).meta || {};
+  const meta = (asset as any).metadata || {};
   const prompt = truncatePrompt(meta.prompt || meta.enhancedPrompt);
   const modelTag = meta.params?.model || meta.params?.modelName || '';
   const sizeTag = meta.params?.width && meta.params?.height ? `${meta.params.width}×${meta.params.height}` : '';
@@ -668,7 +673,7 @@ function AssetListView({
   return (
     <div className="space-y-2">
       {list.map((asset) => {
-        const meta = (asset as any).meta || {};
+        const meta = (asset as any).metadata || {};
         const prompt = truncatePrompt(meta.prompt || meta.enhancedPrompt, 80);
         const isImage = ['image', 'storyboard_image'].includes(asset.type?.toLowerCase());
         return (

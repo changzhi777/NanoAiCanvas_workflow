@@ -128,6 +128,10 @@ export interface SubmitTaskParams {
   videoModel?: string;
   styleReference?: string;
   referenceImage?: string;
+  scriptModel?: string;
+  optimizeModel?: string;
+  bgmModel?: string;
+  quality?: string;
 }
 
 export interface EstimatePointsParams {
@@ -198,10 +202,14 @@ export const tvcApi = {
       style: params.style ?? 'realistic',
       optimize_mode: params.optimizeMode ?? 'tvc_deep',
       execution_mode: 'auto',
-      image_model: params.imageModel ?? 'jimeng',
-      video_model: params.videoModel ?? 'jimeng',
+      image_model: params.imageModel,
+      video_model: params.videoModel,
       style_reference: params.styleReference,
       reference_image: params.referenceImage,
+      script_model: params.scriptModel,
+      optimize_model: params.optimizeModel,
+      bgm_model: params.bgmModel,
+      quality: params.quality,
     });
   },
 
@@ -245,6 +253,24 @@ export const tvcApi = {
     };
 
     return es;
+  },
+
+  // ==================== 配置管理 ====================
+
+  async getGlobalConfig(): Promise<Record<string, any>> {
+    return client.get('/v2/tvc-config/global');
+  },
+
+  async getUserConfig(): Promise<Record<string, any>> {
+    return client.get('/v2/tvc-config/user');
+  },
+
+  async saveUserConfig(config: Record<string, any>): Promise<Record<string, any>> {
+    return client.put('/v2/tvc-config/user', config);
+  },
+
+  async resolveConfig(): Promise<Record<string, any>> {
+    return client.post('/v2/tvc-config/resolve');
   },
 };
 

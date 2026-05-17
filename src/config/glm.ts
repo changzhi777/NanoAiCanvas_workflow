@@ -26,10 +26,9 @@ export const GLM_CONFIG = {
 
   // TVC 功能名 → 模型映射
   TVC_MODEL_LABELS: {
-    tvc_minimax: { label: 'MiniMax 2.7（推荐）', model: 'MiniMax-M2.7', provider: 'minimax' },
     tvc_deep: { label: '深度分析优化', model: 'glm-5.1', provider: 'glm', thinking: true },
-    tvc_fast: { label: '快速优化', model: 'MiniMax-M2.7', provider: 'minimax', thinking: false },
-    tvc_vision: { label: '参考图优化', model: 'MiniMax-M2.7', provider: 'minimax', thinking: true },
+    tvc_fast: { label: '快速优化', model: 'glm-4.5-air', provider: 'glm', thinking: false },
+    tvc_vision: { label: '参考图优化', model: 'glm-5v-turbo', provider: 'glm', thinking: true },
   } as const,
 } as const;
 

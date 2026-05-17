@@ -7,9 +7,9 @@ import {
   Volume2,
   Loader2,
   Play,
-  Download,
+
   Trash2,
-  RefreshCw,
+
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useStoryboardVoiceStore } from '@/stores/nanoImageStoryboardVoiceStore'

@@ -114,7 +114,7 @@ test.describe('TVC 工作流', () => {
 
     const options = await node.locator('select').locator('option').allTextContents()
     expect(options.length).toBe(4)
-    expect(options.some(o => o.includes('MiniMax'))).toBeTruthy()
+    expect(options.some(o => o.includes('GLM-5.1'))).toBeTruthy()
     expect(options.some(o => o.includes('深度分析'))).toBeTruthy()
     expect(options.some(o => o.includes('快速'))).toBeTruthy()
     expect(options.some(o => o.includes('参考图'))).toBeTruthy()

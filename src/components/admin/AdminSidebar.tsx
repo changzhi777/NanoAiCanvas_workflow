@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import {
   Settings,
   Key,
-  Database,
   Server,
   ChevronRight,
   ChevronLeft,
@@ -15,11 +14,7 @@ import {
   BarChart3,
   Zap,
   Wifi,
-  Shield,
-  Bell,
-  Layers,
   UserPlus,
-  TrendingUp,
   Plug,
   Activity,
   LayoutGrid,
@@ -27,21 +22,13 @@ import {
 
 // 简单的 Link 组件替代 next/link
 function NavLink({ href, children, className, icon: Icon }: { href: string; children: React.ReactNode; className?: string; icon?: any }) {
-  const pathname = usePathname()
-  const isActive = pathname === href || pathname.startsWith(href + '/')
   return (
     <div
       onClick={() => window.location.href = href}
-      className={cn(
-        'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer',
-        isActive
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-      )}
+      className={cn('cursor-pointer', className)}
     >
       {Icon && <Icon className="w-4 h-4" />}
       {children}
-      {isActive && <ChevronRight className="ml-auto w-4 h-4" />}
     </div>
   )
 }
@@ -78,6 +65,11 @@ const navigation = [
       {
         title: 'Nano 2 管理',
         href: '/nanoaicanvas/admin/apps/nano2',
+        icon: LayoutGrid,
+      },
+      {
+        title: 'TVC 配置',
+        href: '/nanoaicanvas/admin/tvc-config',
         icon: LayoutGrid,
       },
     ],

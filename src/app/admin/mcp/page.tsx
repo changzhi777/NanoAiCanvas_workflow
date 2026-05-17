@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -76,7 +76,7 @@ interface MCPClientConfig {
 }
 
 // MCP 配置 API 响应类型
-interface MCPConfigResponse {
+export interface MCPConfigResponse {
   servers: MCPServerConfig[]
   updated_at?: string
 }
@@ -235,7 +235,7 @@ export default function MCPPage() {
   const handleExportClaudeCode = () => {
     let text = '# Claude Code MCP 配置\n\n在终端运行以下命令添加 MCP 服务器：\n\n'
     servers.filter(s => s.enabled).forEach(s => {
-      const envStr = Object.entries(s.env)
+      const _envStr = Object.entries(s.env)
         .map(([k, v]) => `${k}=${v}`)
         .join(' ')
       text += `## ${s.name}\n`

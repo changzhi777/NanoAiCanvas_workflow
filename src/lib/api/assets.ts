@@ -2,15 +2,9 @@
  * API 客户端 - 资产相关
  */
 
-import type { StoryboardAsset, User } from '@/types'
+import type { StoryboardAsset } from '@/types'
 
 const API_BASE = '/nano2/api'
-
-interface ApiResponse<T = unknown> {
-  success: boolean
-  error?: string
-  data?: T
-}
 
 /**
  * 登录
@@ -141,7 +135,7 @@ export async function deleteAssetApi(id: string): Promise<{
  * 从 API 获取图片资产列表（用于 Gallery 页面）
  * 注意：此函数获取的是 StoryboardAsset 类型的资产，用于智能图库显示
  */
-export async function fetchAssetsFromAPI(userId: string): Promise<any[]> {
+export async function fetchAssetsFromAPI(_userId: string): Promise<any[]> {
   const response = await fetch(`${API_BASE}/v2/library/assets`)
   const result = await response.json()
 

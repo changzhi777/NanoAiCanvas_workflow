@@ -8,7 +8,13 @@ import { useTheme } from './Theme';
 import { useNanoaiWorkflowStore } from '@/stores/nanoaiWorkflowStore';
 import { useToast } from '@/hooks/useToast';
 import { DEFAULT_PARAMS, optimizePromptWithGLM, SIZE_OPTIONS, getDefaultSize } from '../nodes/StoryboardShotA.shared';
-import { calcTvcParams, formatDuration } from '@/lib/tvc-cascade';
+import { calcTvcParams } from '@/lib/tvc-cascade';
+
+const CUSTOM_PANEL_NODE_TYPES = new Set([
+  'storyboard_shot_a', 'image_preview', 'storyboard_v2', 'shot_ref_image',
+  'character_design_image', 'scene_design_image', 'script_table',
+  'storyboard_video', 'tvc_script', 'storyboard_generator',
+]);
 
 export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElement>) {
   const { isDark } = useTheme();
@@ -559,25 +565,52 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 
               {/* TVC 起始节点专属配置 + 级联参数 */}
               {selectedNode.type === 'tvc_script' && (() => {
-                const p = { optimizeMode: 'tvc_deep', executionMode: 'auto', style: 'realistic', ...(editData.params || {}) };
+                const p = { optimizeMode: 'tvc_deep', executionMode: 'auto', style: 'realistic', quality: 'hd', ...(editData.params || {}) };
                 const setP = (update: Record<string, any>) => {
                   const newParams = { ...p, ...update };
                   handleInputChange('params', newParams);
                   if (selectedNodeId) updateNode(selectedNodeId, { params: newParams });
                 };
                 const selectCls = cn('w-full text-sm rounded-md border px-2.5 py-2', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200');
+                const [modelsOpen, setModelsOpen] = useState(false);
                 return (
                   <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
                     <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>TVC 参数配置</h3>
+
+                    {/* 基础配置 */}
                     <div className="space-y-3">
                       <div>
-                        <Label className="text-xs mb-1.5 block text-muted-foreground">TVC 总时长</Label>
-                        <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
-                          <option value={15}>15 秒</option>
-                          <option value={30}>30 秒</option>
-                          <option value={45}>45 秒</option>
-                          <option value={60}>60 秒</option>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">优化模式</Label>
+                        <select value={p.optimizeMode} onChange={e => setP({ optimizeMode: e.target.value })} className={selectCls}>
+                          <option value="tvc_deep">深度分析优化</option>
+                          <option value="tvc_fast">快速优化</option>
+                          <option value="tvc_vision">参考图优化</option>
                         </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs mb-1.5 block text-muted-foreground">执行模式</Label>
+                        <select value={p.executionMode} onChange={e => setP({ executionMode: e.target.value })} className={selectCls}>
+                          <option value="auto">一键生成</option>
+                          <option value="step">分步执行</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">总时长</Label>
+                          <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
+                            <option value={15}>15s</option>
+                            <option value={30}>30s</option>
+                            <option value={45}>45s</option>
+                            <option value={60}>60s</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-xs mb-1.5 block text-muted-foreground">品质</Label>
+                          <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
+                            <option value="hd">高清</option>
+                            <option value="standard">标清</option>
+                          </select>
+                        </div>
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">画面风格</Label>
@@ -589,35 +622,77 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           <option value="chinese">水墨</option>
                         </select>
                       </div>
-                      {/* 级联计算显示 */}
-                      {(() => {
-                        const calc = calcTvcParams(p.totalDuration || 30);
-                        return (
-                          <div className={cn('rounded-lg p-3 space-y-1.5', isDark ? 'bg-slate-900/50' : 'bg-white')}>
-                            <div className="text-[11px] font-medium text-muted-foreground mb-1">自动计算</div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">单镜头时长</span>
-                              <span className="font-mono">{calc.shotDuration}s</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">镜头数</span>
-                              <span className="font-mono font-semibold text-blue-500">{calc.shotCount}</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">生图数</span>
-                              <span className="font-mono">{calc.imageCount} 张（起始帧+结束帧）</span>
-                            </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-muted-foreground">预估耗时</span>
-                              <span className="font-mono">{formatDuration(calc.estimatedTimeMin)} ~ {formatDuration(calc.estimatedTimeMax)}</span>
-                            </div>
-                            <div className="flex justify-between text-xs border-t pt-1.5 mt-1.5" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
-                              <span className="text-muted-foreground">预估积分</span>
-                              <span className="font-mono font-semibold text-amber-500">{calc.estimatedCost} 分</span>
-                            </div>
+                    </div>
+
+                    {/* 级联计算 */}
+                    {(() => {
+                      const calc = calcTvcParams(p.totalDuration || 30);
+                      return (
+                        <div className={cn('rounded-lg p-3 space-y-1.5', isDark ? 'bg-slate-900/50' : 'bg-white')}>
+                          <div className="text-[11px] font-medium text-muted-foreground mb-1">自动计算</div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">镜头数</span>
+                            <span className="font-mono font-semibold text-blue-500">{calc.shotCount}</span>
                           </div>
-                        );
-                      })()}
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">生图数</span>
+                            <span className="font-mono">{calc.imageCount} 张</span>
+                          </div>
+                          <div className="flex justify-between text-xs border-t pt-1.5 mt-1.5" style={{ borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb' }}>
+                            <span className="text-muted-foreground">预估积分</span>
+                            <span className="font-mono font-semibold text-amber-500">{calc.estimatedCost} 分</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 模型选择（折叠） */}
+                    <div className={cn('border-t pt-3', isDark ? 'border-white/10' : 'border-gray-200')}>
+                      <button onClick={() => setModelsOpen(!modelsOpen)} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground w-full">
+                        <ChevronRight className={cn('w-3.5 h-3.5 transition-transform', modelsOpen && 'rotate-90')} />
+                        模型选择
+                      </button>
+                      {modelsOpen && (
+                        <div className="space-y-3 mt-3">
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">剧本生成</Label>
+                            <select value={p.scriptModel || 'glm-5.1'} onChange={e => setP({ scriptModel: e.target.value })} className={selectCls}>
+                              <option value="glm-5.1">GLM-5.1（推荐）</option>
+                              <option value="glm-4.5-air">GLM-4.5-air（快速）</option>
+                              <option value="MiniMax-M2.7">MiniMax-M2.7</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">提示词优化</Label>
+                            <select value={p.optimizeModel || 'glm-4.5-air'} onChange={e => setP({ optimizeModel: e.target.value })} className={selectCls}>
+                              <option value="glm-4.5-air">GLM-4.5-air（推荐）</option>
+                              <option value="glm-5.1">GLM-5.1</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">生图模型</Label>
+                            <select value={p.imageModel || 'gpt-image-2'} onChange={e => setP({ imageModel: e.target.value })} className={selectCls}>
+                              <option value="gpt-image-2">GPT-Image-2（推荐）</option>
+                              <option value="minimax">MiniMax Image</option>
+                              <option value="jimeng">即梦</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">视频模型</Label>
+                            <select value={p.videoModel || 'seedance'} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
+                              <option value="seedance">Seedance（推荐）</option>
+                              <option value="minimax">MiniMax Hailuo 2.3</option>
+                              <option value="glm">GLM CogVideoX-3</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className="text-xs mb-1.5 block text-muted-foreground">BGM 模型</Label>
+                            <select value={p.bgmModel || 'music-2.6'} onChange={e => setP({ bgmModel: e.target.value })} className={selectCls}>
+                              <option value="music-2.6">MiniMax Music-2.6</option>
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -790,7 +865,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
               })()}
 
               {/* 节点参数（已有专属配置的节点跳过通用区域） */}
-              {selectedNode.type !== 'storyboard_shot_a' && selectedNode.type !== 'image_preview' && selectedNode.type !== 'storyboard_v2' && selectedNode.type !== 'shot_ref_image' && selectedNode.type !== 'character_design_image' && selectedNode.type !== 'scene_design_image' && selectedNode.type !== 'script_table' && selectedNode.type !== 'storyboard_video' && selectedNode.type !== 'tvc_script' && selectedNode.type !== 'storyboard_generator' && (
+              {!CUSTOM_PANEL_NODE_TYPES.has(selectedNode.type || '') && (
               <div
                 className={cn(
                   'space-y-3 p-4 rounded-lg',

@@ -1,7 +1,6 @@
 'use client'
 
 import { useStoryboardVoiceStore } from '@/stores/nanoImageStoryboardVoiceStore'
-import { PRESET_VOICES, type PresetVoice } from '@/types'
 import {
   Select,
   SelectContent,

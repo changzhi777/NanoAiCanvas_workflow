@@ -4,169 +4,190 @@
 
 # Hooks 模块 - 自定义 React Hooks
 
-> 可复用的自定义 Hooks 集合
+> 18 个可复用自定义 Hooks，覆盖保存、通信、输入、性能、UI 适配等场景
 
-**最后更新**: 2026-04-15
+**最后更新**: 2026-05-15
 **维护者**: NanoAiCanvas Team
 
 ---
 
 ## 模块职责
 
-Hooks 模块负责：
+Hooks 模块封装可复用的 React 逻辑，按功能分为 5 组：
 
-- 封装可复用的逻辑
-- 处理自动保存
-- 管理快捷键
-- 国际化支持
+| 分组 | Hook 数量 | 职责 |
+|------|-----------|------|
+| **数据持久化** | 2 | 自动保存、画布历史 |
+| **实时通信** | 3 | Chat WebSocket、通知 WebSocket、MQTT |
+| **输入交互** | 3 | 快捷键、IME 中文输入、Toast |
+| **UI 适配** | 4 | 响应式布局、窗口自适应、缩放自适应、性能模式 |
+| **业务逻辑** | 6 | 国际化、积分、主题样式、清理、快捷系统 |
 
 ---
 
-## 入口与启动
+## Hook 全览
+
+### 数据持久化
+
+| Hook | 文件 | 描述 |
+|------|------|------|
+| `useAutosave` | `useAutosave.ts` | 定时自动保存画布数据到 localStorage |
+| `useCanvasHistory` | `useCanvasHistory.ts` | 画布操作历史，支持撤销/重做 |
+
+### 实时通信
+
+| Hook | 文件 | 描述 |
+|------|------|------|
+| `useChatSocket` | `useChatSocket.ts` | Chat WebSocket 连接管理，消息收发 |
+| `useNotificationSocket` | `useNotificationSocket.ts` | 通知 WebSocket，实时推送通知 |
+| `useMqttClient` | `useMqttClient.ts` | MQTT 客户端，物联网/设备通信 |
+
+### 输入交互
+
+| Hook | 文件 | 描述 |
+|------|------|------|
+| `useShortcuts` | `useShortcuts.ts` | 全局快捷键绑定（保存/撤销/删除/复制/缩放等） |
+| `useShortcutSystem` | `useShortcutSystem.ts` | 快捷键系统化管理，支持动态注册/注销 |
+| `useIMETextarea` | `useIMETextarea.ts` | IME 中文输入兼容处理，解决组合键冲突 |
+| `useToast` | `useToast.ts` | Toast 通知触发器 |
+
+### UI 适配
+
+| Hook | 文件 | 描述 |
+|------|------|------|
+| `useResponsive` | `useResponsive.ts` | 响应式断点检测（sm/md/lg/xl） |
+| `useWindowSizeAdaptive` | `useWindowSizeAdaptive.ts` | 窗口尺寸自适应布局计算 |
+| `useZoomAdaptive` | `useZoomAdaptive.ts` | 画布缩放级别自适应 |
+| `usePerformanceMode` | `usePerformanceMode.ts` | 性能模式检测与切换（低端设备降级） |
+
+### 业务逻辑
+
+| Hook | 文件 | 描述 |
+|------|------|------|
+| `useI18n` | `useI18n.ts` | 国际化 Hook，封装 react-i18next |
+| `usePoints` | `usePoints.ts` | 积分查询与余额管理 |
+| `useThemeStyles` | `useThemeStyles.ts` | 主题样式计算（OKLCH 颜色空间） |
+| `useCleanup` | `useCleanup.ts` | 组件卸载时清理资源（定时器/订阅/WebSocket） |
+| `useVirtualizedNodes` | `useVirtualizedNodes.ts` | 虚拟化节点渲染，大量节点性能优化 |
+
+---
+
+## 关键 Hook 详解
 
 ### useAutosave
 
-**文件**: `useAutosave.ts`
+定时保存画布状态，支持配置保存间隔。
 
 ```typescript
-export function useAutosave() {
-  // 自动保存逻辑
-}
+function useAutosave(): void
 ```
 
-**使用方式**:
+- 依赖 Redux Store: `selectAutosave`（开关）、`selectAutosaveInterval`（间隔 ms）
+- 防抖处理，避免高频保存
 
-```tsx
-import { useAutosave } from '@/hooks/useAutosave'
+### useIMETextarea
 
-function CanvasPage() {
-  useAutosave()
-  // ...
-}
-```
-
-### useShortcuts
-
-**文件**: `useShortcuts.ts`
+解决中文输入法（IME）组合过程中触发快捷键的问题。
 
 ```typescript
-export function useShortcuts() {
-  // 快捷键逻辑
+function useIMETextarea(): {
+  isComposing: boolean
+  imeProps: { onCompositionStart: () => void; onCompositionEnd: () => void }
 }
 ```
 
-**使用方式**:
+- 在 `compositionstart` → `compositionend` 期间屏蔽全局快捷键
+- 配合 `useShortcuts` 使用，防止误触发
 
-```tsx
-import { useShortcuts } from '@/hooks/useShortcuts'
+### useChatSocket
 
-function CanvasPage() {
-  useShortcuts()
-  // ...
-}
-```
-
-### useI18n
-
-**文件**: `useI18n.ts`
+Chat WebSocket 生命周期管理。
 
 ```typescript
-export function useI18n() {
-  const { t } = useTranslation('common')
-  return { t }
+function useChatSocket(conversationId: string): {
+  messages: Message[]
+  send: (content: string) => void
+  isConnected: boolean
 }
 ```
 
-**使用方式**:
+### useNotificationSocket
 
-```tsx
-import { useI18n } from '@/hooks/useI18n'
+通知系统 WebSocket 连接。
 
-function Component() {
-  const { t } = useI18n()
-  return <div>{t('common.save')}</div>
+```typescript
+function useNotificationSocket(): {
+  notifications: Notification[]
+  unreadCount: number
+  markAsRead: (id: string) => void
+}
+```
+
+### useMqttClient
+
+MQTT 协议客户端 Hook。
+
+```typescript
+function useMqttClient(options: MqttOptions): {
+  publish: (topic: string, message: string) => void
+  subscribe: (topic: string) => void
+  messages: MqttMessage[]
+}
+```
+
+### usePoints
+
+积分查询与余额管理。
+
+```typescript
+function usePoints(): {
+  balance: number
+  loading: boolean
+  refresh: () => Promise<void>
+}
+```
+
+### usePerformanceMode
+
+根据设备性能自动检测并切换渲染模式。
+
+```typescript
+function usePerformanceMode(): {
+  isLowPerformance: boolean
+  mode: 'high' | 'medium' | 'low'
 }
 ```
 
 ---
 
-## 对外接口
+## 快捷键系统
 
-### useAutosave
+### useShortcuts 支持的快捷键
 
-**功能**:
-- 定时自动保存数据到 localStorage
-- 可配置保存间隔
-- 显示保存成功提示
-
-**依赖**:
-- `selectAutosave`: 自动保存开关
-- `selectAutosaveInterval`: 保存间隔（ms）
-
-### useShortcuts
-
-**快捷键列表**:
-- `Ctrl/Cmd + S`: 保存
-- `Ctrl/Cmd + Z`: 撤销
-- `Ctrl/Cmd + Shift + Z`: 重做
-- `Ctrl/Cmd + Y`: 重做
-- `Delete/Backspace`: 删除选中
-- `Ctrl/Cmd + D`: 复制
-- `Ctrl/Cmd + +`: 放大
-- `Ctrl/Cmd + -`: 缩小
-- `Ctrl/Cmd + 0`: 适应屏幕
-- `F1`: 切换属性面板
-- `F2`: 切换模板面板
-
-### useI18n
-
-**返回值**:
-```typescript
-{
-  t: (key: string) => string
-}
-```
-
-**使用示例**:
-```tsx
-const { t } = useI18n()
-<button>{t('common.save')}</button>
-```
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl/Cmd + S` | 保存 |
+| `Ctrl/Cmd + Z` | 撤销 |
+| `Ctrl/Cmd + Shift + Z` | 重做 |
+| `Ctrl/Cmd + Y` | 重做 |
+| `Delete/Backspace` | 删除选中 |
+| `Ctrl/Cmd + D` | 复制 |
+| `Ctrl/Cmd + +` | 放大 |
+| `Ctrl/Cmd + -` | 缩小 |
+| `Ctrl/Cmd + 0` | 适应屏幕 |
+| `F1` | 切换属性面板 |
+| `F2` | 切换模板面板 |
 
 ---
 
-## 关键依赖与配置
+## 关键依赖
 
-### 依赖项
-
-- `react-redux`: Redux 集成
-- `react-i18next`: 国际化
-- `sonner`: Toast 通知
-
----
-
-## 测试与质量
-
-### 单元测试
-
-**状态**: 未实现
-
-**建议测试覆盖**:
-- [ ] 自动保存触发
-- [ ] 快捷键响应
-- [ ] 国际化切换
-
----
-
-## 常见问题 (FAQ)
-
-### Q: 如何添加新的快捷键？
-
-A: 在 `useShortcuts.ts` 的 `handleKeyDown` 函数中添加新的条件判断。
-
-### Q: 如何修改自动保存间隔？
-
-A: 通过 Redux Store 修改 `settingsSlice` 中的 `autosaveInterval`。
+| 依赖 | 用途 |
+|------|------|
+| `react-redux` | Redux Store 集成 |
+| `react-i18next` | 国际化 |
+| `sonner` | Toast 通知 |
+| `reactflow` | 画布缩放/视口 |
 
 ---
 
@@ -174,17 +195,37 @@ A: 通过 Redux Store 修改 `settingsSlice` 中的 `autosaveInterval`。
 
 ```
 src/hooks/
-├── useAutosave.ts           # 自动保存
-├── useShortcuts.ts          # 快捷键
-└── useI18n.ts               # 国际化
+├── useAutosave.ts              # 自动保存
+├── useCanvasHistory.ts         # 画布历史（撤销/重做）
+├── useChatSocket.ts            # Chat WebSocket
+├── useCleanup.ts               # 资源清理
+├── useI18n.ts                  # 国际化
+├── useIMETextarea.ts           # IME 中文输入兼容
+├── useMqttClient.ts            # MQTT 客户端
+├── useNotificationSocket.ts    # 通知 WebSocket
+├── usePerformanceMode.ts       # 性能模式检测
+├── usePoints.ts                # 积分管理
+├── useResponsive.ts            # 响应式断点
+├── useShortcutSystem.ts        # 快捷键系统
+├── useShortcuts.ts             # 全局快捷键
+├── useThemeStyles.ts           # 主题样式
+├── useToast.ts                 # Toast 通知
+├── useVirtualizedNodes.ts      # 虚拟化节点
+├── useWindowSizeAdaptive.ts    # 窗口尺寸适配
+└── useZoomAdaptive.ts          # 缩放自适应
 ```
 
 ---
 
 ## 变更记录 (Changelog)
 
+### 2026-05-15
+- 全面更新：从 3 个 Hook 扩展到 18 个 Hook
+- 新增实时通信组：useChatSocket、useNotificationSocket、useMqttClient
+- 新增输入交互组：useIMETextarea、useShortcutSystem、useToast
+- 新增 UI 适配组：useResponsive、useWindowSizeAdaptive、useZoomAdaptive、usePerformanceMode
+- 新增业务逻辑组：usePoints、useThemeStyles、useCleanup、useVirtualizedNodes、useCanvasHistory
+- 按功能分组重新组织文档结构
+
 ### 2026-04-15
-- 初始化模块文档
-- 实现自动保存 Hook
-- 实现快捷键 Hook
-- 实现国际化 Hook
+- 初始化模块文档（useAutosave、useShortcuts、useI18n）

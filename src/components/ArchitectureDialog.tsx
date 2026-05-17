@@ -20,7 +20,6 @@ interface ArchitectureDialogProps {
   onGenerate: (prompt: string) => void
 }
 
-type TabType = 'interior' | 'exterior'
 
 export function ArchitectureDialog({ onGenerate }: ArchitectureDialogProps) {
   const {

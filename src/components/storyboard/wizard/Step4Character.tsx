@@ -1,14 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Loader2, Sparkles, User, RefreshCw, Edit2, Check, X, FileText, FileJson, FileDown } from 'lucide-react'
+import { Loader2, Sparkles, User, Edit2, Check, X, FileText, FileJson, FileDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useStoryboardWizardStore, type CharacterPrompt } from '@/stores/nanoImageStoryboardWizardStore'
+import { useStoryboardWizardStore } from '@/stores/nanoImageStoryboardWizardStore'
 import { cn } from '@/lib/utils'
-import { showNotification, generateUniqueId } from '@/lib/utils/wizard-helpers'
+import { showNotification } from '@/lib/utils/wizard-helpers'
 
 // 角色类型标签
 const ROLE_LABELS = {
@@ -26,20 +25,11 @@ const ROLE_COLORS = {
   minor: 'bg-slate-500/20 text-slate-400',
 }
 
-// 风格选项
-const STYLE_OPTIONS = [
-  { value: 'comic', label: '漫画' },
-  { value: 'anime', label: '日漫' },
-  { value: 'realistic', label: '写实' },
-  { value: 'watercolor', label: '水彩' },
-]
-
 export function Step4Character() {
   const {
     scriptData,
     characterPrompts,
     isGeneratingCharacters,
-    setCharacterPrompts,
     setIsGeneratingCharacters,
     updateCharacterPrompt,
     generateCharacterPrompts,

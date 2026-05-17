@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { BookOpen, Lightbulb, Network, Sparkles, ChevronRight } from 'lucide-react'
+import { BookOpen, Lightbulb, Network, Sparkles } from 'lucide-react'
 import { useKnowledgeCardStore } from '@/stores/nanoImageKnowledgeCardStore'
 import {
   buildKnowledgeCardPrompt,
@@ -14,14 +14,13 @@ import {
   MINDMAP_STYLE_OPTIONS,
   CATEGORY_ICONS,
 } from '@/lib/constants/card-templates'
-import type { KnowledgeCardCategory, CardStyle, MindmapStyle, MindmapNode } from '@/types'
+import type { KnowledgeCardCategory, MindmapStyle, MindmapNode } from '@/types'
 import { cn } from '@/lib/utils'
 
 interface KnowledgeCardDialogProps {
   onGenerate: (prompt: string) => void
 }
 
-type TabType = 'card' | 'mindmap'
 
 export function KnowledgeCardDialog({ onGenerate }: KnowledgeCardDialogProps) {
   const { isDialogOpen, closeDialog, selectedCategory, selectedStyle, setCategory, setStyle } =

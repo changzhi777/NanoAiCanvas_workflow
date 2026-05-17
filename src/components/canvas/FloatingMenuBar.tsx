@@ -36,9 +36,6 @@ import {
 import { cn } from '@/lib/utils'
 
 // 页面切换事件
-function switchPage(page: 'canvas' | 'workflow') {
-  window.dispatchEvent(new CustomEvent('switch-page', { detail: page }))
-}
 
 interface FloatingMenuBarProps {
   onAddNode?: () => void

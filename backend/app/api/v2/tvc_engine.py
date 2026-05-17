@@ -17,6 +17,47 @@ from .tvc_providers import get_image_provider, get_video_provider
 logger = logging.getLogger(__name__)
 
 
+# ==================== 配置解析 ====================
+
+async def _resolve_tvc_config(user_id=None, req=None) -> dict:
+    """从数据库读取配置：请求级 > 用户 > 全局 > 硬编码默认值"""
+    from .tvc_config import DEFAULT_CONFIG, _merge_config, _config_to_dict
+    from app.database import async_session_maker
+    from app.models.tvc_config import TvcWorkflowConfig
+    from sqlalchemy import select
+
+    merged = DEFAULT_CONFIG.copy()
+    async with async_session_maker() as db:
+        # 全局配置
+        stmt = select(TvcWorkflowConfig).where(TvcWorkflowConfig.scope == "global")
+        result = await db.execute(stmt)
+        global_cfg = result.scalar_one_or_none()
+        if global_cfg:
+            merged = _merge_config(merged, _config_to_dict(global_cfg))
+
+        # 用户配置
+        if user_id:
+            stmt = select(TvcWorkflowConfig).where(
+                TvcWorkflowConfig.scope == "user",
+                TvcWorkflowConfig.user_id == user_id,
+            )
+            result = await db.execute(stmt)
+            user_cfg = result.scalar_one_or_none()
+            if user_cfg:
+                merged = _merge_config(merged, _config_to_dict(user_cfg))
+
+    # 请求级覆盖（来自前端属性面板传入的字段）
+    if req:
+        if getattr(req, "script_model", None):
+            merged["step1_script"] = {**merged.get("step1_script", {}), "model": req.script_model}
+        if getattr(req, "optimize_model", None):
+            merged["step2_optimize"] = {**merged.get("step2_optimize", {}), "model": req.optimize_model}
+        if getattr(req, "bgm_model", None):
+            merged["step5_bgm"] = {**merged.get("step5_bgm", {}), "model": req.bgm_model}
+
+    return merged
+
+
 # ==================== 积分管理 ====================
 
 async def deduct_points(user_id, req) -> int:
@@ -64,6 +105,9 @@ async def execute_tvc(task_id: str, req, user_id=None):
     deducted = 0
 
     try:
+        # 解析配置：请求 > 用户 > 全局 > 硬编码
+        config = await _resolve_tvc_config(user_id, req)
+
         # 积分预扣
         if user_id:
             deducted = await deduct_points(user_id, req)
@@ -73,16 +117,23 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor._save(task_id, state)
         await workflow_executor._publish(task_id, state)
 
-        # Step 1: 剧本生成
+        # Step 1: 剧本生成（GLM优先，失败fallback MiniMax）
         await workflow_executor.update_node(task_id, 0, {"status": "running", "progress": 0})
-        script_result = await _call_glm_tvc_script(req, settings)
+        script_result = None
+        try:
+            script_result = await _call_glm_tvc_script(req, settings, config)
+        except Exception as e:
+            logger.warning(f"GLM script failed, fallback to MiniMax: {e}")
+            script_result = await _call_minimax_tvc_script(req, settings, config)
+        if not script_result:
+            raise Exception("剧本生成失败：GLM 和 MiniMax 均不可用")
         await workflow_executor.update_node(task_id, 0, {
             "status": "success", "progress": 100, "result": script_result,
         })
 
-        # Step 2: 提示词优化（显式异常：空结果不静默）
+        # Step 2: 提示词优化
         await workflow_executor.update_node(task_id, 1, {"status": "running", "progress": 0})
-        optimized = await _optimize_prompts(script_result, req, settings)
+        optimized = await _optimize_prompts(script_result, req, settings, config)
         if not optimized.get("shots"):
             raise Exception("提示词优化返回空结果，无法继续生成分镜头")
         await workflow_executor.update_node(task_id, 1, {
@@ -98,11 +149,11 @@ async def execute_tvc(task_id: str, req, user_id=None):
 
         # Step 4: 生图（真正批量并行）
         await workflow_executor.update_node(task_id, 3, {"status": "running", "progress": 0})
-        await _generate_images_parallel(task_id, 3, breakdown, req, settings)
+        await _generate_images_parallel(task_id, 3, breakdown, req, settings, config)
 
         # Step 5: 参考图生视频
         await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
-        await _generate_videos(task_id, 4, breakdown, req, settings)
+        await _generate_videos(task_id, 4, breakdown, req, settings, config)
 
         await workflow_executor.complete_task(task_id, "completed")
 
@@ -119,9 +170,10 @@ async def execute_tvc(task_id: str, req, user_id=None):
 
 # ==================== Step 1: 剧本生成 ====================
 
-async def _call_glm_tvc_script(req, settings) -> dict:
+async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     from .glm_proxy import TVC_SCRIPT_PROMPT, TVC_MODE_CONSTRAINTS, STYLE_MAP, _find_balanced, _repair_json
 
+    cfg = (config or {}).get("step1_script", {})
     mode = TVC_MODE_CONSTRAINTS.get(req.mode, TVC_MODE_CONSTRAINTS["cinematic"])
     system_prompt = TVC_SCRIPT_PROMPT.format(
         shot_count=req.shot_count,
@@ -142,7 +194,7 @@ async def _call_glm_tvc_script(req, settings) -> dict:
         system_prompt += "\n\n重要：请将最终 JSON 结果放在 <output> 标签中"
 
     model_map = {"tvc_deep": "glm-5.1", "tvc_fast": "glm-4.5-air", "tvc_vision": "glm-5v-turbo"}
-    model = model_map.get(req.optimize_mode, "glm-5.1")
+    model = cfg.get("model") or model_map.get(req.optimize_mode, "glm-5.1")
 
     api_params = {
         "model": model,
@@ -150,8 +202,8 @@ async def _call_glm_tvc_script(req, settings) -> dict:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"请生成以下TVC广告的结构化脚本：\n{req.prompt}"},
         ],
-        "temperature": 1.0 if is_thinking else 0.7,
-        "max_tokens": 8192,
+        "temperature": cfg.get("temperature", 1.0 if is_thinking else 0.7),
+        "max_tokens": cfg.get("max_tokens", 8192),
     }
     if is_thinking:
         api_params["thinking"] = {"type": "enabled"}
@@ -202,10 +254,51 @@ async def _call_glm_tvc_script(req, settings) -> dict:
     return {"raw_content": content, "parsed_script": script}
 
 
+async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
+    from .minimax import SCREENPLAY_PROMPT
+    import os
+    cfg = (config or {}).get("step1_script", {})
+    api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
+    base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimaxi.com/v1")
+    if not api_key:
+        raise Exception("MiniMax API Key 未配置")
+
+    style = getattr(req, "style", "realistic")
+    model = cfg.get("fallback_model", "MiniMax-M2.7")
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(
+            f"{base_url}/text/chatcompletion_v2",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SCREENPLAY_PROMPT},
+                    {"role": "user", "content": f"创作一个短片剧本。主题：{req.prompt}\n风格：{style}\n镜头数：{req.shot_count}\n每镜头时长：{req.shot_duration}秒"},
+                ],
+                "temperature": 0.8,
+            },
+        )
+
+    if resp.status_code != 200:
+        raise Exception(f"MiniMax script error: {resp.status_code} {resp.text[:200]}")
+
+    content = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+    if json_match:
+        try:
+            script = json.loads(json_match.group())
+            return {"raw_content": content, "parsed_script": script}
+        except json.JSONDecodeError:
+            pass
+    return {"raw_content": content, "parsed_script": {}}
+
+
 # ==================== Step 2: 提示词优化 ====================
 
-async def _optimize_prompts(script_result: dict, req, settings) -> dict:
+async def _optimize_prompts(script_result: dict, req, settings, config: dict = None) -> dict:
     raw = script_result.get("raw_content", "")
+    cfg = (config or {}).get("step2_optimize", {})
 
     system_prompt = f"""你是 TVC 广告分镜提示词专家。根据以下 TVC 脚本，为每个镜头生成：
 1. start_frame_prompt: 起始帧画面描述（英文，用于图片生成，50-80词）
@@ -225,13 +318,13 @@ async def _optimize_prompts(script_result: dict, req, settings) -> dict:
             f"{settings.GLM_API_BASE_URL}/chat/completions",
             headers={"Authorization": f"Bearer {settings.GLM_API_KEY}", "Content-Type": "application/json"},
             json={
-                "model": "glm-4.5-air",
+                "model": cfg.get("model", "glm-4.5-air"),
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": raw},
                 ],
-                "temperature": 0.7,
-                "max_tokens": 4096,
+                "temperature": cfg.get("temperature", 0.7),
+                "max_tokens": cfg.get("max_tokens", 4096),
             },
         )
 
@@ -270,14 +363,16 @@ def _breakdown_shots(optimized: dict, shot_count: int, shot_duration: int) -> di
 
 # ==================== Step 4: 生图（并行） ====================
 
-async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict, req, settings):
+async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict, req, settings, config: dict = None):
     """每批 3 张真正并行 + 重试"""
     state = await workflow_executor.load_task(task_id)
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
     shots = breakdown.get("shots", [])
 
-    gen_one = get_image_provider(getattr(req, "image_model", "jimeng"), settings)
+    cfg = (config or {}).get("step4_image", {})
+    image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2")
+    gen_one = get_image_provider(image_model, settings)
 
     batch_size = 3
     max_retries = 3
@@ -296,7 +391,6 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
 
             for attempt in range(1, max_retries + 1):
                 try:
-                    image_model = getattr(req, "image_model", "jimeng")
                     await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                         "status": "running", "progress": 30,
                         "message": f"生成中 ({image_model}, 尝试 {attempt}/{max_retries})...",
@@ -323,7 +417,7 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
 
 # ==================== Step 5: 视频生成 ====================
 
-async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, settings):
+async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, settings, config: dict = None):
     state = await workflow_executor.load_task(task_id)
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
@@ -340,36 +434,54 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     bgm_subtask = next((st for st in subtasks if st["id"] == "bgm"), None)
     bgm_task = None
     if bgm_subtask:
-        bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings))
+        bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
-    video_model = getattr(req, "video_model", "minimax") or "minimax"
-    submit_fn, provider_name = get_video_provider(video_model, settings)
+    video_cfg = (config or {}).get("step5_video", {})
+    primary_model = getattr(req, "video_model", None) or video_cfg.get("default_provider", "minimax") or "minimax"
+
+    # fallback 链：主模型失败后尝试备选
+    fallback_chain = [primary_model]
+    for fb in ["minimax", "glm", "seedance"]:
+        if fb not in fallback_chain:
+            fallback_chain.append(fb)
 
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
-    max_retries = 3
-    for i, st in enumerate(video_subtasks):
-        for attempt in range(1, max_retries + 1):
+
+    async def _process_video(i: int, st: dict):
+        shot_num = i + 1
+        first_url = image_map.get(f"shot-{shot_num}-start", "")
+        last_url = image_map.get(f"shot-{shot_num}-end", "")
+
+        for model_name in fallback_chain:
             try:
+                submit_fn, provider_name = get_video_provider(model_name, settings)
                 await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                     "status": "running", "progress": 10,
-                    "message": f"提交{provider_name}视频任务 (尝试 {attempt}/{max_retries})",
+                    "message": f"提交{provider_name}视频任务",
                 })
-
-                shot_num = i + 1
-                first_url = image_map.get(f"shot-{shot_num}-start", "")
-                last_url = image_map.get(f"shot-{shot_num}-end", "")
-
                 result = await submit_fn(shot_num, first_url, last_url, req.shot_duration)
-
                 await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                     "status": "success", "progress": 100, "result": result,
                 })
-                break
+                return
             except Exception as e:
-                if attempt == max_retries:
+                err_msg = str(e)
+                is_quota = "usage limit" in err_msg or "配额" in err_msg or "limit exceeded" in err_msg
+                logger.warning(f"Video shot {shot_num} failed with {model_name}: {err_msg[:120]}")
+                if model_name == fallback_chain[-1]:
+                    # 所有 provider 都失败
                     await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
-                        "status": "error", "progress": 0, "error": str(e),
+                        "status": "error", "progress": 0, "error": err_msg,
                     })
+                elif is_quota:
+                    # 配额耗尽，跳过该 provider 的后续重试
+                    logger.info(f"Quota exhausted for {model_name}, falling back")
+                    continue
+                else:
+                    continue
+
+    # 并行生成所有视频（最大化配额利用率）
+    await asyncio.gather(*[_process_video(i, st) for i, st in enumerate(video_subtasks)])
 
     if bgm_task:
         await bgm_task
@@ -377,9 +489,10 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     await workflow_executor.update_node(task_id, node_idx, {"status": "success", "progress": 100})
 
 
-async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, settings):
+async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, settings, config: dict = None):
     api_key = settings.MINIMAX_API_KEY
     base_url = settings.MINIMAX_API_BASE_URL
+    bgm_cfg = (config or {}).get("step5_bgm", {})
 
     await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
         "status": "running", "progress": 30, "message": "MiniMax Music 生成中",
@@ -393,13 +506,13 @@ async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, setting
 
     try:
         body = {
-            "model": "music-2.6",
+            "model": bgm_cfg.get("model", "music-2.6"),
             "prompt": f"TVC广告背景音乐，{req.mode}风格，{req.total_duration}秒，无歌词",
-            "is_instrumental": True,
+            "is_instrumental": bgm_cfg.get("is_instrumental", True),
             "output_format": "url",
         }
 
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=180) as client:
             resp = await client.post(
                 f"{base_url}/music_generation",
                 json=body,
@@ -410,10 +523,12 @@ async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, setting
             raise Exception(f"MiniMax Music error: {resp.status_code} {resp.text}")
 
         data = resp.json()
-        audio_url = data.get("data", {}).get("audio_url", "") or data.get("audio_url", "")
+        audio_url = ""
+        d = data.get("data", {})
+        if isinstance(d, dict):
+            audio_url = d.get("audio_url", "") or d.get("audio", "") or d.get("url", "")
         if not audio_url:
-            extra = data.get("data", data)
-            audio_url = extra.get("url", "") if isinstance(extra, dict) else ""
+            audio_url = data.get("audio_url", "")
 
         if not audio_url:
             raise Exception(f"No audio_url in MiniMax response: {resp.text}")
@@ -421,7 +536,13 @@ async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, setting
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
             "status": "success", "progress": 100, "result": {"audio_url": audio_url},
         })
-    except Exception as e:
+    except asyncio.CancelledError:
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
-            "status": "error", "progress": 0, "error": str(e),
+            "status": "error", "progress": 0, "error": "BGM generation was cancelled",
+        })
+        raise
+    except Exception as e:
+        error_msg = str(e) or repr(e) or "Unknown BGM error"
+        await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
+            "status": "error", "progress": 0, "error": error_msg,
         })

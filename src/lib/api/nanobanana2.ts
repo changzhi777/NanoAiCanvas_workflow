@@ -7,13 +7,6 @@ import { client } from './client'
 
 const API_BASE = '/v2/image/nanobanana2'
 
-const TASK_STATUS = {
-  INIT: 0,
-  PROCESSING: 1,
-  SUCCESS: 2,
-  FAILED: 3,
-} as const
-
 export interface NanoBanana2Options {
   prompt: string
   size?: '1K' | '2K' | '4K'

@@ -13,7 +13,7 @@ interface AssetPreviewProps {
 export default function AssetPreview({ open, onClose, asset }: AssetPreviewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const meta = asset.meta || {};
+  const meta = asset.metadata || {};
   const images = meta.images || (asset.url ? [asset.url] : []);
 
   const handlePrev = () => {

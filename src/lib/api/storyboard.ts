@@ -11,7 +11,6 @@ import type {
   StoryboardStyle,
   StoryboardCharacter,
   DialogueLine,
-  parseAndNormalizeScript,
 } from '@/stores/nanoImageStoryboardStore'
 
 // GLM API 配置
@@ -469,7 +468,7 @@ export async function generateAll(
   // 任务2：生成故事板图片（使用速创 API）
   onTaskChange?.('storyboard')
   onProgress?.(30, `正在生成${script.scenes.length}张故事板图片...`)
-  const storyboardImages = await generateStoryboardImages(imageApiKey, script, style, (current, total, url) => {
+  const storyboardImages = await generateStoryboardImages(imageApiKey, script, style, (current, total, _url) => {
     const progress = 30 + (current / total) * 40
     onProgress?.(progress, `正在生成故事板图片 ${current}/${total}`)
   })
@@ -481,7 +480,7 @@ export async function generateAll(
   const characterDesigns = await generateCharacterDesigns(
     imageApiKey,
     script.characters,
-    (current, total, url, characterId) => {
+    (current, total, _url, _characterId) => {
       const progress = 70 + (current / total) * 30
       onProgress?.(progress, `正在生成角色设计图 ${current}/${total}`)
     }

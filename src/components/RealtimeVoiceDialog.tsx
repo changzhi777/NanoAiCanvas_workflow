@@ -8,14 +8,12 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Mic,
   MicOff,
-  Volume2,
   VolumeX,
   Send,
   Loader2,
   Phone,
   PhoneOff,
   Settings,
-  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRealtimeVoiceStore, type VoiceMessage } from '@/stores/nanoImageRealtimeVoiceStore'
@@ -48,7 +46,6 @@ export function RealtimeVoiceDialog({
   onOpenChange,
   apiKey,
   modelId = 'glm-realtime-flash',
-  onTextGenerated,
 }: RealtimeVoiceDialogProps) {
   // Store
   const {
@@ -72,7 +69,6 @@ export function RealtimeVoiceDialog({
     clearTranscript,
     setError,
     setRateLimit,
-    clearMessages,
     reset,
   } = useRealtimeVoiceStore()
 

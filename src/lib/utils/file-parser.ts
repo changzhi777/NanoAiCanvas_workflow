@@ -14,15 +14,6 @@ import type {
 type StoryboardData = StoryboardScript
 
 // 解析结果中的剧本数据结构（旧格式兼容）
-interface ParsedScriptData {
-  title: string
-  characters: StoryboardCharacter[]
-  scenes: Array<{
-    sceneName: string
-    description: string
-    dialogues: Array<{ character: string; line: string }>
-  }>
-}
 
 // ============ 解析缓存 ============
 

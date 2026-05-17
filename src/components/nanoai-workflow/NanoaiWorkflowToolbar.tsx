@@ -101,7 +101,6 @@ export function NanoaiWorkflowToolbar() {
     importWorkflow,
     clearWorkflow,
     saveVersion,
-    listVersions,
     nodes,
     edges,
   } = useNanoaiWorkflowStore();
@@ -191,7 +190,6 @@ export function NanoaiWorkflowToolbar() {
     }
   };
 
-  const versions = listVersions();
 
   // 智能工具栏状态判断（优化：使用 useMemo 避免不必要的重计算）
   const hasNodes = nodes.length > 0;
@@ -203,10 +201,6 @@ export function NanoaiWorkflowToolbar() {
     [nodes]
   );
 
-  const progress = useMemo(
-    () => hasNodes ? Math.round((completedCount / nodes.length) * 100) : 0,
-    [hasNodes, completedCount, nodes.length]
-  );
 
   return (
     <>

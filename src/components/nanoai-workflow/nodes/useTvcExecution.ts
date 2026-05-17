@@ -109,9 +109,13 @@ export function useTvcExecution(
         totalDuration: params.totalDuration || 30,
         style: params.style,
         optimizeMode: params.optimizeMode,
-        imageModel: params.imageModel || 'jimeng',
-        videoModel: params.videoModel || 'jimeng',
+        imageModel: params.imageModel,
+        videoModel: params.videoModel,
         styleReference,
+        scriptModel: params.scriptModel,
+        optimizeModel: params.optimizeModel,
+        bgmModel: params.bgmModel,
+        quality: params.quality,
       });
 
       toast.success('TVC 后台任务已提交');

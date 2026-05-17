@@ -50,10 +50,10 @@ export function AssetReferenceSelector({
     // 模拟从资产库加载
     setTimeout(() => {
       setAssets([
-        { id: '1', name: '参考图1', url: '', type: 'IMAGE', category: 'REFERENCE', tags: [], is_starred: false, meta: {}, created_at: '' },
-        { id: '2', name: '参考图2', url: '', type: 'IMAGE', category: 'REFERENCE', tags: [], is_starred: false, meta: {}, created_at: '' },
-        { id: '3', name: '角色参考1', url: '', type: 'IMAGE', category: 'CHARACTER', tags: [], is_starred: false, meta: {}, created_at: '' },
-        { id: '4', name: '场景参考1', url: '', type: 'IMAGE', category: 'SCENE', tags: [], is_starred: false, meta: {}, created_at: '' },
+        { id: '1', name: '参考图1', url: '', type: 'IMAGE', category: 'REFERENCE', tags: [], is_starred: false, metadata: {}, created_at: '' },
+        { id: '2', name: '参考图2', url: '', type: 'IMAGE', category: 'REFERENCE', tags: [], is_starred: false, metadata: {}, created_at: '' },
+        { id: '3', name: '角色参考1', url: '', type: 'IMAGE', category: 'CHARACTER', tags: [], is_starred: false, metadata: {}, created_at: '' },
+        { id: '4', name: '场景参考1', url: '', type: 'IMAGE', category: 'SCENE', tags: [], is_starred: false, metadata: {}, created_at: '' },
       ])
       setLoading(false)
     }, 300)

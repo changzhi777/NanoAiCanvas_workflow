@@ -154,7 +154,7 @@ export async function getAudioFromRecorder(
       resolve(new Blob(chunks, { type: mimeType }))
     }
 
-    mediaRecorder.onerror = (e) => {
+    mediaRecorder.onerror = () => {
       reject(new Error('录音失败'))
     }
   })

@@ -23,7 +23,7 @@ Redis 三用途
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `workflow_executor.py` | 136 | TVC 工作流执行器：异步 5 步线性流程，Redis 存储进度+断点续传，SSE 实时推送 |
+| `workflow_executor.py` | 136 | TVC 工作流执行器：异步5步线性流程，Redis存储进度+断点续传，SSE实时推送。配合 v2/tvc_engine.py（积分扣退+批量并行）、v2/tvc_providers.py（Provider工厂）、v2/tvc_polling.py（视频轮询） |
 | `skills_worker.py` | 409 | Skills 后台 Worker：Redis 队列消费，5 步骤执行（validating→prompt_build→api_submit→generating→completed），WorkerManager 管理多 Worker 生命周期 |
 
 ## 任务队列

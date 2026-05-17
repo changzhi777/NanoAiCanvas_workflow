@@ -56,7 +56,7 @@ export function StoryboardTaskAnimation({
   }
 
   // 判断是否活跃状态
-  const isActive = status !== 'success' && status !== 'error'
+  const _isActive = status !== 'success' && status !== 'error'
   const isSuccess = status === 'success'
   const isError = status === 'error'
 
@@ -109,7 +109,7 @@ export function StoryboardTaskAnimation({
 
         {/* 三阶段指示器 */}
         <div className="flex items-center gap-1">
-          {SUB_TASK_CONFIG.map((config, index) => {
+          {SUB_TASK_CONFIG.map((config) => {
             const subStatus = getSubTaskStatus(config.id)
             const Icon = config.icon
             return (
@@ -191,7 +191,7 @@ export function StoryboardTaskAnimation({
 
         {/* 三阶段流程 */}
         <div className="space-y-2">
-          {SUB_TASK_CONFIG.map((config, index) => {
+          {SUB_TASK_CONFIG.map((config) => {
             const subStatus = getSubTaskStatus(config.id)
             const subProgress = getSubTaskProgress(config.id)
             const Icon = config.icon

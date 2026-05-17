@@ -17,7 +17,7 @@ import {
   Image as ImageIcon,
   User,
   FileText,
-  Volume2,
+  List,
   List,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'

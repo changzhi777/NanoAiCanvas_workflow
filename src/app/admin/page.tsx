@@ -2,20 +2,17 @@
 
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import {
   Globe,
   Key,
   Server,
   Settings,
   ChevronRight,
-  ArrowRight,
   Users,
   Wifi,
   Zap,
   Bell,
   TrendingUp,
-  MessageSquare,
   BarChart3,
 } from 'lucide-react'
 import { useRouter } from '@/lib/next-navigation-shim'
@@ -138,7 +135,7 @@ export default function AdminPage() {
                   <CardDescription className="mb-3 text-sm">{item.description}</CardDescription>
                   <div className="flex items-center text-xs text-primary group-hover:underline">
                     立即配置
-                    <ArrowRight className="w-3 h-3 ml-1" />
+                    <ChevronRight className="w-3 h-3 ml-1" />
                   </div>
                 </CardContent>
               </Card>

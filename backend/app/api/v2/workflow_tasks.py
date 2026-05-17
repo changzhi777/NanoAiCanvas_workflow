@@ -32,10 +32,15 @@ class SubmitRequest(BaseModel):
     style: str = "realistic"
     optimize_mode: str = "tvc_deep"
     execution_mode: str = "auto"
-    image_model: str = "jimeng"
-    video_model: str = "minimax"
+    image_model: str = "gpt-image-2"
+    video_model: str = "seedance"
     style_reference: Optional[str] = None
     reference_image: Optional[str] = None
+    # 用户级模型覆盖（来自属性面板）
+    script_model: Optional[str] = None
+    optimize_model: Optional[str] = None
+    bgm_model: Optional[str] = None
+    quality: Optional[str] = None
 
 
 @router.post("/submit")

@@ -10,11 +10,9 @@ import type {
   CharacterVoiceConfig,
   DialogueAudio,
   StoryboardVoiceConfig,
-  PresetVoice,
 } from '@/types'
 import { synthesizeSpeech, blobToAudioUrl, revokeAudioUrl } from '@/lib/api/glm-tts'
 import { cloneVoiceFromAudio, validateAudioForClone } from '@/lib/api/glm-tts-clone'
-import { v4 as uuidv4 } from 'uuid'
 
 // ============== 状态接口 ==============
 
@@ -252,7 +250,6 @@ export const useStoryboardVoiceStore = create<StoryboardVoiceState>((set, get) =
   },
 
   generateAllAudios: async (apiKey, dialogues) => {
-    const state = get()
     const total = dialogues.length
 
     set({

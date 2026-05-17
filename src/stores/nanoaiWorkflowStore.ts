@@ -11,6 +11,7 @@ import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
 import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
 import { buildPrompt } from '@/lib/prompt-builder';
+import { shouldAutoSave, autoSaveNodeResult } from '@/lib/api/asset-auto-save';
 
 // ==================== 类型定义 ====================
 
@@ -713,11 +714,38 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId)
       })),
 
-      updateNode: (nodeId, data) => set((state) => ({
-        nodes: state.nodes.map(n =>
-          n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
-        )
-      })),
+      updateNode: (nodeId, data) => {
+        // 自动保存：仅 status=SUCCESS 时检查，快速短路
+        if (data.status === NodeStatus.SUCCESS && data.result && !data.result.savedToAsset) {
+          const state = get();
+          const node = state.nodes.find(n => n.id === nodeId);
+          if (node && node.data.status !== NodeStatus.SUCCESS) {
+            const nodeType = node.type || '';
+            const result = data.result;
+            if (shouldAutoSave(nodeType, result)) {
+              autoSaveNodeResult(nodeId, nodeType, result)
+                .then(ok => {
+                  if (ok) {
+                    set(s => ({
+                      nodes: s.nodes.map(n =>
+                        n.id === nodeId
+                          ? { ...n, data: { ...n.data, result: { ...n.data.result, savedToAsset: true } } }
+                          : n
+                      )
+                    }));
+                  }
+                })
+                .catch(() => {});
+            }
+          }
+        }
+
+        set((state) => ({
+          nodes: state.nodes.map(n =>
+            n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
+          )
+        }));
+      },
 
       updateNodePosition: (nodeId, position) => set((state) => ({
         nodes: state.nodes.map(n =>
@@ -1389,7 +1417,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
         set({ nodes: [], edges: [] });
       },
 
-      duplicateWorkflow: (templateId: string, offsetX: number = 0, offsetY: number = 600) => {
+      duplicateWorkflow: (_templateId: string, offsetX: number = 0, offsetY: number = 600) => {
         const { nodes, edges } = get();
         const suffix = `_copy_${Date.now()}`;
         const templateNodes = nodes.filter(n => n.id.startsWith('node-tvc'));

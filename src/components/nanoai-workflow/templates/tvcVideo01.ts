@@ -7,7 +7,7 @@
  *    → 3. 视频合成（FFmpeg 串联所有镜头 + BGM 混音 → 完整 TVC 预览）
  *
  * 执行模式：分步执行 / 一键生成
- * 默认模型：GLM-5.1(剧本) + Hailuo-2.3-Fast(视频) + MiniMax Music(BGM)
+ * 默认模型：GLM-5.1(剧本) + GPT-Image-2(图片) + MiniMax Hailuo(视频) + MiniMax Music(BGM)
  */
 
 import { WorkflowNode, WorkflowEdge } from '@/stores/nanoaiWorkflowStore';
@@ -41,7 +41,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
         params: {
           inputText: '',
           referenceImage: '',
-          optimizeMode: 'tvc_deep' as string,
+          optimizeMode: 'tvc_deep',
           executionMode: 'auto' as string,
           totalDuration: 30,
           shotDuration: 5,
@@ -75,7 +75,8 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           referenceAssets: [] as string[],
           characterRefs: [] as any[],
           videoProvider: 'minimax',
-          videoModel: 'hailuo-2.3-fast-768P',
+          imageModel: 'gpt-image-2',
+          videoModel: 'minimax',
           videoDuration: 5,
           enableBgm: true,
           enableVoiceover: false,

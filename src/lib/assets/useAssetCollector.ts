@@ -54,7 +54,6 @@ function extractAssetsFromNode(
 
   const assets: AssetCreate[] = [];
 
-  // Extract images
   const images = result.images || (result.imageUrl ? [result.imageUrl] : []);
   images.forEach((url, idx) => {
     assets.push({
@@ -62,7 +61,7 @@ function extractAssetsFromNode(
       name: result.items?.[idx]?.name || `${node.label}_${idx + 1}`,
       url,
       thumbnail_url: result.thumbnail,
-      meta: {
+      metadata: {
         prompt: node.params.prompt,
         model: node.params.model,
         sourceNodeId: node.id,
@@ -73,14 +72,13 @@ function extractAssetsFromNode(
     });
   });
 
-  // Extract video
   if (result.video_url) {
     assets.push({
       type: 'VIDEO',
       name: `${node.label}_video`,
       url: result.video_url,
       thumbnail_url: result.thumbnail,
-      meta: {
+      metadata: {
         prompt: node.params.prompt,
         duration: result.duration,
         sourceNodeId: node.id,
@@ -90,13 +88,12 @@ function extractAssetsFromNode(
     });
   }
 
-  // Extract audio
   if (result.audio_url) {
     assets.push({
       type: 'AUDIO',
       name: `${node.label}_audio`,
       url: result.audio_url,
-      meta: {
+      metadata: {
         prompt: node.params.prompt,
         duration: result.duration,
         sourceNodeId: node.id,
@@ -106,6 +103,26 @@ function extractAssetsFromNode(
   }
 
   return assets;
+}
+
+// Asset(API) → AssetRecord(IndexedDB) 映射
+function toAssetRecord(asset: { id: string; type: string; name: string; url: string; thumbnail_url?: string; metadata?: Record<string, any>; category?: string; tags: string[]; is_starred: boolean; workflow_snapshot?: any; version?: string; created_at: string }, userId: string, syncStatus: 'synced' | 'pending' = 'synced'): AssetRecord {
+  return {
+    id: asset.id,
+    type: asset.type as AssetRecord['type'],
+    name: asset.name,
+    url: asset.url,
+    thumbnail_url: asset.thumbnail_url,
+    meta: asset.metadata || {},
+    category: asset.category,
+    tags: asset.tags || [],
+    is_starred: asset.is_starred || false,
+    workflow_snapshot: asset.workflow_snapshot,
+    user_id: userId,
+    sync_status: syncStatus,
+    created_at: asset.created_at,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 export function useAssetCollector(options: AssetCollectorOptions) {
@@ -123,41 +140,28 @@ export function useAssetCollector(options: AssetCollectorOptions) {
 
         for (const assetData of assetCreates) {
           try {
-            // Save to remote first
             const remoteAsset = await apiAssets.create(assetData, token);
-
-            // Save to local IndexedDB with sync status
-            const localRecord: AssetRecord = {
-              ...remoteAsset,
-              user_id: userId,
-              sync_status: 'synced',
-              updated_at: new Date().toISOString(),
-            };
+            const localRecord = toAssetRecord(remoteAsset, userId);
             await db.put('assets', localRecord);
-
             collectedAssets.push(remoteAsset.id);
 
-            // Try to cache the asset blob if URL is accessible
             try {
               const response = await fetch(remoteAsset.url);
               if (response.ok) {
                 const blob = await response.blob();
-                await assetCache.cache(remoteAsset, blob);
+                await assetCache.cache(localRecord, blob);
               }
-            } catch {
-              // Ignore cache errors - asset still saved
-            }
+            } catch { /* ignore cache errors */ }
           } catch (error) {
             console.error('Failed to save asset:', error);
 
-            // Save locally with pending status for later sync
             const localAsset: AssetRecord = {
               id: `local_${Date.now()}`,
-              type: assetData.type as 'IMAGE' | 'VIDEO' | 'AUDIO' | 'TEXT',
+              type: assetData.type as AssetRecord['type'],
               name: assetData.name,
               url: assetData.url,
               thumbnail_url: assetData.thumbnail_url,
-              meta: assetData.meta || {},
+              meta: assetData.metadata || {},
               category: assetData.category,
               tags: assetData.tags || [],
               is_starred: false,
@@ -191,14 +195,13 @@ export function useAssetCollector(options: AssetCollectorOptions) {
             name: asset.name,
             url: asset.url,
             thumbnail_url: asset.thumbnail_url,
-            meta: asset.meta,
+            metadata: asset.meta,
             category: asset.category,
             tags: asset.tags,
             workflow_snapshot: asset.workflow_snapshot,
           };
           const remoteAsset = await apiAssets.create(assetData, token);
 
-          // Update local with remote ID and synced status
           await db.put('assets', {
             ...asset,
             id: remoteAsset.id,
@@ -211,12 +214,8 @@ export function useAssetCollector(options: AssetCollectorOptions) {
     }
   }, [token]);
 
-  // Sync pending assets when online
   useEffect(() => {
-    const handleOnline = () => {
-      syncPendingAssets();
-    };
-
+    const handleOnline = () => { syncPendingAssets(); };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
   }, [syncPendingAssets]);

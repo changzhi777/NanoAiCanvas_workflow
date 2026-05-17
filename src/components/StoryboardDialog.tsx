@@ -9,10 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Clapperboard,
   Sparkles,
-  Loader2,
   Copy,
   Check,
-  Download,
   Upload,
   FileJson,
   FileType,
@@ -83,7 +81,6 @@ export function StoryboardDialog({
 
   // 用户信息
   const user = useAuthStore((s) => s.user)
-  const isHydrated = useAuthStore((s) => s.isHydrated)
   const userId = user?.id || DEFAULT_USER_ID
 
   // 故事板UI Store
@@ -99,11 +96,9 @@ export function StoryboardDialog({
     setInputText,
     setStyle,
     setGenerating,
-    setProgress,
     setScript,
     addStoryboardImage,
     setCharacterDesign,
-    setError,
     reset,
   } = useStoryboardStore()
 
@@ -112,7 +107,6 @@ export function StoryboardDialog({
     tasks: storyboardTasks,
     startTask,
     cancelTask,
-    deleteTask,
     loadTasks,
     loadAssets,
     runningTaskId,
@@ -170,7 +164,7 @@ export function StoryboardDialog({
 
     try {
       // 启动后台任务
-      const taskId = await startTask(
+      await startTask(
         userId,
         textApiKey,
         imageApiKey,

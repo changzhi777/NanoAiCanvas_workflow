@@ -294,7 +294,7 @@ export interface Asset {
   name: string;
   url: string;
   thumbnail_url?: string;
-  meta: Record<string, any>;
+  metadata: Record<string, any>;
   category?: string;
   folder_id?: string;
   tags: string[];
@@ -312,7 +312,7 @@ export interface AssetCreate {
   name: string;
   url: string;
   thumbnail_url?: string;
-  meta?: Record<string, any>;
+  metadata?: Record<string, any>;
   category?: string;
   tags?: string[];
   workflow_snapshot?: any;

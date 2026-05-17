@@ -99,8 +99,8 @@ export const useStoryboardTaskStore = create<StoryboardTaskState>((set, get) => 
     imageApiKey: string,
     inputText: string,
     style: string,
-    referenceAssetIds?: string[],
-    characterRefs?: Array<{ id: string; name: string; imageUrl: string; traits: string[] }>
+    _referenceAssetIds?: string[],
+    _characterRefs?: Array<{ id: string; name: string; imageUrl: string; traits: string[] }>
   ) => {
     const taskId = uuidv4()
     const now = new Date().toISOString()
@@ -277,7 +277,7 @@ export const useStoryboardTaskStore = create<StoryboardTaskState>((set, get) => 
   // 更新任务状态（同步到 Redis）
   _updateTaskStatus: async (taskId: string, status: StoryboardTaskStatus, progress: number, error?: string) => {
     // 更新 Redis
-    const result = await updateTaskApi(taskId, { status, progress, error })
+    await updateTaskApi(taskId, { status, progress, error })
 
     // 更新本地状态
     set((state) => ({

@@ -4,9 +4,9 @@
 
 # NanoAI Workflow 模块 - AI 工作流核心系统
 
-> 基于 React Flow 的可视化工作流编辑器，支持 55+ 节点类型和 26+ 内置模板
+> 基于 React Flow 的可视化工作流编辑器，支持 50+ 节点类型和 28+ 内置模板
 
-**最后更新**: 2026-05-14
+**最后更新**: 2026-05-17
 **维护者**: NanoAiCanvas Team
 
 ---
@@ -15,9 +15,10 @@
 
 NanoAI Workflow 模块是整个应用的核心，负责：
 - **可视化工作流编辑**: 基于 React Flow 的无限画布
-- **55+ 节点类型**: 输入、AI 生成、决策、处理、输出、各类 AI 服务集成
+- **50+ 节点类型**: 输入、AI 生成、决策、处理、输出、各类 AI 服务集成
 - **工作流执行**: Kahn 算法拓扑排序 + 并行执行
-- **模板管理**: 8 个基础模板 + 18 个 Skills 模板 + 自定义模板
+- **模板管理**: 6 个基础模板 + 20 个 Skills 模板 + 自定义模板
+- **28 个 UI 组件**: 属性面板、模板面板、进度条、快捷键、主题等
 - **状态持久化**: Zustand + Persist (localStorage)
 
 ---
@@ -449,6 +450,11 @@ src/components/nanoai-workflow/
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-15
+- TVC V1 节点重构：脚本生成切换 MiniMax M2.7 模型
+- TVC 视频默认模型改为 MiniMax Hailuo
+- 后端 TVC 模块拆分为 tvc_engine + tvc_polling + tvc_providers
 
 ### 2026-05-14
 - 更新节点数量：40+ → 55+

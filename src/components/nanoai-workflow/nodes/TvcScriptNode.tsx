@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
 import { useToast } from '@/hooks/useToast';
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore';
-import { tvcApi, type TvcScript, type ProductAnalysis, type TvcCharacter, type TvcScene } from '@/lib/api/tvc-api';
+import { tvcApi, type TvcScript, type ProductAnalysis, type TvcCharacter } from '@/lib/api/tvc-api';
 import { useIMETextarea } from '@/hooks/useIMETextarea';
 import { useTvcExecution } from './useTvcExecution';
 import { calcTvcParams } from '@/lib/tvc-cascade';
@@ -37,6 +37,9 @@ export interface TvcScriptData extends WorkflowNodeData {
     totalDuration?: number;
     imageModel?: string;
     videoModel?: string;
+    scriptModel?: string;
+    optimizeModel?: string;
+    bgmModel?: string;
   };
   result?: {
     script?: TvcScript;
@@ -48,7 +51,6 @@ export interface TvcScriptData extends WorkflowNodeData {
 // ==================== 常量 ====================
 
 const OPTIMIZE_MODES = [
-  { key: 'tvc_minimax', label: 'MiniMax 2.7（推荐）' },
   { key: 'tvc_deep', label: '深度分析优化' },
   { key: 'tvc_fast', label: '快速优化' },
   { key: 'tvc_vision', label: '参考图优化' },
@@ -74,11 +76,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
   const params = data.params;
   const result = data.result;
-
-  // ---- 模型选择 ----
-  const handleModeChange = useCallback((mode: string) => {
-    updateNodeParams(id, { optimizeMode: mode });
-  }, [id, updateNodeParams]);
 
   // ---- 参考图上传 ----
   const handleImageUpload = useCallback(async (file: File) => {
@@ -221,21 +218,14 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
             )}
           </div>
 
-          <select
-            value={params.optimizeMode}
-            onChange={(e) => handleModeChange(e.target.value)}
-            disabled={isRunning || hasImage}
-            className={cn(
-              'flex-1 h-9 rounded-lg px-2 text-xs border',
-              isDark
-                ? 'bg-slate-800/50 border-white/10 text-slate-200'
-                : 'bg-gray-50 border-gray-200 text-gray-700',
-            )}
-          >
-            {OPTIMIZE_MODES.map((m) => (
-              <option key={m.key} value={m.key}>{m.label}</option>
-            ))}
-          </select>
+          <div className={cn(
+            'flex-1 h-9 rounded-lg px-2 text-xs flex items-center border',
+            isDark
+              ? 'bg-slate-800/50 border-white/10 text-slate-400'
+              : 'bg-gray-50 border-gray-200 text-gray-500',
+          )}>
+            {OPTIMIZE_MODES.find(m => m.key === params.optimizeMode)?.label || '深度分析优化'}
+          </div>
         </div>
 
         {/* 参考图分析结果 */}

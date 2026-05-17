@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { Upload, Download, Loader2, Sparkles, Image as ImageIcon, RefreshCw, Trash2, ChevronUp, ChevronDown, FileText, FolderArchive, FileImage, Package } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Download, Loader2, Sparkles, Image as ImageIcon, Trash2, ChevronUp, ChevronDown, FileText, FolderArchive, FileImage, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useStoryboardWizardStore, type StoryboardImage } from '@/stores/nanoImageStoryboardWizardStore'
@@ -54,7 +54,7 @@ export function Step2Storyboard() {
         user.imageApiKey,
         scriptData as any, // 类型转换以兼容
         (scriptData.style as any) || 'comic',
-        (current, total, url) => {
+        (current, total, _url) => {
           console.log(`生成进度: ${current}/${total}`)
         }
       )
@@ -175,8 +175,7 @@ export function Step2Storyboard() {
     }
 
     const data = {
-      images: storyboardImages.map(({ file, ...rest }) => rest),
-      exportedAt: new Date().toISOString(),
+      images: storyboardImages.map(({ file: _file, ...rest }) => rest),
     }
     const json = JSON.stringify(data, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
@@ -216,8 +215,7 @@ export function Step2Storyboard() {
       // 添加 manifest.json
       const manifest = {
         total: storyboardImages.length,
-        images: storyboardImages.map(({ file, ...rest }) => rest),
-        exportedAt: new Date().toISOString(),
+        images: storyboardImages.map(({ file: _file, ...rest }) => rest),
       }
       zip.file('manifest.json', JSON.stringify(manifest, null, 2))
 

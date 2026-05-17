@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { FileText, LayoutGrid, Users, CheckCircle2, Loader2, ChevronRight, AlertCircle } from 'lucide-react'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { FileText, LayoutGrid, Users, CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import type { StoryboardTaskStatus, StoryboardSubTask } from '@/types'
@@ -102,7 +101,7 @@ interface StageIndicatorProps {
   progress: number
 }
 
-function StageIndicator({ stageId, stageInfo, status, progress }: StageIndicatorProps) {
+function StageIndicator({ stageInfo, status, progress }: StageIndicatorProps) {
   const Icon = stageInfo.icon
 
   return (
@@ -231,7 +230,7 @@ export function StoryboardPreviewAnimation({
     return 'script'
   }
 
-  const currentStageId = getCurrentStageId()
+  const _currentStageId = getCurrentStageId()
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-purple-900/95 via-pink-900/90 to-purple-900/95 backdrop-blur-xl rounded-xl overflow-hidden">

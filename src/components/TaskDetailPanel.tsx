@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useChatStore } from '@/stores/nanoImageChatStore'
-import type { TaskQueueItem, StoryboardTask, StoryboardSubTask, ChatMessage, ImageParams } from '@/types'
+import type { TaskQueueItem, StoryboardTask, StoryboardSubTask, ChatMessage } from '@/types'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { User, Bot, Clock, Copy, Check, ChevronLeft, ImageIcon, AlertCircle, Loader2, Settings2, LayoutGrid } from 'lucide-react'
+import { User, Bot, Clock, Copy, Check, ChevronLeft, ImageIcon, AlertCircle, Loader2 } from 'lucide-react'
 import { StoryboardPreviewAnimation } from '@/components/storyboard/StoryboardPreviewAnimation'
 
 /** Normalise imageUrl (string | string[]) to always be string[] */

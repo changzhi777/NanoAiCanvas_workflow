@@ -160,8 +160,7 @@ export interface ErrorEvent extends ServerEvent {
  */
 export class RealtimeVoiceClient {
   private ws: WebSocket | null = null
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 3
+  private _reconnectAttempts = 0
   private isConnecting = false
 
   // 回调函数
@@ -203,7 +202,7 @@ export class RealtimeVoiceClient {
         this.ws.onopen = () => {
           console.log('[RealtimeVoice] WebSocket connected')
           this.isConnecting = false
-          this.reconnectAttempts = 0
+          this._reconnectAttempts = 0
           resolve()
         }
 

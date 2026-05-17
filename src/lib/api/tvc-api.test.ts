@@ -25,7 +25,7 @@ describe('tvcApi', () => {
 
       const result = await tvcApi.generateScript({ prompt: 'test prompt' })
 
-      expect(mockPost).toHaveBeenCalledWith('/api/glm/screenplay', expect.objectContaining({
+      expect(mockPost).toHaveBeenCalledWith('/glm/screenplay', expect.objectContaining({
         premise: 'test prompt',
         shot_count: 6,
         style: 'realistic',
@@ -39,7 +39,7 @@ describe('tvcApi', () => {
 
       await tvcApi.generateScript({ prompt: 'test', modelProvider: 'minimax' })
 
-      expect(mockPost).toHaveBeenCalledWith('/api/minimax/screenplay', expect.objectContaining({
+      expect(mockPost).toHaveBeenCalledWith('/minimax/screenplay', expect.objectContaining({
         model: 'MiniMax-M2.7',
       }))
     })
@@ -63,7 +63,7 @@ describe('tvcApi', () => {
 
       const result = await tvcApi.analyzeProductReference({ imageUrl: 'data:image/png;base64,abc' })
 
-      expect(mockPost).toHaveBeenCalledWith('/api/glm/product-reference', expect.objectContaining({
+      expect(mockPost).toHaveBeenCalledWith('/glm/product-reference', expect.objectContaining({
         image_url: 'data:image/png;base64,abc',
         intent: 'tvc',
         model: 'glm-5v-turbo',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState,  useEffect } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,7 +22,6 @@ import {
   Loader2,
   Send,
   Radio,
-  Plus,
 } from 'lucide-react'
 import { useMqttClient } from '@/hooks/useMqttClient'
 
@@ -143,7 +142,7 @@ export default function MqttPage() {
     return () => clearInterval(interval)
   }, [serviceRunning, getConnectionInfo])
 
-  const handleSubscribe = () => {
+  const _handleSubscribe = () => {
     if (!customTopic.trim()) return
     subscribe(customTopic)
     toast.success(`已订阅: ${customTopic}`)

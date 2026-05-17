@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   Film, User, Mountain, Sparkles, FileText,
-  Plus, Search, Clock, ChevronDown, ChevronRight, Star, Lock,
-  BookOpen, Palette, Clapperboard, ScrollText, Image, Zap,
+  Plus, Search, ChevronDown, ChevronRight, Star, Lock,
+  BookOpen, Clapperboard, ScrollText, Image, Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
@@ -18,11 +18,6 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   storyboard: Film,
   script: FileText,
   image: Sparkles,
-};
-
-const getCategoryIcon = (category: string, size = 3.5) => {
-  const Icon = CATEGORY_ICONS[category] || Sparkles;
-  return <Icon className={`w-${size} h-${size}`} />;
 };
 
 // 模板分组 — 用 Lucide 图标替代 emoji

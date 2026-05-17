@@ -1,8 +1,8 @@
-# Models 模块 - 数据模型层（16 个模型）
+# Models 模块 - 数据模型层（17 个模型）
 
 导航面包屑：[根目录](../../../CLAUDE.md) > [backend](../../) > [app](../) > **models**
 
-**最后更新**: 2026-05-14
+**最后更新**: 2026-05-17
 
 ---
 
@@ -53,6 +53,12 @@
 | folder.py | 18 | Folder | 文件夹 |
 | generation_log.py | 31 | GenerationTaskLog + GenerationStatus 枚举 | 生成任务日志 |
 
+### TVC 工作流
+
+| 文件 | 行数 | 模型 | 说明 |
+|------|------|------|------|
+| tvc_config.py | - | TvcWorkflowConfig | scope 区分 global/user，单表存全局配置和用户覆盖配置 |
+
 ## 数据库迁移
 
-12 个 Alembic 版本，位于 `backend/alembic/versions/`
+13 个 Alembic 版本，位于 `backend/alembic/versions/`

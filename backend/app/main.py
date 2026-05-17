@@ -92,6 +92,12 @@ app.include_router(v2_workflow_tasks.router)
 from app.api.v2 import generation_log as v2_genlog
 app.include_router(v2_genlog.router)
 
+from app.api.v2 import tvc_config as v2_tvc_config
+app.include_router(v2_tvc_config.router)
+
+from app.api.v2 import library as v2_library
+app.include_router(v2_library.router)
+
 
 @app.websocket("/ws/tasks/{task_id}")
 async def ws_task_status(websocket: WebSocket, task_id: str):

@@ -50,7 +50,7 @@ export default function AssetSelector({
         if (filterType) {
           localAssets = localAssets.filter((a) => a.type === filterType);
         }
-        setAssets(localAssets as Asset[]);
+        setAssets(localAssets.map((a: any) => ({ ...a, metadata: a.metadata || a.meta || {} })) as Asset[]);
       }
     } catch (error) {
       console.error('Failed to load assets:', error);

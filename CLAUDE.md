@@ -2,13 +2,34 @@
 
 > 基于 React Flow 的无限画布 Workflow 任务工作流系统，支持多 AI 服务集成
 
-**项目版本**: 2.12.273
-**最后更新**: 2026-05-14
+**项目版本**: 2.12.308
+**最后更新**: 2026-05-17
 **技术栈**: React 19.2.4 + TypeScript 5.9.3 + Vite 5.2.11 + FastAPI + PostgreSQL + Redis
 
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-17 - TVC配置管理 + 模型切换（v2.12.308）
+- 新增 TVC 工作流配置 API（`tvc_config.py`）：全局配置+用户配置+配置解析
+- 新增 TVC 配置数据模型（`TvcWorkflowConfig`）：scope 区分 global/user
+- 新增 Alembic 迁移 `013_tvc_workflow_configs.py`
+- MiniMax 视频模型切换为 Hailuo-2.3-Fast（高速版 768P），适配 Token Plan 套餐
+- MiniMax API 路径重复 `/api` 前缀 404 修复
+- 深度分析优化模式恢复使用 GLM-5.1 模型
+- 积分不足 toast 文案断言修正
+- 新增工作流模板 `textToImageWorkflow.ts`
+- **扫描覆盖率：100%（500+ 核心文件）**
+
+### 2026-05-15 - TVC模块重构 + Hooks扩展（v2.12.301）
+- TVC 后端拆分为 3 个独立模块：`tvc_engine.py`（执行引擎+积分管理）、`tvc_polling.py`（视频轮询）、`tvc_providers.py`（Provider工厂）
+- TVC 脚本生成切换为 MiniMax M2.7 模型
+- TVC 视频默认模型改为 MiniMax Hailuo
+- 深度分析优化模式恢复使用 GLM-5.1 模型
+- TVC V1 节点重构 + FFmpeg 合成端点
+- Hooks 从 3 个扩展到 18 个（新增 ChatSocket、MQTT、IME、通知、性能模式等）
+- 后端新增 TVC 引擎/Provider 单元测试
+- **扫描覆盖率：100%（500+ 核心文件）**
 
 ### 2026-05-14 - 全面项目结构更新（v2.12.273）
 - 版本从 2.4.1 大幅升级到 2.12.273
@@ -44,8 +65,8 @@
 ### 核心特性
 
 - **无限画布**: 基于 React Flow，支持平滑缩放、平移、小地图导航
-- **55+ 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
-- **13+ 内置模板**: 故事板、角色设计、场景设计、快速分镜、TVC、Skills 等
+- **50+ 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
+- **14+ 内置模板**: 故事板、角色设计、场景设计、快速分镜、TVC、文生图、Skills 等
 - **管理后台**: 25+ 管理页面，用户/团队/积分/模型/渠道商全流程管理
 - **Garden Skills**: 4 个 Skills 插件 + 90+ 参考模板
 - **Chat 系统**: 实时聊天 + WebSocket + 文件上传 + Redis Pub/Sub
@@ -95,7 +116,7 @@ graph TB
     end
 
     subgraph "前端组件 (src/components/)"
-        C1["nanoai-workflow<br/>55+ 节点 + 13 模板"]
+        C1["nanoai-workflow<br/>50+ 节点 + 14 模板"]
         C2["admin<br/>AdminSidebar/Header/AppConfig"]
         C3["storyboard<br/>25 故事板组件"]
         C4["canvas<br/>画布基础"]
@@ -129,6 +150,8 @@ graph TB
         V6["glm_proxy.py GLM代理"]
         V7["app_visibility.py 可见性"]
         V8["generation_log.py 生成日志"]
+        V9["tvc_config.py TVC配置"]
+        V10["minimax.py MiniMax代理"]
     end
 
     subgraph "后端服务层 (services/)"
@@ -141,7 +164,7 @@ graph TB
     end
 
     subgraph "数据层"
-        DB["PostgreSQL<br/>16 Models"]
+        DB["PostgreSQL<br/>17 Models"]
         RD["Redis<br/>Session/Queue/PubSub"]
     end
 
@@ -210,7 +233,7 @@ graph TD
 
     BA --> BA1["app/api/ (V1)"]
     BA --> BA2["app/api/v2/ (V2)"]
-    BA --> BA3["app/models/ (16)"]
+    BA --> BA3["app/models/ (17)"]
     BA --> BA4["app/services/"]
     BA --> BA5["app/providers/"]
     BA --> BA6["app/cli/"]
@@ -246,7 +269,7 @@ graph TD
 
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
-| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，55+ 节点 + 13 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
+| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，50+ 节点 + 14 模板 + 20 Skills 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
 | **Admin 组件** | `src/components/admin` | 管理后台 UI 组件 | - |
 | **Storyboard** | `src/components/storyboard` | 故事板面板，25 组件 | - |
 | **Canvas** | `src/components/canvas` | 无限画布基础组件 | [查看](./src/components/canvas/CLAUDE.md) |
@@ -258,8 +281,8 @@ graph TD
 | **Animations** | `src/components/animations` | 动画组件 | - |
 | **Zustand Stores** | `src/stores` | 22 个业务状态管理 | [查看](./src/stores/CLAUDE.md) |
 | **Redux Store** | `src/store` | 全局状态管理 | [查看](./src/store/CLAUDE.md) |
-| **Hooks** | `src/hooks` | 18 个自定义 Hooks | [查看](./src/hooks/CLAUDE.md) |
-| **Lib/API** | `src/lib/api` | 40+ API 客户端模块 | - |
+| **Hooks** | `src/hooks` | 18 个自定义 Hooks（自动保存、ChatSocket、IME、MQTT、通知等） | [查看](./src/hooks/CLAUDE.md) |
+| **Lib/API** | `src/lib/api` | 39 API 客户端模块 + 4 适配器 | - |
 | **Lib/DB** | `src/lib/db` | IndexedDB 本地存储 | - |
 | **Lib/Sync** | `src/lib/sync` | 离线同步 | - |
 | **Types** | `src/types` | TypeScript 类型定义 | - |
@@ -271,13 +294,13 @@ graph TD
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
 | **V1 API** | `backend/app/api/` | 核心业务 API（15 路由） | [查看](./backend/app/api/CLAUDE.md) |
-| **V2 API** | `backend/app/api/v2/` | 新版 API（10 路由） | [查看](./backend/app/api/v2/CLAUDE.md) |
+| **V2 API** | `backend/app/api/v2/` | 新版 API（14 路由） | [查看](./backend/app/api/v2/CLAUDE.md) |
 | **Services** | `backend/app/services/` | 业务服务层 | - |
 | **Providers** | `backend/app/providers/` | AI 服务提供商 | - |
-| **Models** | `backend/app/models/` | 16 个数据模型 | - |
+| **Models** | `backend/app/models/` | 17 个数据模型 | - |
 | **Core** | `backend/app/core/` | 安全/配置工具 | - |
 | **CLI** | `backend/app/cli/` | 命令行工具 | - |
-| **Alembic** | `backend/alembic/` | 12 个数据库迁移 | - |
+| **Alembic** | `backend/alembic/` | 13 个数据库迁移 | - |
 
 ### Garden Skills 模块
 
@@ -310,7 +333,7 @@ graph TD
 | **预览** | `image_preview`, `video_preview`, `audio_preview`, `text_preview`, `output` | 结果预览/输出 |
 | **其他** | `director_agent`, `screenwriter_agent`, `milestone`, `background_music`, `transition`, `connector` | 代理/工具节点 |
 
-### 内置模板（13+）
+### 内置模板（14+）
 
 1. **storyboard-01** - 故事板01（完整 9 步流程）
 2. **character-workflow** - 角色设计工作流
@@ -322,9 +345,11 @@ graph TD
 8. **scene-design** - 场景设计
 9. **storyboard-shot-a-workflow** - 故事板分镜V1版
 10. **storyboard-v2-workflow** - 故事板分镜V2版
-11. **skills-ui-mockups** - Skills: UI原型
-12. **skills-product-visuals** - Skills: 产品视觉
-13. **skills-maps** - Skills: 地图
+11. **tvc-video-01** - TVC 广告视频制作
+12. **text-to-image** - 文生图工作流
+13. **skills-ui-mockups** - Skills: UI原型
+14. **skills-product-visuals** - Skills: 产品视觉
+15. **skills-maps** - Skills: 地图
 
 ---
 
@@ -360,6 +385,10 @@ graph TD
 | `/v2/image/*` | `image.py` | 多 Provider 图片生成 |
 | `/api/v2/skills/*` | `skills.py` | Skills 队列式生成 |
 | `/api/v2/tvc-tasks/*` | `workflow_tasks.py` | TVC 工作流任务 |
+| `/api/v2/tvc-engine/*` | `tvc_engine.py` | TVC 执行引擎+积分管理 |
+| `/api/v2/tvc-providers/*` | `tvc_providers.py` | TVC Provider 工厂 |
+| `/api/v2/tvc-polling/*` | `tvc_polling.py` | TVC 视频结果轮询 |
+| `/api/v2/tvc-config/*` | `tvc_config.py` | TVC 工作流配置管理 |
 | `/api/v2/glm-proxy/*` | `glm_proxy.py` | GLM 提示词优化代理 |
 | `/api/v2/minimax-proxy/*` | `minimax.py` | MiniMax 文本代理 |
 | `/api/v2/generation-logs/*` | `generation_log.py` | 生成任务日志 |
@@ -368,7 +397,7 @@ graph TD
 
 | 服务 | 文件 | 描述 |
 |------|------|------|
-| **WorkflowExecutor** | `services/workflow_executor.py` | TVC 5 步线性流程执行器 |
+| **WorkflowExecutor** | `services/workflow_executor.py` | TVC 工作流执行器：异步5步线性流程，Redis存储进度+断点续传，SSE实时推送 |
 | **SkillsWorker** | `services/skills_worker.py` | Redis 队列消费，步骤化图片生成 |
 | **TaskQueue** | `services/task_queue.py` | 任务队列管理 |
 | **ApiKeyService** | `services/api_key_service.py` | API Key 热加载（60s 缓存） |
@@ -386,7 +415,7 @@ graph TD
 | **Wuyinkeji** | `providers/wuyinkeji.py` | 速创 API（NanoBanana 系列） |
 | **Caohua-Jimeng** | `providers/caohua_jimeng.py` | 即梦 API |
 
-### 数据模型（16 个）
+### 数据模型（17 个）
 
 | 模型 | 文件 | 描述 |
 |------|------|------|
@@ -405,6 +434,7 @@ graph TD
 | **Operation** | `models/operation.py` | 操作日志 |
 | **PromptRestriction** | `models/prompt_restrictions.py` | 提示词限制 |
 | **Tag** | `models/tag.py` | 标签 |
+| **TvcWorkflowConfig** | `models/tvc_config.py` | TVC 工作流配置（global/user scope） |
 
 ---
 
@@ -430,7 +460,7 @@ cd backend
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-PYTHONPATH=. pytest tests/ -v
+PYTHONPATH=. pytest tests/ -v  # 含 TVC 引擎/Provider 单元测试
 ```
 
 ### 环境变量
@@ -473,6 +503,6 @@ SECRET_KEY=...
 ---
 
 **文档维护**: 本文档应随项目更新同步维护
-**最后更新**: 2026-05-14
-**扫描覆盖率**: 100%（480+ 核心文件）
+**最后更新**: 2026-05-17
+**扫描覆盖率**: 100%（500+ 核心文件）
 **生成者**: BB小子 🤙
