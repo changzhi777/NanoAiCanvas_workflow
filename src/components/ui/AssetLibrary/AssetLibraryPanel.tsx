@@ -592,6 +592,15 @@ function AssetCard({
       {/* 缩略图 */}
       {isImage && !imageError ? (
         <img src={asset.thumbnail_url || asset.url} alt={asset.name} loading="lazy" className="w-full h-full object-cover" onError={() => setImageError(true)} />
+      ) : (asset.thumbnail_url && !imageError) ? (
+        <div className="w-full h-full relative">
+          <img src={asset.thumbnail_url} alt={asset.name} loading="lazy" className="w-full h-full object-cover" onError={() => setImageError(true)} />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-black/60 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">{TYPE_ICONS[asset.type?.toLowerCase()] || '📄'}</div>
       )}

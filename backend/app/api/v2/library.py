@@ -111,3 +111,94 @@ async def delete_library_asset(
     asset.is_deleted = True
     await db.commit()
     return {"success": True}
+
+
+@router.post("/assets/{asset_id}/generate-thumbnail")
+async def generate_video_thumbnail(
+    asset_id: UUID,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """为视频资产生成关键帧缩略图"""
+    result = await db.execute(select(Asset).where(Asset.id == asset_id, Asset.is_deleted == False))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    asset_type = (asset.type.value if hasattr(asset.type, "value") else str(asset.type)).lower()
+    if asset_type not in ("video", "storyboard_video"):
+        raise HTTPException(status_code=400, detail="Only video assets support thumbnail generation")
+
+    if not asset.url:
+        raise HTTPException(status_code=400, detail="Asset has no video URL")
+
+    import os
+    from app.services.video_thumbnail import download_and_extract
+
+    upload_dir = os.environ.get(
+        "ASSET_UPLOAD_DIR",
+        os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets"),
+    )
+    os.makedirs(upload_dir, exist_ok=True)
+
+    thumb_filename = f"thumb_{asset.id}.jpg"
+    thumb_path = os.path.join(upload_dir, thumb_filename)
+
+    success = await download_and_extract(asset.url, thumb_path)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to extract keyframe")
+
+    from app.config import get_settings
+    settings = get_settings()
+    base_url = getattr(settings, "API_BASE_URL", "") or ""
+    thumb_url = f"{base_url}/asset-uploads/{thumb_filename}" if base_url else f"/asset-uploads/{thumb_filename}"
+
+    asset.thumbnail_url = thumb_url
+    await db.commit()
+
+    return {"thumbnail_url": thumb_url}
+
+
+@router.post("/assets/batch-generate-thumbnails")
+async def batch_generate_thumbnails(
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """批量生成所有缺少缩略图的视频资产的关键帧"""
+    import os
+    from app.services.video_thumbnail import download_and_extract
+
+    stmt = select(Asset).where(
+        Asset.is_deleted == False,
+        Asset.type.in_(["video", "storyboard_video"]),
+    ).where(
+        (Asset.thumbnail_url == None) | (Asset.thumbnail_url == "")
+    )
+    result = await db.execute(stmt)
+    assets = result.scalars().all()
+
+    upload_dir = os.environ.get(
+        "ASSET_UPLOAD_DIR",
+        os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads", "assets"),
+    )
+    os.makedirs(upload_dir, exist_ok=True)
+
+    from app.config import get_settings
+    settings = get_settings()
+    base_url = getattr(settings, "API_BASE_URL", "") or ""
+
+    generated = []
+    for asset in assets:
+        if not asset.url:
+            continue
+        thumb_filename = f"thumb_{asset.id}.jpg"
+        thumb_path = os.path.join(upload_dir, thumb_filename)
+
+        success = await download_and_extract(asset.url, thumb_path)
+        if success:
+            thumb_url = f"{base_url}/asset-uploads/{thumb_filename}" if base_url else f"/asset-uploads/{thumb_filename}"
+            asset.thumbnail_url = thumb_url
+            generated.append({"id": str(asset.id), "name": asset.name, "thumbnail_url": thumb_url})
+
+    await db.commit()
+    return {"total": len(assets), "generated": len(generated), "results": generated}
