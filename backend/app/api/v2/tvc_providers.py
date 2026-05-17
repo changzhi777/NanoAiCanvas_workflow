@@ -153,7 +153,7 @@ def _submit_video_seedance(settings: Settings) -> Callable:
 
     ark_key = settings.ARK_API_KEY
     ark_base = settings.ARK_API_BASE_URL.rstrip("/")
-    model = "doubao-seedance-1-5-pro-251215"
+    model = "doubao-seedance-2-0-260128"
 
     async def _run(shot_num: int, first_url: str, last_url: str, duration: int) -> dict:
         if not ark_key or not first_url:
@@ -166,7 +166,12 @@ def _submit_video_seedance(settings: Settings) -> Callable:
         if last_url:
             content.append({"type": "image_url", "image_url": {"url": last_url}, "role": "last_frame"})
 
-        body = {"model": model, "content": content}
+        body = {
+            "model": model,
+            "content": content,
+            "resolution": "720p",
+            "duration": max(4, min(15, duration)),
+        }
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
@@ -288,8 +293,8 @@ def _submit_video_glm(settings: Settings) -> Callable:
 VIDEO_PROVIDER_NAMES = {
     "minimax": "MiniMax Hailuo 2.3",
     "glm": "CogVideoX-3",
-    "seedance": "Seedance",
-    "jimeng": "Seedance",
+    "seedance": "Seedance 2.0",
+    "jimeng": "Seedance 2.0",
 }
 
 
