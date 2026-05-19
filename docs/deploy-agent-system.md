@@ -23,6 +23,8 @@ backend/nanoai-agent.yaml                      # Agent 配置
 ### 前端（必须）
 ```
 src/lib/api/agent-api.ts                       # API 客户端
+src/stores/agentStore.ts                       # Zustand 状态管理
+src/components/nanoai-workflow/ui/AgentChatPanel.tsx  # Agent 对话面板
 src/components/ui/AboutDialog.tsx              # About 对话框
 ```
 

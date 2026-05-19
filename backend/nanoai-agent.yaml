@@ -3,7 +3,7 @@
 
 agent:
   name: "Nanoai Team8 Agent System"
-  version: "V0.1.0"
+  version: "V0.3.0"
   copyright: "Copyright © 2026 AiHXC.Team"
 
 gateway:
