@@ -77,7 +77,11 @@ class AutoUpdater:
 
         # 追加优化注释（不覆盖现有内容）
         current = prompt_file.read_text()
-        optimization_note = f"\n\n<!-- Auto-optimized: {datetime.now(timezone.utc).isoformat()} -->\n<!-- {suggestion['suggestion']} -->\n"
+        suggestion_text = suggestion['suggestion']
+        if suggestion_text in current:
+            return None
+
+        optimization_note = f"\n\n<!-- Auto-optimized: {datetime.now(timezone.utc).isoformat()} -->\n<!-- {suggestion_text} -->\n"
 
         if optimization_note not in current:
             prompt_file.write_text(current + optimization_note)

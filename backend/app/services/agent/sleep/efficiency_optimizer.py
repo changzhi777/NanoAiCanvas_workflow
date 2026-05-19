@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, and_, func, desc
+from sqlalchemy import select, and_, func, desc, Integer, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import AgentExecutionLog
@@ -73,7 +73,7 @@ class EfficiencyOptimizer:
         stmt = select(
             func.count(AgentExecutionLog.id),
             func.avg(
-                func.cast(AgentExecutionLog.success, func.Integer())
+                cast(AgentExecutionLog.success, Integer)
             ),
             func.avg(AgentExecutionLog.duration_ms),
         ).where(AgentExecutionLog.created_at >= since)
@@ -236,7 +236,7 @@ class EfficiencyOptimizer:
             AgentExecutionLog.model_used,
             func.avg(AgentExecutionLog.duration_ms).label("avg_ms"),
             func.avg(
-                func.cast(AgentExecutionLog.success, func.Integer())
+                cast(AgentExecutionLog.success, Integer)
             ).label("success_rate"),
             func.count(AgentExecutionLog.id).label("count"),
         ).where(AgentExecutionLog.created_at >= since).group_by(
