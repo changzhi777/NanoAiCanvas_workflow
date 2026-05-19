@@ -49,12 +49,13 @@ class SleepScheduler:
 
     async def _schedule_loop(self, hour: int):
         """每天指定时间执行睡眠"""
+        from datetime import timedelta
+
         while self._running:
             now = datetime.now(timezone.utc)
             target = now.replace(hour=hour, minute=0, second=0, microsecond=0)
             if now >= target:
-                # 已过今天的时间，等明天
-                target = target.replace(day=target.day + 1)
+                target += timedelta(days=1)
 
             wait_seconds = (target - now).total_seconds()
             if wait_seconds > 0:

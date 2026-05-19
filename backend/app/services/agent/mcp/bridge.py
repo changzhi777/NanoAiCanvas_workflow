@@ -16,6 +16,8 @@ MCP Server — stdio 子进程模式，通过 Redis Pub/Sub 与 Gateway 通信�
   - get_about: 获取系统信息
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import sys
@@ -23,6 +25,7 @@ import uuid
 import logging
 
 from app.redis import redis_client
+from app.services.agent import __version__ as agent_version
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +48,16 @@ async def handle_request(request: dict) -> dict:
     request["_response_channel"] = response_channel
     await redis_client.publish(MCP_REQUEST_CHANNEL, json.dumps(request, ensure_ascii=False))
 
-    # 等待响应
+    # 等待响应（带超时）
     try:
+        deadline = asyncio.get_event_loop().time() + MCP_RESPONSE_TIMEOUT
         async for message in pubsub.listen():
             if message["type"] == "message":
                 data = json.loads(message["data"])
                 if data.get("_request_id") == request_id:
                     return data
-    except asyncio.TimeoutError:
-        return {"error": "Gateway response timeout"}
+            if asyncio.get_event_loop().time() > deadline:
+                return {"error": "Gateway response timeout"}
     finally:
         await pubsub.unsubscribe(response_channel)
         await pubsub.close()
@@ -115,7 +119,7 @@ def list_tools() -> list[dict]:
 
 
 async def run_stdio():
-    """MCP stdio 主循环"""
+    """MCP stdio 主循环（asyncio 兼容）"""
     # 发送初始化响应
     init_response = {
         "jsonrpc": "2.0",
@@ -123,13 +127,21 @@ async def run_stdio():
         "result": {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "nanoai-team8-mcp", "version": "0.1.0"},
+            "serverInfo": {"name": "nanoai-team8-mcp", "version": agent_version},
         },
     }
     print(json.dumps(init_response), flush=True)
 
-    for line in sys.stdin:
-        line = line.strip()
+    loop = asyncio.get_event_loop()
+    reader = asyncio.StreamReader()
+    protocol = asyncio.StreamReaderProtocol(reader)
+    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+
+    while True:
+        line = await reader.readline()
+        if not line:
+            break
+        line = line.decode().strip()
         if not line:
             continue
 
