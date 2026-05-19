@@ -1,4 +1,4 @@
-// Nanoai Team8 Agent Client — V0.1.0
+// Nanoai Team8 Agent System — V0.3.0
 // Copyright © 2026 AiHXC.Team
 // Author: 外星动物（常智）/ IoTchange <14455975@qq.com>
 
@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from './dialog';
 import { getAgentAbout, AGENT_VERSION, AGENT_COPYRIGHT, type AgentAbout } from '../../lib/api/agent-api';
+
+declare const __APP_VERSION__: string;
 
 interface AboutDialogProps {
   open: boolean;
@@ -36,7 +38,7 @@ export function AboutDialog({ open, onOpenChange }: AboutDialogProps) {
           {/* 系统信息 */}
           <div className="space-y-1">
             <h3 className="font-semibold text-base">NanoAiCanvas</h3>
-            <p className="text-muted-foreground">版本 2.12.350</p>
+            <p className="text-muted-foreground">版本 {__APP_VERSION__}</p>
           </div>
 
           <hr className="border-border" />
