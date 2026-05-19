@@ -54,7 +54,7 @@ export const usePluginStore = create<PluginStore>()(
           const pluginsList = Object.values(newPlugins);
           const nodeTypesList = Object.values(newNodeTypes);
 
-          console.log(`Plugin ${plugin.id} registered successfully with ${plugin.nodeTypes.length} node types`);
+          // Plugin ${plugin.id} registered successfully with ${plugin.nodeTypes.length} node types`);
 
           return {
             _plugins: newPlugins,
@@ -87,7 +87,7 @@ export const usePluginStore = create<PluginStore>()(
           const pluginsList = Object.values(newPlugins);
           const nodeTypesList = Object.values(newNodeTypes);
 
-          console.log(`Plugin ${pluginId} unregistered successfully`);
+          // Plugin ${pluginId} unregistered successfully`);
 
           return {
             _plugins: newPlugins,

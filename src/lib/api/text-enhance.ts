@@ -163,7 +163,6 @@ export async function enhancePrompt(options: EnhancePromptOptions): Promise<stri
 
   const systemPrompt = buildModeSystemPrompt(mode, presetOptions)
 
-  console.log('[enhancePrompt] MiniMax M2.7 Mode:', mode, 'Random params:', { temperature: temperature.toFixed(2), top_p: top_p.toFixed(2) })
 
   const response = await fetch(MINIMAX_API_URL, {
     method: 'POST',

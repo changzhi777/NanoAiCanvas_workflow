@@ -282,7 +282,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         if (selected) {
           e.preventDefault()
           // 删除节点（需要通过 Redux dispatch）
-          console.log('Delete node:', data.id)
+          // delete node
         }
         break
 
@@ -307,7 +307,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         if ((e.ctrlKey || e.metaKey) && selected) {
           e.preventDefault()
           // 复制节点
-          console.log('Copy node:', data.id)
+          // copy node
         }
         break
 
@@ -315,7 +315,7 @@ const CardNode = memo(({ data, selected }: CardNodeProps) => {
         if ((e.ctrlKey || e.metaKey) && selected) {
           e.preventDefault()
           // 粘贴节点
-          console.log('Paste node')
+          // paste node
         }
         break
     }

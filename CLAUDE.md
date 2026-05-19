@@ -2,13 +2,43 @@
 
 > 基于 React Flow 的无限画布 Workflow 任务工作流系统，支持多 AI 服务集成
 
-**项目版本**: 2.12.313
-**最后更新**: 2026-05-18
+**项目版本**: 2.13.1
+**最后更新**: 2026-05-20
 **技术栈**: React 19.2.4 + TypeScript 5.9.3 + Vite 5.2.11 + FastAPI + PostgreSQL + Redis
+**Agent 系统**: Nanoai Team8 V0.3.0（自进化短剧创作 Agent Team）
 
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-20 - Nanoai Team8 Agent System V0.3.0（自进化短剧创作 Agent Team）
+- 新增 9 角色化 Agent Team：Producer / Screenwriter / Director / ArtDirector / CharacterDesigner / SceneDesigner / VoiceDirector / Editor / Composer
+- 新增 4 层记忆栈（L0 Identity → L1 Essential → L2 On-Demand → L3 Deep Search），Stability 半衰期评分 + 自动修剪
+- 新增 6 阶段睡眠模式：review_memories → prune → skill_review → efficiency_optimization → validation → report
+- 新增 Git 式用户分支技能系统：fork/diff/pull/push/merge
+- 新增 Gateway 网关模式：Redis BRPOP 任务队列 + REST API + WebSocket + MCP stdio 桥接
+- 新增双模型路由：Cloud（GLM API）+ Local（oMLX localhost:11434）
+- 新增 8 阶段改编管线：prepare → statistics → outline → plan → script → quality_control → merge → archive
+- 新增效率自优化引擎（EfficiencyOptimizer）：瓶颈分析 + 失败模式检测 + 自动优化建议
+- 新增 7 张数据表 + Alembic 迁移 `015_agent_system.py`：agent_sessions / agent_memories / agent_tasks / agent_execution_logs / system_skills / user_skills / skill_promotion_requests
+- 新增 V2 Agent API（`agent.py`）：17 路由含 WebSocket 双向通信 + Skills CRUD
+- 新增 MCP Bridge（stdio → Redis Pub/Sub）：5 Tools 对接 Claude Code / Cursor
+- 新增前端 AboutDialog + agent-api.ts 客户端
+- 后端 Agent 模块共 36 文件 / 3573 行（含 prompts + 配置）
+- 独立版本号 V0.3.0，版权 AiHXC.Team
+
+### 2026-05-18 - TVC双参考图重构 + 资产自动保存 + Seedance升级（v2.12.350）
+- TVC 双参考图工作流重构：生图从 2N 降到 2（ShotRefImage + CharacterDesignImage → 单轮双图）
+- Seedance 视频升级 2.0：模型 doubao-seedance-2-0-260128，支持 resolution(480p/720p/1080p) + duration 参数
+- Seedance 隐私拦截自动去尾帧首帧重试机制
+- TVC 资产自动保存：生成的图片/视频自动关联资产库
+- 移除 MiniMax/CogVideoX-3 视频提供者，Seedance 为唯一视频提供者
+- 简化视频生成逻辑，移除冗余 fallback/provider 抽象
+- 后端新增 `video_thumbnail.py` 视频关键帧缩略图服务（FFmpeg 提取）
+- 前端新增 `video-editor-api.ts` 视频编辑 API 客户端
+- 团队积分优先扣减机制：先团队后个人，不足时需确认
+- 后端新增 `seedance_constants.py` Seedance 常量配置
+- API 客户端从 40+ 增长到 43+
 
 ### 2026-05-18 - 视频合成 CLI + AI 剪辑 Chat（v2.12.313）
 - 新增 cli-agent/ 独立子包（18 文件，1281 行）
@@ -94,9 +124,9 @@
 ### 核心特性
 
 - **无限画布**: 基于 React Flow，支持平滑缩放、平移、小地图导航
-- **55+ 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
-- **14+ 内置模板**: 故事板、角色设计、场景设计、快速分镜、TVC、文生图、Skills 等
-- **管理后台**: 26+ 管理页面，用户/团队/积分/模型/渠道商/TVC配置全流程管理
+- **49 节点类型**: 输入、AI 生成、决策、处理、输出、MiniMax、即梦、GLM、Qwen、Kimi、TVC、Skills 等
+- **24 内置模板**: 6 基础模板 + 18 Skills 模板
+- **管理后台**: 25+ 管理页面，用户/团队/积分/模型/渠道商/TVC配置全流程管理
 - **Garden Skills**: 4 个 Skills 插件 + 90+ 参考模板
 - **Chat 系统**: 实时聊天 + WebSocket + 文件上传 + Redis Pub/Sub
 - **双重状态管理**: Redux Toolkit（全局）+ Zustand（Workflow/业务）
@@ -105,6 +135,7 @@
 - **主题系统**: Base Nova 暗色主题 + OKLCH 颜色空间
 - **国际化**: 完整的中英文切换支持
 - **插件系统**: 支持自定义节点类型和 Skills 扩展
+- **Agent 系统**: Nanoai Team8 自进化短剧创作 Agent Team（9 角色 + 4 层记忆 + 睡眠自优化）
 
 ---
 
@@ -135,171 +166,19 @@
 
 ## 架构总览
 
-```mermaid
-graph TB
-    subgraph "前端页面 (src/app/)"
-        P1["/nano2<br/>主画布页面"]
-        P2["/admin/*<br/>管理后台 25+ 页面"]
-        P3["/notifications<br/>通知中心"]
-        P4["/points<br/>积分页面"]
-    end
+![架构总览](./docs/diagrams/architecture.svg)
 
-    subgraph "前端组件 (src/components/)"
-        C1["nanoai-workflow<br/>55+ 节点 + 14 模板"]
-        C2["admin<br/>AdminSidebar/Header/AppConfig"]
-        C3["storyboard<br/>25 故事板组件"]
-        C4["canvas<br/>画布基础"]
-        C5["panels<br/>属性面板"]
-        C6["toolbar<br/>工具栏"]
-        C7["collaboration<br/>协作光标"]
-        C8["ui<br/>shadcn/ui 基础"]
-    end
-
-    subgraph "前端状态 (src/stores/)"
-        S1["23 Zustand Stores<br/>Workflow/Chat/StoryBoard<br/>Points/Notification/..."]
-        S2["Redux Store<br/>canvas/ui/settings"]
-    end
-
-    subgraph "后端 V1 API (/api)"
-        A1["auth.py 认证授权"]
-        A2["assets.py 资产管理"]
-        A3["workflows.py 工作流"]
-        A4["points.py 积分查询"]
-        A5["chat.py 聊天 + WebSocket"]
-        A6["notifications.py 通知"]
-        A7["其他 7 个路由"]
-    end
-
-    subgraph "后端 V2 API (/api/v2)"
-        V1["admin.py 渠道商/模型/Key CRUD"]
-        V2["key_mapper.py 前后端Key映射"]
-        V3["skills.py Skills 队列生成"]
-        V4["workflow_tasks.py TVC任务"]
-        V5["image.py 多Provider图片"]
-        V6["glm_proxy.py GLM代理"]
-        V7["app_visibility.py 可见性"]
-        V8["generation_log.py 生成日志"]
-        V9["tvc_config.py TVC配置"]
-        V10["minimax.py MiniMax代理"]
-        V11["tvc_projects.py TVC项目"]
-        V12["library.py 资产库V2"]
-    end
-
-    subgraph "后端服务层 (services/)"
-        SV1["workflow_executor<br/>TVC 5步线性流程"]
-        SV2["skills_worker<br/>Redis队列消费"]
-        SV3["task_queue<br/>任务队列管理"]
-        SV4["api_key_service<br/>Key热加载"]
-        SV5["points_service<br/>积分计价引擎"]
-        SV6["pubsub<br/>Redis Pub/Sub"]
-        SV7["model_scanner<br/>模型检测"]
-    end
-
-    subgraph "数据层"
-        DB["PostgreSQL<br/>19 Models"]
-        RD["Redis<br/>Session/Queue/PubSub"]
-    end
-
-    P1 --> C1
-    P2 --> C2
-    C1 --> S1
-    C1 --> S2
-    S1 --> A1
-    S1 --> V1
-    S1 --> V4
-    C3 --> S1
-
-    A1 --> DB
-    A2 --> DB
-    V1 --> DB
-    V3 --> SV2
-    V4 --> SV1
-    SV2 --> SV3
-    SV2 --> SV6
-    SV1 --> RD
-    SV6 --> RD
-    A5 --> RD
-    SV4 --> RD
-
-    style P1 fill:#168,70%,45%
-    style V1 fill:#293,80%,60%
-    style SV2 fill:#c62,80%,60%
-    style DB fill:#555,80%,70%
-```
+> Mermaid 源文件: [`architecture.mmd`](./docs/diagrams/architecture.mmd)
 
 ---
 
 ## 模块结构图
 
-```mermaid
-graph TD
-    A["NanoAiCanvas<br/>v2.12.313"] --> B["src/"]
-    A --> BA["backend/"]
-    A --> GS["garden-skills/"]
-    A --> CA["cli-agent/"]
+![模块结构图](./docs/diagrams/module-structure.svg)
 
-    B --> C["components/"]
-    B --> D["stores/ (23)"]
-    B --> E["store/ Redux"]
-    B --> F["hooks/ (18)"]
-    B --> G["lib/api/ (40+)"]
-    B --> H["locales/"]
-    B --> I["types/"]
-    B --> J["app/ (页面路由)"]
-    B --> K["styles/"]
+> Mermaid 源文件: [`module-structure.mmd`](./docs/diagrams/module-structure.mmd)
 
-    C --> C1["nanoai-workflow/"]
-    C --> C2["admin/"]
-    C --> C3["storyboard/"]
-    C --> C4["canvas/"]
-    C --> C5["panels/"]
-    C --> C6["toolbar/"]
-    C --> C7["collaboration/"]
-    C --> C8["ui/"]
-    C --> C9["edges/"]
-    C --> C10["animations/"]
-    C --> C11["accessibility/"]
-    C --> C12["layout/"]
-    C --> C13["timeline/"]
-    C --> C14["nodes/"]
-    C --> C15["HistoryPanelTabs/"]
-
-    BA --> BA1["app/api/ (V1)"]
-    BA --> BA2["app/api/v2/ (V2)"]
-    BA --> BA3["app/models/ (19)"]
-    BA --> BA4["app/services/"]
-    BA --> BA5["app/providers/"]
-    BA --> BA6["app/cli/"]
-    BA --> BA7["app/core/"]
-    BA --> BA8["alembic/ (14)"]
-
-    GS --> GS1["gpt-image-2<br/>90+ 参考模板"]
-    GS --> GS2["kb-retriever"]
-    GS --> GS3["web-design-engineer"]
-    GS --> GS4["web-video-presentation"]
-
-    CA --> CA1["core/ffmpeg<br/>7 操作封装"]
-    CA --> CA2["core/pipeline<br/>4 阶段管线"]
-    CA --> CA3["mcp/server<br/>MCP 4 Tools"]
-    CA --> CA4["api/server<br/>Fastify HTTP"]
-    CA --> CA5["skill/interface<br/>Skill 标准接口"]
-
-    click C1 "./src/components/nanoai-workflow/CLAUDE.md" "Workflow 模块"
-    click D "./src/stores/CLAUDE.md" "Zustand Stores"
-    click E "./src/store/CLAUDE.md" "Redux Store"
-    click C4 "./src/components/canvas/CLAUDE.md" "Canvas"
-    click C5 "./src/components/panels/CLAUDE.md" "Panels"
-    click F "./src/hooks/CLAUDE.md" "Hooks"
-    click BA1 "./backend/app/api/CLAUDE.md" "Backend V1 API"
-    click BA2 "./backend/app/api/v2/CLAUDE.md" "Backend V2 API"
-
-    style A fill:#168,70%,45%
-    style B fill:#168,80%,55%
-    style BA fill:#293,80%,60%
-    style GS fill:#c62,80%,55%
-    style CA fill:#825,80%,55%
-    style C1 fill:#293,90%,65%
-```
+> **注**: 以上图表为初始版本，已修正但未重新渲染。最新精确数据见 `docs/diagrams/功能模块图.svg`。
 
 ---
 
@@ -309,7 +188,7 @@ graph TD
 
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
-| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，55+ 节点 + 14 模板 + 20 Skills 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
+| **NanoAI Workflow** | `src/components/nanoai-workflow` | AI 工作流核心，49 节点 + 6 基础模板 + 18 Skills 模板 | [查看](./src/components/nanoai-workflow/CLAUDE.md) |
 | **Admin 组件** | `src/components/admin` | 管理后台 UI 组件 | - |
 | **Storyboard** | `src/components/storyboard` | 故事板面板，25 组件 | - |
 | **Canvas** | `src/components/canvas` | 无限画布基础组件 | [查看](./src/components/canvas/CLAUDE.md) |
@@ -322,7 +201,7 @@ graph TD
 | **Zustand Stores** | `src/stores` | 23 个业务状态管理 | [查看](./src/stores/CLAUDE.md) |
 | **Redux Store** | `src/store` | 全局状态管理 | [查看](./src/store/CLAUDE.md) |
 | **Hooks** | `src/hooks` | 18 个自定义 Hooks（自动保存、ChatSocket、IME、MQTT、通知等） | [查看](./src/hooks/CLAUDE.md) |
-| **Lib/API** | `src/lib/api` | 42 API 客户端模块 + 4 适配器 | - |
+| **Lib/API** | `src/lib/api` | 42 API 客户端模块 | - |
 | **Lib/DB** | `src/lib/db` | IndexedDB 本地存储 | - |
 | **Lib/Sync** | `src/lib/sync` | 离线同步 | - |
 | **Types** | `src/types` | TypeScript 类型定义 | - |
@@ -333,14 +212,15 @@ graph TD
 
 | 模块 | 路径 | 职责 | 文档 |
 |------|------|------|------|
-| **V1 API** | `backend/app/api/` | 核心业务 API（15 路由） | [查看](./backend/app/api/CLAUDE.md) |
-| **V2 API** | `backend/app/api/v2/` | 新版 API（16 路由） | [查看](./backend/app/api/v2/CLAUDE.md) |
+| **V1 API** | `backend/app/api/` | 核心业务 API（16 路由） | [查看](./backend/app/api/CLAUDE.md) |
+| **V2 API** | `backend/app/api/v2/` | 新版 API（17 路由，含 Agent API） | [查看](./backend/app/api/v2/CLAUDE.md) |
+| **Agent System** | `backend/app/services/agent/` | Nanoai Team8 自进化 Agent（9 角色 + 4 层记忆 + 睡眠自优化） | - |
 | **Services** | `backend/app/services/` | 业务服务层 | - |
 | **Providers** | `backend/app/providers/` | AI 服务提供商 | - |
-| **Models** | `backend/app/models/` | 19 个数据模型 | - |
+| **Models** | `backend/app/models/` | 18 模型文件 / 26 模型类（含 Agent 7 模型） | - |
 | **Core** | `backend/app/core/` | 安全/配置工具 | - |
 | **CLI** | `backend/app/cli/` | 命令行工具 | - |
-| **Alembic** | `backend/alembic/` | 14 个数据库迁移 | - |
+| **Alembic** | `backend/alembic/` | 16 个数据库迁移 | - |
 
 ### Garden Skills 模块
 
@@ -353,19 +233,19 @@ graph TD
 
 ### CLI Agent 模块
 
-| 模块 | 路径 | 职责 |
-|------|------|------|
-| **Core** | `cli-agent/src/core/` | FFmpeg 7 操作 + 4 阶段管线编排 + 配置管理 |
-| **CLI** | `cli-agent/src/cli/` | 5 个命令：compose/concat/compare/subtitle/bgm |
-| **MCP Server** | `cli-agent/src/mcp/` | MCP stdio Server（4 Tools） |
-| **HTTP API** | `cli-agent/src/api/` | Fastify 服务（compose/tasks/health） |
-| **Skill** | `cli-agent/src/skill/` | VideoComposeSkill 标准接口 |
+| 模块 | 路径 | 职责 | 文档 |
+|------|------|------|------|
+| **Core** | `cli-agent/src/core/` | FFmpeg 7 操作 + 4 阶段管线编排 + 配置管理 | [查看](./cli-agent/CLAUDE.md) |
+| **CLI** | `cli-agent/src/cli/` | 7 个命令：compose/concat/compare/subtitle/bgm + mcp + serve | [查看](./cli-agent/CLAUDE.md) |
+| **MCP Server** | `cli-agent/src/mcp/` | MCP stdio Server（4 Tools） | - |
+| **HTTP API** | `cli-agent/src/api/` | Fastify 服务（compose/tasks/health） | - |
+| **Skill** | `cli-agent/src/skill/` | VideoComposeSkill 标准接口 | - |
 
 ---
 
 ## Workflow 工作流系统
 
-### 节点类型（55+）
+### 节点类型（49）
 
 | 类别 | 节点类型 | 描述 |
 |------|----------|------|
@@ -383,23 +263,15 @@ graph TD
 | **预览** | `image_preview`, `video_preview`, `audio_preview`, `text_preview`, `output` | 结果预览/输出 |
 | **其他** | `director_agent`, `screenwriter_agent`, `milestone`, `background_music`, `transition`, `connector` | 代理/工具节点 |
 
-### 内置模板（14+）
+### 内置模板（24: 6 基础 + 18 Skills）
 
-1. **storyboard-01** - 故事板01（完整 9 步流程）
+1. **storyboard-01** - 故事板01（完整流程）
 2. **character-workflow** - 角色设计工作流
 3. **scene-workflow** - 场景设计工作流
 4. **quick-storyboard-v2** - 快速分镜
-5. **dual-line-character-design** - 双线角色设计
-6. **storyboard-complete** - 完整故事板生成
-7. **character-design** - 角色设计
-8. **scene-design** - 场景设计
-9. **storyboard-shot-a-workflow** - 故事板分镜V1版
-10. **storyboard-v2-workflow** - 故事板分镜V2版
-11. **tvc-video-01** - TVC 广告视频制作
-12. **text-to-image** - 文生图工作流
-13. **skills-ui-mockups** - Skills: UI原型
-14. **skills-product-visuals** - Skills: 产品视觉
-15. **skills-maps** - Skills: 地图
+5. **tvc-video-01** - TVC 广告视频制作
+6. **text-to-image** - 文生图工作流
+7-24. **Skills 模板**（18个）: academic / assets / avatars / branding / complete / editing / grids / infographics / maps / portraits / poster / product-visuals / scenes / slides / storyboards / technical / typography / ui-mockups
 
 ---
 
@@ -444,6 +316,7 @@ graph TD
 | `/api/v2/generation-logs/*` | `generation_log.py` | 生成任务日志 |
 | `/api/v2/tvc-projects/*` | `tvc_projects.py` | TVC 项目管理 CRUD + 镜头管理 |
 | `/api/v2/library/*` | `library.py` | V2 资产库浏览/搜索/批量操作 |
+| `/api/v2/agent/*` | `agent.py` | Agent 系统 API（17 路由含 WS/Skills/Pipeline） |
 
 ### 后端服务层
 
@@ -459,6 +332,35 @@ graph TD
 | **ModelScanner** | `services/model_scanner.py` | API Key 模型检测（按 Provider 类型扫描可用模型） |
 | **ImageDownloader** | `services/image_downloader.py` | 图片下载服务 |
 | **EmailService** | `services/email.py` | 邮件发送 |
+| **VideoThumbnail** | `services/video_thumbnail.py` | 视频关键帧缩略图（FFmpeg 提取） |
+
+### Agent 服务层（backend/app/services/agent/）
+
+| 服务 | 文件 | 描述 |
+|------|------|------|
+| **AgentGateway** | `gateway.py` | 网关主循环：Redis BRPOP 消费 + Pipeline/Chat 路由 + 睡眠调度 |
+| **AdaptationPipeline** | `pipeline.py` | 8 阶段改编管线：prepare→statistics→outline→plan→script→quality_control→merge→archive |
+| **ModelRouter** | `model_router.py` | 双模型路由：Cloud(GLM) + Local(oMLX)，支持 stream/non-stream |
+| **MemoryStack** | `memory_stack.py` | 4 层记忆栈：L0-L1 文件系统 + L2-L3 PostgreSQL，Stability 半衰期评分 |
+| **SkillsRegistry** | `skills_registry.py` | Git 式技能生命周期：fork/diff/pull/push/merge/promotion |
+| **SleepScheduler** | `sleep/scheduler.py` | 6 阶段睡眠调度器：记忆回顾→修剪→技能审查→效率优化→验证→报告 |
+| **EfficiencyOptimizer** | `sleep/efficiency_optimizer.py` | 效率自优化引擎：5 维分析（瓶颈/失败/成功/Token异常/模型对比） |
+| **AutoUpdater** | `sleep/auto_updater.py` | 安全自动更新：仅修改 prompt 注释 + YAML 配置建议 |
+| **MCP Bridge** | `mcp/bridge.py` | MCP stdio 桥接：5 Tools via Redis Pub/Sub |
+
+### Agent 角色（9 个）
+
+| 角色 | 文件 | 职责 | 模型 |
+|------|------|------|------|
+| **ProducerAgent** | `agents/producer.py` | 全局编排、状态机、调度 | Qwen3-30B / GLM-5 |
+| **ScreenwriterAgent** | `agents/screenwriter.py` | 剧本、对白、角色塑造 | GLM-4-9B / GLM-5 |
+| **DirectorAgent** | `agents/director.py` | 分镜规划、镜头语言 | GLM-4-9B / GLM-5 |
+| **ArtDirectorAgent** | `agents/art_director.py` | 视觉审核 + 质量门禁 | Qwen3-7B / GLM-5 |
+| **CharacterDesignerAgent** | `agents/character_designer.py` | 角色设定图 | NanoBanana2(云端) |
+| **SceneDesignerAgent** | `agents/scene_designer.py` | 场景背景图 | NanoBanana2(云端) |
+| **VoiceDirectorAgent** | `agents/voice_director.py` | TTS 配音 + 情绪标注 | oMLX 本地 / GLM-TTS |
+| **EditorAgent** | `agents/editor.py` | 视频合成 + 转场 | Seedance(云端) |
+| **ComposerAgent** | `agents/composer.py` | BGM 配乐 | MiniMax Music(云端) |
 
 ### Providers（AI 服务提供商）
 
@@ -468,7 +370,7 @@ graph TD
 | **Wuyinkeji** | `providers/wuyinkeji.py` | 速创 API（NanoBanana 系列） |
 | **Caohua-Jimeng** | `providers/caohua_jimeng.py` | 即梦 API |
 
-### 数据模型（19 个）
+### 数据模型（18 文件 / 26 类）
 
 | 模型 | 文件 | 描述 |
 |------|------|------|
@@ -489,6 +391,7 @@ graph TD
 | **Tag** | `models/tag.py` | 标签 |
 | **TvcWorkflowConfig** | `models/tvc_config.py` | TVC 工作流配置（global/user scope） |
 | **TvcProject / TvcProjectShot** | `models/tvc_project.py` | TVC 项目 + 镜头（项目级组织，关联文案→剧本→镜头→成片） |
+| **AgentSession / AgentMemory / AgentTask / AgentExecutionLog / SystemSkill / UserSkill / SkillPromotionRequest** | `models/agent.py` | Agent 系统 7 模型：会话 + 记忆(L0-L3) + 任务 + 执行日志 + 技能(系统/用户/晋升) |
 
 ---
 
@@ -557,6 +460,6 @@ SECRET_KEY=...
 ---
 
 **文档维护**: 本文档应随项目更新同步维护
-**最后更新**: 2026-05-17
-**扫描覆盖率**: 100%（530+ 核心文件）
+**最后更新**: 2026-05-20
+**扫描覆盖率**: 100%（1012 源文件）
 **生成者**: BB小子 🤙

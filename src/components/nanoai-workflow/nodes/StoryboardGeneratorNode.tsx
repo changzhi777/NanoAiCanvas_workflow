@@ -260,7 +260,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
           const bgmPrompt = `${bgmBase}，无歌词，${params.videoDuration * vCount || 30}秒`
           const reqId = await generateMusic({ prompt: bgmPrompt })
           generatedBgmUrl = await pollMusicResult(reqId)
-        } catch {
+        } catch (e) { console.warn('[StoryboardGeneratorNode.tsx]', e)
           // BGM 生成失败不阻断流程
         }
       }
@@ -305,7 +305,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
                 version: 'v1',
               }, token)
               saved++
-            } catch {}
+            } catch (e) { console.warn('[StoryboardGeneratorNode.tsx]', e) }
           }
           if (saved > 0) toast.success(`${saved} 个视频已保存到资产库`)
         }
@@ -328,7 +328,7 @@ export const StoryboardGeneratorNode = ({ id, data }: NodeProps<StoryboardGenera
       a.download = `nanoai_${idx + 1}_${Date.now()}.${ext}`
       a.click()
       URL.revokeObjectURL(blobUrl)
-    } catch {
+    } catch (e) { console.warn('[StoryboardGeneratorNode.tsx]', e)
       const a = document.createElement('a')
       a.href = url
       a.download = `nanoai_${idx + 1}.${ext}`

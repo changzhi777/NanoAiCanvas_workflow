@@ -1,12 +1,42 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { getChatWsUrl } from '@/lib/api/chat-api'
-import type { Attachment, MessageType } from '@/lib/api/chat-api'
+import type { Attachment, MessageType, ChatMessage } from '@/lib/api/chat-api'
+
+interface ChatWsMessage {
+  type: 'new_message' | 'message_read' | 'online_status' | 'conversation_deleted'
+  data: Record<string, unknown>
+}
+
+interface ChatWsMessageEvent {
+  type: 'new_message'
+  message: ChatMessage
+}
+
+interface ChatWsReadEvent {
+  type: 'message_read'
+  conversation_id: string
+  message_ids: string[]
+}
+
+interface ChatWsOnlineEvent {
+  type: 'online_status'
+  user_id: string
+  online: boolean
+}
+
+interface ChatWsDeleteEvent {
+  type: 'conversation_deleted'
+  conversation_id: string
+}
+
+type ChatWsPayload = ChatWsMessageEvent | ChatWsReadEvent | ChatWsOnlineEvent | ChatWsDeleteEvent
 
 interface UseChatSocketOptions {
   userId: string | null
-  onMessage?: (payload: any) => void
-  onRead?: (payload: any) => void
-  onOnlineStatus?: (payload: any) => void
+  onMessage?: (payload: ChatWsMessageEvent) => void
+  onRead?: (payload: ChatWsReadEvent) => void
+  onOnlineStatus?: (payload: ChatWsOnlineEvent) => void
+  onConversationDeleted?: (payload: ChatWsDeleteEvent) => void
   enabled?: boolean
 }
 
@@ -18,14 +48,15 @@ export function useChatSocket({
   onMessage,
   onRead,
   onOnlineStatus,
+  onConversationDeleted,
   enabled = true,
 }: UseChatSocketOptions) {
   const wsRef = useRef<WebSocket | null>(null)
-  const callbacksRef = useRef({ onMessage, onRead, onOnlineStatus })
+  const callbacksRef = useRef({ onMessage, onRead, onOnlineStatus, onConversationDeleted })
   const retryRef = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
 
-  callbacksRef.current = { onMessage, onRead, onOnlineStatus }
+  callbacksRef.current = { onMessage, onRead, onOnlineStatus, onConversationDeleted }
 
   const connect = useCallback(() => {
     if (!userId || !enabled) return
@@ -45,7 +76,10 @@ export function useChatSocket({
         if (type === 'message') callbacksRef.current.onMessage?.(payload)
         else if (type === 'read') callbacksRef.current.onRead?.(payload)
         else if (type === 'online_status') callbacksRef.current.onOnlineStatus?.(payload)
-      } catch {}
+        else if (type === 'conversation_deleted') callbacksRef.current.onConversationDeleted?.(payload)
+      } catch (e) {
+        console.warn('[ChatWS] failed to parse message:', e)
+      }
     }
 
     ws.onclose = () => {

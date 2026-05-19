@@ -570,8 +570,8 @@ export interface ParamSchema {
   key: string;
   label: string;
   type: 'text' | 'textarea' | 'number' | 'select' | 'toggle';
-  defaultValue?: any;
-  options?: { label: string; value: any }[];
+  defaultValue?: string | number | boolean;
+  options?: { label: string; value: string | number }[];
   placeholder?: string;
   description?: string;
   required?: boolean;
@@ -580,7 +580,7 @@ export interface ParamSchema {
 export const ParamEditor = memo(({ params, onChange, schema }: ParamEditorProps) => {
   const { isDark } = useTheme();
 
-  const updateParam = (key: string, value: any) => {
+  const updateParam = (key: string, value: string | number | boolean) => {
     onChange({ ...params, [key]: value });
   };
 

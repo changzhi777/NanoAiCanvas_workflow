@@ -39,7 +39,8 @@ export function TvcProjectDetail({ projectId, onBack, className }: TvcProjectDet
     try {
       const data = await tvcProjectsApi.get(projectId)
       setProject(data)
-    } catch {
+    } catch (e) {
+      console.warn("[TvcProjectDetail] Error:", e)
       toast.error('加载项目失败')
     } finally {
       setIsLoading(false)
@@ -121,7 +122,7 @@ export function TvcProjectDetail({ projectId, onBack, className }: TvcProjectDet
           {/* 角色 */}
           {characters.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {characters.map((c: any, i: number) => (
+              {characters.map((c: { name: string; role: string }, i: number) => (
                 <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 text-[10px]">
                   {c.name} ({c.role})
                 </span>
@@ -132,7 +133,7 @@ export function TvcProjectDetail({ projectId, onBack, className }: TvcProjectDet
           {/* 场景列表 */}
           {scenes.length > 0 && (
             <div className="space-y-1">
-              {scenes.map((s: any, i: number) => (
+              {scenes.map((s: { scene_number?: number; description?: string; location?: string; time_of_day?: string }, i: number) => (
                 <div key={i} className="text-[11px] text-muted-foreground">
                   <span className="text-primary/70">场景 {s.scene_number || i + 1}:</span>{' '}
                   {s.description || s.location}

@@ -7,6 +7,8 @@ import ReactFlow, {
   MiniMap,
   NodeTypes,
   Connection,
+  Edge,
+  NodeChange,
   useNodesState,
   useEdgesState,
   useReactFlow,
@@ -20,7 +22,7 @@ import '@/styles/edge-enhanced.css';
 import '@/styles/handle-enhanced.css';
 import '@/components/canvas/canvas.css'; // 关键：导入画布基础样式！
 
-import { useNanoaiWorkflowStore, WorkflowNode } from '@/stores/nanoaiWorkflowStore';
+import { useNanoaiWorkflowStore, WorkflowNode, WorkflowEdge } from '@/stores/nanoaiWorkflowStore';
 import { nodeTypes } from './nodes';
 import CustomEdge from './nodes/CustomEdge';
 import { NanoaiWorkflowToolbar } from './NanoaiWorkflowToolbar';
@@ -39,6 +41,8 @@ import { ExportDialog } from './ui/ExportDialog';
 import { DeveloperTools } from './ui/DeveloperTools';
 import { WorkflowPropertiesPanel } from './ui/WorkflowPropertiesPanel';
 import { ImportConfirmDialog } from './ui/ImportConfirmDialog';
+import { AgentChatPanel } from './ui/AgentChatPanel';
+import { useAuthStore } from '@/stores/remoteStore';
 import { useToast } from '@/hooks/useToast';
 
 class CanvasErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -60,7 +64,7 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { error: Er
   }
 }
 import { cn } from '@/lib/utils';
-import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X } from 'lucide-react';
+import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X, Bot } from 'lucide-react';
 import type { WorkflowNodeType, NodePort } from '@/stores/nanoaiWorkflowStore';
 
 export type PageKey = 'canvas' | 'workflow' | 'nano2'
@@ -140,6 +144,8 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   const [showTemplates, setShowTemplates] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
+  const [showAgentChat, setShowAgentChat] = useState(false);
+  const agentUserId = useAuthStore((s) => s.user?.id ? String(s.user.id) : '');
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<{
@@ -197,30 +203,25 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     const storageVersion = localStorage.getItem('workflow-storage-version');
     const CURRENT_VERSION = '1.0'; // 版本号，用于触发清理
 
-    console.log('🔍 检查存储数据版本:', { current: storageVersion, expected: CURRENT_VERSION });
 
     // 如果版本不匹配或不存在，清理所有数据
     if (storageVersion !== CURRENT_VERSION) {
-      console.log('🧹 版本不匹配或首次加载，清理旧数据...');
       localStorage.removeItem('workflow-template-loaded');
       localStorage.removeItem('workflow-force-reload');
       localStorage.removeItem('nanoai-workflow-storage');
       localStorage.removeItem('sidebar-collapsed');
       localStorage.setItem('workflow-storage-version', CURRENT_VERSION);
-      console.log('✅ 数据清理完成');
     }
 
     // 强制首次加载（移除旧的标记）
     localStorage.removeItem('workflow-template-loaded');
 
     // 检查节点数量
-    console.log('🔍 检查节点状态:', { nodeCount: storeNodes.length, templateCount: templates.length });
 
     // 如果没有节点，加载默认模板
     if (storeNodes.length === 0 && templates.length > 0) {
       const defaultTemplate = templates.find(t => t.id === 'tvc-video-01') || templates.find(t => t.id === 'storyboard-shot-a-workflow') || templates[0];
       if (defaultTemplate) {
-        console.log('🚀 自动加载默认模板:', defaultTemplate.name);
 
         // 使用 requestAnimationFrame 确保 store 完全初始化
         requestAnimationFrame(() => {
@@ -228,11 +229,9 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
           localStorage.setItem('workflow-template-loaded', 'true');
           localStorage.setItem('workflow-storage-version', CURRENT_VERSION);
           toast.success(`已加载默认模板：${defaultTemplate.name}`);
-          console.log('✅ 加载完成，节点数:', defaultTemplate.nodes.length);
         });
       }
     } else {
-      console.log('✅ 已有节点数据，跳过自动加载');
     }
   }, []); // 只在首次挂载时执行
 
@@ -256,12 +255,12 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     const runningNodes = new Set(
       nodes
         .filter(n => n.data.status === 'running')
-        .flatMap(n => n.data.outputs?.map((o: any) => o.id) || [])
+        .flatMap(n => n.data.outputs?.map((o) => o.id) || [])
     );
 
-    setEdges((eds: any[]) =>
-      eds.map((edge: any) => {
-        const isRunning = runningNodes.has(edge.sourceHandle);
+    setEdges((eds: Edge[]) =>
+      eds.map((edge) => {
+        const isRunning = !!edge.sourceHandle && runningNodes.has(edge.sourceHandle);
         const targetNode = nodes.find(n => n.id === edge.target);
         const isSuccess = targetNode?.data.status === 'success';
         const isError = targetNode?.data.status === 'error';
@@ -357,10 +356,10 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
   }, [storeNodes, storeEdges, setNodes, setEdges, fitView]);
 
   // 处理节点变化（包括拖拽）
-  const handleNodesChange = useCallback((changes: any) => {
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
     onNodesChange(changes);
     // 标记正在拖拽
-    const hasPositionChange = changes.some((c: any) => c.type === 'position');
+    const hasPositionChange = changes.some((c) => c.type === 'position');
     if (hasPositionChange) {
       isDraggingRef.current = true;
     }
@@ -413,10 +412,12 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
     const sourceNode = nodes.find(n => n.id === connection.source);
     const sourceType = sourceNode?.type || 'input_text';
 
-    const edge: any = {
+    const edge = {
       ...connection,
       id: `edge-${Date.now()}`,
-      type: 'custom', // 使用自定义 CustomEdge 组件
+      source: connection.source!,
+      target: connection.target!,
+      type: 'custom',
       animated: false,
       className: cn(
         'react-flow__edge',
@@ -434,7 +435,9 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
       },
       label: '',
     };
-    addStoreEdge(edge);
+    if (connection.source && connection.target) {
+      addStoreEdge(edge as WorkflowEdge);
+    }
   }, [addStoreEdge, nodes]);
 
   // 自定义节点类型
@@ -1068,6 +1071,16 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
             <Search className="w-5 h-5" />
           </button>
 
+          <button onClick={() => setShowAgentChat(!showAgentChat)}
+            className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
+              isSidebarCollapsed ? 'left-[104px]' : 'left-[360px]',
+              showAgentChat
+                ? 'bg-primary/90 border border-primary/30 text-white'
+                : isDark ? 'bg-[#171717]/95 border border-white/10 text-slate-300' : 'bg-white/90 border border-gray-200 text-gray-700')}
+            style={{ bottom: '4px' }} title="Agent 对话 (Cmd+Shift+A)">
+            <Bot className="w-5 h-5" />
+          </button>
+
           <button onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className={cn('fixed z-50 p-2 rounded-lg backdrop-blur-xl shadow-lg transition-all duration-200 hover:scale-110 active:scale-95',
               isSidebarCollapsed ? 'left-16' : 'left-72',
@@ -1099,6 +1112,33 @@ function NanoaiWorkflowCanvasInner({ className }: NanoaiWorkflowCanvasProps) {
           style={{ top: 'calc(64px + 16px)' }}>
           <NodeSearchFilter nodes={nodes} onClose={() => setShowSearch(false)} />
         </div>
+      )}
+
+      {/* Agent 对话面板 */}
+      {showAgentChat && !isZenMode && agentUserId && (
+          <div className={cn(
+            'fixed z-50 w-80 rounded-xl backdrop-blur-xl border overflow-hidden',
+            'transition-all duration-300',
+            isDark
+              ? 'bg-slate-900/80 border-white/[0.06] shadow-lg shadow-black/20'
+              : 'bg-white/90 border-gray-100 shadow-lg shadow-black/5',
+          )} style={{ bottom: '16px', right: '16px', height: '480px' }}>
+            <div className={cn(
+              'flex items-center justify-between px-3 py-2 border-b',
+              isDark ? 'border-white/[0.04]' : 'border-gray-50'
+            )}>
+              <span className={cn('text-xs font-medium', isDark ? 'text-white/80' : 'text-gray-700')}>
+                Agent Team
+              </span>
+              <button onClick={() => setShowAgentChat(false)}
+                className={cn('text-xs', isDark ? 'text-white/40 hover:text-white/60' : 'text-gray-400 hover:text-gray-600')}>
+                ✕
+              </button>
+            </div>
+            <div className="h-[calc(100%-32px)]">
+              <AgentChatPanel userId={agentUserId} isDark={isDark} />
+            </div>
+          </div>
       )}
 
       {/* 新手引导 */}

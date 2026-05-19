@@ -18,14 +18,22 @@ from app.api.v2 import glm_proxy as v2_glm
 from app.api.v2 import minimax as v2_minimax
 from app.api.v2 import app_visibility as v2_app_visibility
 from app.api.v2 import workflow_tasks as v2_workflow_tasks
+from app.api.v2 import generation_log as v2_genlog
+from app.api.v2 import tvc_config as v2_tvc_config
+from app.api.v2 import library as v2_library
+from app.api.v2 import tvc_projects as v2_tvc_projects
+from app.api.v2 import agent as v2_agent
 from app.services.skills_worker import WorkerManager
 from app.services.health_checker import run_health_check, mark_stale_keys
+from app.services.agent.gateway import gateway as agent_gateway
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
+
     print("🚀 NanoAI Backend starting up...")
     worker_mgr = WorkerManager()
     await worker_mgr.start_all(["gpt_image_2"])
@@ -33,15 +41,22 @@ async def lifespan(app: FastAPI):
     await chat.manager.start_subscriber()
     print("✅ Chat Redis subscriber started")
 
-    import asyncio
-    health_task = asyncio.create_task(run_health_check())
-    stale_task = asyncio.create_task(mark_stale_keys())
+    _background_tasks: set[asyncio.Task] = set()
+    for coro in (run_health_check(), mark_stale_keys()):
+        t = asyncio.create_task(coro)
+        _background_tasks.add(t)
+        t.add_done_callback(_background_tasks.discard)
     print("✅ API Key health checker started")
+
+    await agent_gateway.start()
+    print("✅ Agent Gateway started")
 
     yield
 
-    health_task.cancel()
-    stale_task.cancel()
+    for t in _background_tasks:
+        t.cancel()
+    await agent_gateway.stop()
+    print("👋 Agent Gateway stopped")
     await chat.manager.stop_subscriber()
     print("👋 Chat Redis subscriber stopped")
     print("👋 Stopping Skills Workers...")
@@ -52,7 +67,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="NanoAI Canvas API",
     description="Backend API for NanoAi Canvas - Workflow & Asset Management",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -89,17 +104,11 @@ app.include_router(v2_glm.router)
 app.include_router(v2_minimax.router)
 app.include_router(v2_app_visibility.router)
 app.include_router(v2_workflow_tasks.router)
-from app.api.v2 import generation_log as v2_genlog
 app.include_router(v2_genlog.router)
-
-from app.api.v2 import tvc_config as v2_tvc_config
 app.include_router(v2_tvc_config.router)
-
-from app.api.v2 import library as v2_library
 app.include_router(v2_library.router)
-
-from app.api.v2 import tvc_projects as v2_tvc_projects
 app.include_router(v2_tvc_projects.router)
+app.include_router(v2_agent.router)
 
 
 @app.websocket("/ws/tasks/{task_id}")
@@ -142,7 +151,7 @@ app.mount("/asset-uploads", StaticFiles(directory=asset_upload_dir), name="asset
 
 @app.get("/")
 async def root():
-    return {"message": "NanoAI Canvas API", "version": "0.1.0"}
+    return {"message": "NanoAI Canvas API", "version": "0.2.0"}
 
 
 @app.get("/health")

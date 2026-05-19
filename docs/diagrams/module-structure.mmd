@@ -1,0 +1,58 @@
+graph TD
+    A["NanoAiCanvas<br/>v2.12.350"] --> B["src/"]
+    A --> BA["backend/"]
+    A --> GS["garden-skills/"]
+    A --> CA["cli-agent/"]
+
+    B --> C["components/"]
+    B --> D["stores/ (23)"]
+    B --> E["store/ Redux"]
+    B --> F["hooks/ (18)"]
+    B --> G["lib/api/ (43+)"]
+    B --> H["locales/"]
+    B --> I["types/"]
+    B --> J["app/ (页面路由)"]
+    B --> K["styles/"]
+
+    C --> C1["nanoai-workflow/"]
+    C --> C2["admin/"]
+    C --> C3["storyboard/"]
+    C --> C4["canvas/"]
+    C --> C5["panels/"]
+    C --> C6["toolbar/"]
+    C --> C7["collaboration/"]
+    C --> C8["ui/"]
+    C --> C9["edges/"]
+    C --> C10["animations/"]
+    C --> C11["accessibility/"]
+    C --> C12["layout/"]
+    C --> C13["timeline/"]
+    C --> C14["nodes/"]
+    C --> C15["HistoryPanelTabs/"]
+
+    BA --> BA1["app/api/ (V1)"]
+    BA --> BA2["app/api/v2/ (V2)"]
+    BA --> BA3["app/models/ (17)"]
+    BA --> BA4["app/services/"]
+    BA --> BA5["app/providers/"]
+    BA --> BA6["app/cli/"]
+    BA --> BA7["app/core/"]
+    BA --> BA8["alembic/ (15)"]
+
+    GS --> GS1["gpt-image-2<br/>90+ 参考模板"]
+    GS --> GS2["kb-retriever"]
+    GS --> GS3["web-design-engineer"]
+    GS --> GS4["web-video-presentation"]
+
+    CA --> CA1["core/ffmpeg<br/>7 操作封装"]
+    CA --> CA2["core/pipeline<br/>4 阶段管线"]
+    CA --> CA3["mcp/server<br/>MCP 4 Tools"]
+    CA --> CA4["api/server<br/>Fastify HTTP"]
+    CA --> CA5["skill/interface<br/>Skill 标准接口"]
+
+    style A fill:#1a6688,color:#fff
+    style B fill:#1a6688,color:#ddd
+    style BA fill:#229933,color:#fff
+    style GS fill:#cc6622,color:#fff
+    style CA fill:#882255,color:#fff
+    style C1 fill:#229933,color:#fff

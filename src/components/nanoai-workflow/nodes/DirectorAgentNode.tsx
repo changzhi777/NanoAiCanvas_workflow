@@ -84,14 +84,14 @@ const DirectorAgentNode = memo((props: { data: DirectorAgentNodeData }) => {
         params={data.params || {}}
         onChange={(newParams) => {
           // 更新参数的逻辑
-          console.log('更新参数:', newParams);
+          // params updated
         }}
         schema={paramSchema}
       />
 
       <ExecuteButton
         onExecute={() => {
-          console.log('执行导演Agent决策');
+          // executing director agent
         }}
         status={data.status}
         label="执行决策"

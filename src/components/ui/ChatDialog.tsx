@@ -107,7 +107,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     try {
       const convs = await getConversations()
       setConversations(convs)
-    } catch {}
+    } catch (e) {
+      console.warn('[ChatDialog] Failed to load conversations:', e)
+    }
   }, [token, setConversations])
 
   const loadNotifications = useCallback(async () => {
@@ -115,7 +117,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     try {
       const data = await getUserNotifications(user.id, 1, 30)
       setNotifications(data.notifications, data.total, data.unread_count)
-    } catch {}
+    } catch (e) {
+      console.warn('[ChatDialog] Failed to load notifications:', e)
+    }
   }, [user?.id, setNotifications])
 
   const refreshUsers = useCallback(async () => {
@@ -123,7 +127,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
     try {
       const d = await getChatUsers()
       setUsers(d.users)
-    } catch {} finally {
+    } catch (e) {
+      console.warn('[ChatDialog] Failed to refresh users:', e)
+    } finally {
       setRefreshingUsers(false)
     }
   }, [setUsers])

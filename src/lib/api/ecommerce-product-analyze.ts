@@ -88,9 +88,6 @@ export async function analyzeEcommerceProduct(options: AnalyzeProductOptions): P
   const { imageBase64, apiKey, model = 'glm-5v-turbo' } = options
 
   // 调试：验证 API Key 格式
-  console.log('[analyzeEcommerceProduct] model:', model)
-  console.log('[analyzeEcommerceProduct] apiKey exists:', !!apiKey)
-  console.log('[analyzeEcommerceProduct] apiKey prefix:', apiKey?.substring(0, 10) + '...')
 
   const imageUrl = buildImageUrl(imageBase64)
 

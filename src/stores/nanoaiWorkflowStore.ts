@@ -812,7 +812,7 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
 
           // 如果布局质量分数低于 70 分，应用自动布局
           if (score < 70) {
-            console.log('布局质量分数:', score, '问题:', issues);
+            // layout quality score: score, issues
             layoutedNodes = smartAutoLayout(layoutedNodes, layoutedEdges, {
               animate: true, // 启用布局动画
             });

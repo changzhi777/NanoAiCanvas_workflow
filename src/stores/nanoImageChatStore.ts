@@ -114,9 +114,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   createNewSession: async () => {
     const user = useAuthStore.getState().user
-    console.log('[createNewSession] user state:', user)
     if (!user?.id) {
-      console.error('[createNewSession] User not authenticated, state:', useAuthStore.getState())
       throw new Error('User not authenticated')
     }
 

@@ -89,14 +89,14 @@ const ScreenwriterAgentNode = memo((props: { data: ScreenwriterAgentNodeData }) 
       <ParamEditor
         params={data.params || {}}
         onChange={(newParams) => {
-          console.log('更新参数:', newParams);
+          // params updated
         }}
         schema={paramSchema}
       />
 
       <ExecuteButton
         onExecute={() => {
-          console.log('执行编剧Agent处理');
+          // executing screenwriter agent
         }}
         status={data.status}
         label="执行处理"

@@ -1,4 +1,5 @@
 """
+import logging; logger = logging.getLogger(__name__)
 V2 图片生成 API 路由
 支持多 Provider、多模型、API Key 路由
 """
@@ -230,7 +231,7 @@ async def get_task_status(
                             progress=100 if task.status == "success" else (30 if old_status == "pending" else 0)
                         )
                     except Exception as pub_err:
-                        print(f"Redis publish error: {pub_err}")
+                        logger.warning(f"Redis publish error: {pub_err}")
 
                     return TaskStatusResponse(
                         task_id=task.task_id,
@@ -239,7 +240,7 @@ async def get_task_status(
                         error=provider_status.get("error"),
                     )
         except Exception as e:
-            print(f"Provider status check error: {e}")
+            logger.warning(f"Provider status check error: {e}")
             import traceback
             traceback.print_exc()
 
@@ -275,7 +276,7 @@ async def get_task_status(
                         status = await provider.get_task_status(task_id)
                         return TaskStatusResponse(**status)
             except Exception as e:
-                print(f"Provider error: {e}")
+                logger.warning(f"Provider error: {e}")
 
         raise HTTPException(status_code=404, detail="Task not found")
 

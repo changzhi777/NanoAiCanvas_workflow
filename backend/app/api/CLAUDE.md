@@ -6,7 +6,7 @@
 
 > 后端 API 路由模块，包含认证、资产管理、工作流、积分、聊天、通知等核心 API
 
-**最后更新**: 2026-05-17
+**最后更新**: 2026-05-18
 **维护者**: NanoAiCanvas Backend Team
 
 ---
@@ -477,6 +477,11 @@ A: 通过 Redis Pub/Sub。发送端发布消息到频道，接收端（Connectio
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-18
+- V2 API 新增 seedance_constants.py Seedance 常量配置
+- V2 API 新增 glm_proxy.py 视频剪辑 Agent 端点
+- V2 路由文件从 16 个扩展到 17 个
 
 ### 2026-05-17
 - V2 API 新增 tvc_projects.py TVC 项目管理路由

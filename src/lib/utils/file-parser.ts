@@ -8,16 +8,33 @@ import type {
   StoryboardCharacter,
   StoryboardScene,
   DialogueLine,
+  DialogueEmotion,
+  DialogueTone,
+  CharacterRole,
 } from '@/stores/nanoImageStoryboardStore'
+import type {
+  RawJsonDialogue,
+  RawJsonScene,
+  RawJsonCharacter,
+  RawJsonScript,
+} from '@/types/storyboard-raw'
 
 // 类型别名
 type StoryboardData = StoryboardScript
 
-// 解析结果中的剧本数据结构（旧格式兼容）
+// Parsed markdown script result
+interface ParsedMarkdownScript {
+  title: string
+  characters: StoryboardCharacter[]
+  scenes: Array<{ sceneName: string; description: string; dialogues: Array<{ character: string; line: string }> }>
+}
+
+// Parse result union type
+type ParseResult = { type: 'storyboard'; data: StoryboardData } | { type: 'script'; data: ParsedMarkdownScript }
 
 // ============ 解析缓存 ============
 
-const parseCache = new Map<string, { data: any; timestamp: number }>()
+const parseCache = new Map<string, { data: unknown; timestamp: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
 
 function getCached<T>(key: string): T | null {
@@ -29,7 +46,7 @@ function getCached<T>(key: string): T | null {
   return null
 }
 
-function setCache(key: string, data: any): void {
+function setCache(key: string, data: unknown): void {
   parseCache.set(key, { data, timestamp: Date.now() })
 }
 
@@ -73,7 +90,7 @@ export function parseMarkdownScript(content: string): {
   }
 
   let currentSection = ''
-  let currentScene: any = null
+  let currentScene: ParsedMarkdownScript['scenes'][number] | null = null
 
   for (const line of lines) {
     const trimmedLine = line.trim()
@@ -291,7 +308,7 @@ export function parseMarkdownStoryboard(content: string): StoryboardData | null 
  */
 export function parseJsonStoryboard(content: string): StoryboardData | null {
   try {
-    const data = JSON.parse(content)
+    const data: RawJsonScript = JSON.parse(content)
 
     // 验证必要字段
     if (!data.scenes || !Array.isArray(data.scenes)) {
@@ -302,19 +319,19 @@ export function parseJsonStoryboard(content: string): StoryboardData | null {
       title: data.title || '分镜头脚本',
       totalDuration: data.totalDuration || '0:00',
       synopsis: data.synopsis || '',
-      scenes: data.scenes.map((scene: any, index: number) => ({
+      scenes: data.scenes.map((scene: RawJsonScene, index: number) => ({
         id: scene.id || index + 1,
         shotType: scene.shotType || '中景',
         duration: scene.duration || '0:30',
         description: scene.description || '',
         camera: scene.camera || '固定镜头',
-        dialogues: (scene.dialogues || []).map((d: any) => ({
+        dialogues: (scene.dialogues || []).map((d: RawJsonDialogue) => ({
           characterId: d.characterId || '',
           characterName: d.characterName || '未知',
           text: d.text || '',
-          emotion: d.emotion || 'neutral',
+          emotion: (d.emotion || 'neutral') as DialogueEmotion,
           emotionIntensity: d.emotionIntensity ?? 5,
-          tone: d.tone || 'normal',
+          tone: (d.tone || 'normal') as DialogueTone,
           speed: d.speed ?? 1.0,
           pause: d.pause ?? 0,
           stageDirection: d.stageDirection || '',
@@ -322,10 +339,10 @@ export function parseJsonStoryboard(content: string): StoryboardData | null {
         narrator: scene.narrator || '',
         imageUrl: scene.imageUrl,
       })),
-      characters: (data.characters || []).map((char: any, index: number) => ({
+      characters: (data.characters || []).map((char: RawJsonCharacter, index: number) => ({
         id: char.id || `char_${index + 1}`,
         name: char.name || '',
-        role: char.role || 'supporting',
+        role: (char.role || 'supporting') as CharacterRole,
         description: char.description || '',
         appearance: {
           age: char.appearance?.age || '未知',
@@ -349,13 +366,13 @@ export function parseJsonStoryboard(content: string): StoryboardData | null {
           speakingStyle: char.personality?.speakingStyle || '正常',
         },
       })),
-      allDialogues: (data.allDialogues || []).map((d: any) => ({
+      allDialogues: (data.allDialogues || []).map((d: RawJsonDialogue) => ({
         characterId: d.characterId || '',
         characterName: d.characterName || '未知',
         text: d.text || '',
-        emotion: d.emotion || 'neutral',
+        emotion: (d.emotion || 'neutral') as DialogueEmotion,
         emotionIntensity: d.emotionIntensity ?? 5,
-        tone: d.tone || 'normal',
+        tone: (d.tone || 'normal') as DialogueTone,
         speed: d.speed ?? 1.0,
         pause: d.pause ?? 0,
         stageDirection: d.stageDirection || '',
@@ -551,10 +568,7 @@ export function readFile(file: File): Promise<string> {
 /**
  * 解析上传的文件（带缓存）
  */
-export async function parseUploadedFile(file: File): Promise<{
-  type: 'script' | 'storyboard'
-  data: any
-} | null> {
+export async function parseUploadedFile(file: File): Promise<ParseResult | null> {
   const content = await readFile(file)
 
   // JSON 文件
@@ -577,7 +591,7 @@ export async function parseUploadedFile(file: File): Promise<{
   if (file.name.endsWith('.md')) {
     // 检查缓存
     const cacheKey = generateCacheKey(content, 'md')
-    const cached = getCached<{ type: 'script' | 'storyboard'; data: any }>(cacheKey)
+    const cached = getCached<ParseResult>(cacheKey)
     if (cached) return cached
 
     // 尝试解析为分镜头表格

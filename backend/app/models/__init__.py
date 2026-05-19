@@ -37,6 +37,22 @@ from app.models.api_key import (
     APIKey,
     ModelRoute,
 )
+from app.models.agent import (
+    AgentSession,
+    AgentMemory,
+    AgentTask,
+    AgentExecutionLog,
+    SystemSkill,
+    UserSkill,
+    SkillPromotionRequest,
+    PipelineType,
+    SessionStatus,
+    TaskStatus,
+    SkillStatus,
+    UserSkillStatus,
+    PromotionStatus,
+    MemoryLayer,
+)
 
 __all__ = [
     "User",
@@ -86,4 +102,18 @@ __all__ = [
     "TvcProjectShot",
     "TvcProjectStatus",
     "TvcShotStatus",
+    "AgentSession",
+    "AgentMemory",
+    "AgentTask",
+    "AgentExecutionLog",
+    "SystemSkill",
+    "UserSkill",
+    "SkillPromotionRequest",
+    "PipelineType",
+    "SessionStatus",
+    "TaskStatus",
+    "SkillStatus",
+    "UserSkillStatus",
+    "PromotionStatus",
+    "MemoryLayer",
 ]

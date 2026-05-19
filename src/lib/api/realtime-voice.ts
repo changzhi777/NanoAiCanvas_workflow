@@ -234,7 +234,6 @@ export class RealtimeVoiceClient {
   private handleMessage(data: string): void {
     try {
       const event = JSON.parse(data) as ServerEvent
-      console.log('[RealtimeVoice] Received event:', event.type)
 
       switch (event.type) {
         case 'session.created':
@@ -296,7 +295,6 @@ export class RealtimeVoiceClient {
           break
 
         default:
-          console.log('[RealtimeVoice] Unhandled event type:', event.type)
       }
     } catch (error) {
       console.error('[RealtimeVoice] Failed to parse message:', error)

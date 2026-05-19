@@ -35,7 +35,8 @@ export function TvcProjectPanel({ onSelectProject, className }: TvcProjectPanelP
     try {
       const data = await tvcProjectsApi.list({ limit: 50 })
       setProjects(data.items)
-    } catch {
+    } catch (e) {
+      console.warn("[TvcProjectPanel] Error:", e)
       // 未登录或网络错误，静默处理
     } finally {
       setIsLoading(false)

@@ -21,7 +21,7 @@ export interface SubtaskInfo {
   status: 'pending' | 'running' | 'success' | 'error';
   progress: number;
   message?: string;
-  result?: any;
+  result?: Record<string, unknown>;
   error?: string;
 }
 
@@ -31,7 +31,7 @@ export interface NodeProgressInfo {
   status: 'pending' | 'running' | 'success' | 'error';
   progress: number;
   subtasks?: SubtaskInfo[];
-  result?: any;
+  result?: Record<string, unknown>;
   error?: string;
   elapsed_ms?: number;
 }

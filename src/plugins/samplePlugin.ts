@@ -171,6 +171,6 @@ export function installSamplePlugin() {
   if (typeof window !== 'undefined' && (window as any).usePluginStore) {
     const store = (window as any).usePluginStore.getState();
     store.registerPlugin(textProcessingPlugin);
-    console.log('Sample plugin installed successfully!');
+    // plugin installed
   }
 }

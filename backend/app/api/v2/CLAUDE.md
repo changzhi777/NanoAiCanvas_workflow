@@ -6,7 +6,7 @@
 
 > V2 版本 API，包含 AI 代理、图片生成、工作流任务、管理后台等业务逻辑路由
 
-**最后更新**: 2026-05-17
+**最后更新**: 2026-05-18
 **维护者**: NanoAiCanvas Backend Team
 
 ---
@@ -17,8 +17,7 @@ V2 API 模块负责：
 - AI 服务代理（GLM、MiniMax）— API Key 安全存储在后端
 - 图片生成任务（多 Provider、多模型路由）
 - 工作流任务执行引擎（TVC 任务）
-- TVC 执行引擎（积分扣退 + 批量并行编排）
-- TVC Provider 工厂（3 个图片 Provider + 3 个视频 Provider）
+- TVC Provider 工厂（3 个图片 Provider + Seedance 视频 Provider）
 - TVC 视频结果轮询（GLM/Seedance/MiniMax Hailuo）
 - TVC 工作流配置管理（全局配置 + 用户配置 + 配置解析）
 - TVC 项目管理（CRUD + 镜头管理 + 任务结果关联）
@@ -56,12 +55,13 @@ backend/app/api/v2/
 ├── CLAUDE.md             # 本文档
 ├── workflow_tasks.py     # TVC 工作流任务（998 行）
 ├── tvc_engine.py         # TVC 执行引擎：5步编排+积分扣退+批量并行
-├── tvc_providers.py      # TVC Provider 工厂：3图片+3视频Provider
+├── tvc_providers.py      # TVC Provider 工厂：3图片+Seedance视频Provider
 ├── tvc_polling.py        # TVC 视频轮询：GLM/Seedance/MiniMax
 ├── tvc_config.py         # TVC 工作流配置：全局/用户配置管理
 ├── tvc_projects.py       # TVC 项目管理：CRUD + 镜头管理 ★ 新增
 ├── library.py            # V2 资产库：浏览/搜索/批量操作 ★ 新增
-├── glm_proxy.py          # GLM API 代理（958 行）
+├── glm_proxy.py          # GLM API 代理（958 行）+ 视频剪辑 Agent
+├── seedance_constants.py # Seedance 视频常量配置 ★ 新增
 ├── admin.py              # 管理后台 CRUD（735 行）
 ├── app_visibility.py     # 应用可见性控制（456 行）
 ├── skills.py             # Skills 任务队列（312 行）
@@ -124,7 +124,7 @@ TVC 视频制作工作流执行引擎。
 统一管理 3 个图片 Provider + 3 个视频 Provider。
 
 - **图片 Provider**: 即梦(Jimeng)、GPT-Image-2(速创)、GLM
-- **视频 Provider**: Seedance、MiniMax Hailuo、GLM CogVideoX-3
+- **视频 Provider**: Seedance（唯一视频 Provider，MiniMax/CogVideoX-3 已移除）
 - **工厂模式**: `get_image_provider(model)` / `get_video_provider(model)` 返回生成函数
 - **降级**: API Key 为空时返回 placeholder，不中断流程
 
@@ -267,6 +267,14 @@ V2 API 依赖以下后端服务：
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-18
+- Seedance 视频升级 2.0：模型 doubao-seedance-2-0-260128 + resolution/duration 参数
+- 移除 MiniMax Hailuo 和 GLM CogVideoX-3 视频 Provider，Seedance 为唯一视频 Provider
+- 新增 seedance_constants.py：Seedance 常量配置
+- glm_proxy.py 新增视频剪辑 Agent 端点：POST /tvc-video-agent + POST /tvc-video-agent/stream
+- 简化视频生成逻辑，移除冗余 fallback/provider 抽象
+- TVC 资产自动保存：生成的图片/视频自动关联资产库
 
 ### 2026-05-17
 - 新增 tvc_projects.py：TVC 项目管理 CRUD + 镜头管理

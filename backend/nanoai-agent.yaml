@@ -1,0 +1,102 @@
+# Nanoai Team8 Agent System Configuration
+# Copyright © 2026 AiHXC.Team
+
+agent:
+  name: "Nanoai Team8 Agent System"
+  version: "V0.1.0"
+  copyright: "Copyright © 2026 AiHXC.Team"
+
+gateway:
+  queue_key: "agent:task_queue"
+  ws_channel_prefix: "agent:ws:"
+  max_concurrent_tasks: 5
+
+models:
+  cloud:
+    base_url: "${GLM_API_BASE_URL}"
+    api_key: "${GLM_API_KEY}"
+    default: "glm-4-flash"
+  local:
+    # oMLX App — Apple Silicon 本地推理
+    # 启动: omlx serve --port 11434
+    # 支持 OpenAI + Anthropic 双 API 兼容
+    base_url: "http://localhost:11434/v1"
+    api_key: "local"
+    default: "qwen3:7b"
+    tier_mapping:  # Anthropic tier → local model
+      opus: "qwen3:30b"
+      sonnet: "qwen3:14b"
+      haiku: "qwen3:7b"
+
+agents:
+  producer:
+    model: "glm-4-flash"
+    tier: "cloud"
+    temperature: 0.7
+    max_tokens: 4096
+    description: "制片Agent — 全局编排、统计、质控"
+
+  screenwriter:
+    model: "glm-4-flash"
+    tier: "cloud"
+    temperature: 0.8
+    max_tokens: 4096
+    description: "编剧Agent — 大纲、剧本、对白"
+
+  director:
+    model: "glm-4-flash"
+    tier: "cloud"
+    temperature: 0.7
+    max_tokens: 4096
+    description: "导演Agent — 分镜、镜头语言"
+
+pipeline:
+  stages:
+    - name: "prepare"
+      agent: "producer"
+      timeout: 60
+    - name: "statistics"
+      agent: "producer"
+      timeout: 60
+    - name: "outline"
+      agent: "screenwriter"
+      timeout: 120
+    - name: "plan"
+      agent: "director"
+      timeout: 90
+    - name: "script"
+      agent: "screenwriter"
+      timeout: 180
+    - name: "quality_control"
+      agent: "producer"
+      timeout: 60
+    - name: "merge"
+      agent: "producer"
+      timeout: 30
+    - name: "archive"
+      agent: "producer"
+      timeout: 30
+
+memory:
+  layers:
+    L0: "file://memory/L0_identity"
+    L1: "file://memory/L1_essential"
+    L2: "postgresql://agent_memories"
+    L3: "postgresql://agent_memories"
+  pruning:
+    stability_threshold: 0.3
+    schedule: "daily"
+  half_life:
+    L2: 30  # days
+    L3: 90  # days
+
+sleep:
+  enabled: false  # P2 启用
+  schedule: "0 3 * * *"
+  phases:
+    - "review_memories"
+    - "prune"
+    - "skill_review"
+    - "efficiency_optimization"
+    - "validation"
+    - "report"

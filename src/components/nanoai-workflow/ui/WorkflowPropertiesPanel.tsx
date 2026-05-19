@@ -79,7 +79,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
     }
   };
 
-  const handleInputChange = (key: string, value: any) => {
+  const handleInputChange = (key: string, value: string | number | boolean | null) => {
     setEditData(prev => ({ ...prev, [key]: value }));
   };
 

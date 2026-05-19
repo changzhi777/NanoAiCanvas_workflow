@@ -11,7 +11,16 @@ import type {
   StoryboardStyle,
   StoryboardCharacter,
   DialogueLine,
+  DialogueEmotion,
+  DialogueTone,
+  CharacterRole,
 } from '@/stores/nanoImageStoryboardStore'
+import type {
+  RawJsonDialogue,
+  RawJsonScene,
+  RawJsonCharacter,
+  RawJsonScript,
+} from '@/types/storyboard-raw'
 
 // GLM API 配置
 const GLM_API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions'
@@ -219,11 +228,11 @@ export async function generateStoryboardScript(
 /**
  * 规范化脚本数据，为缺失字段提供默认值
  */
-function normalizeScriptData(data: any): StoryboardScript {
-  const characters: StoryboardCharacter[] = (data.characters || []).map((c: any, i: number) => ({
+function normalizeScriptData(data: RawJsonScript): StoryboardScript {
+  const characters: StoryboardCharacter[] = (data.characters || []).map((c: RawJsonCharacter, i: number) => ({
     id: c.id || `char_${i + 1}`,
     name: c.name || `角色${i + 1}`,
-    role: c.role || 'supporting',
+    role: (c.role || 'supporting') as CharacterRole,
     description: c.description || '',
     appearance: {
       age: c.appearance?.age || '未知',
@@ -249,19 +258,19 @@ function normalizeScriptData(data: any): StoryboardScript {
     referenceImageUrl: c.referenceImageUrl,
   }))
 
-  const scenes = (data.scenes || []).map((s: any) => ({
+  const scenes = (data.scenes || []).map((s: RawJsonScene) => ({
     id: s.id ?? 0,
     duration: s.duration || '0:30',
     shotType: s.shotType || '中景',
     description: s.description || '',
     camera: s.camera || '固定镜头',
-    dialogues: (s.dialogues || []).map((d: any) => ({
+    dialogues: (s.dialogues || []).map((d: RawJsonDialogue) => ({
       characterId: d.characterId || '',
       characterName: d.characterName || '未知',
       text: d.text || '',
-      emotion: d.emotion || 'neutral',
+      emotion: (d.emotion || 'neutral') as DialogueEmotion,
       emotionIntensity: d.emotionIntensity ?? 5,
-      tone: d.tone || 'normal',
+      tone: (d.tone || 'normal') as DialogueTone,
       speed: d.speed ?? 1.0,
       pause: d.pause ?? 0,
       stageDirection: d.stageDirection || '',
@@ -269,13 +278,13 @@ function normalizeScriptData(data: any): StoryboardScript {
     narrator: s.narrator || '',
   }))
 
-  const allDialogues: DialogueLine[] = (data.allDialogues || scenes.flatMap((s: any) => s.dialogues)).map((d: any) => ({
+  const allDialogues: DialogueLine[] = (data.allDialogues || scenes.flatMap((s) => s.dialogues)).map((d: RawJsonDialogue) => ({
     characterId: d.characterId || '',
     characterName: d.characterName || '未知',
     text: d.text || '',
-    emotion: d.emotion || 'neutral',
+    emotion: (d.emotion || 'neutral') as DialogueEmotion,
     emotionIntensity: d.emotionIntensity ?? 5,
-    tone: d.tone || 'normal',
+    tone: (d.tone || 'normal') as DialogueTone,
     speed: d.speed ?? 1.0,
     pause: d.pause ?? 0,
     stageDirection: d.stageDirection || '',

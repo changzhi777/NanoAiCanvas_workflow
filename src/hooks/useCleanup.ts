@@ -52,7 +52,6 @@ export function useCleanup() {
 export function useMemoryLeakDetector(componentName: string) {
   useEffect(() => {
     if (typeof import.meta.env?.DEV !== 'undefined' && import.meta.env.DEV) {
-      console.log(`🔍 [${componentName}] 组件已挂载`)
     }
   }, [componentName])
 }
@@ -77,7 +76,6 @@ export function useRenderPerformance(componentName: string) {
 
     // 警告：频繁渲染
     if (timeSinceLastRender < 16) {
-      // 小于一帧（16ms）
       console.warn(
         `⚠️  [${componentName}] 渲染过于频繁：${timeSinceLastRender}ms`
       )

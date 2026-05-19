@@ -99,32 +99,26 @@ export function RealtimeVoiceDialog({
 
     // 设置回调
     clientRef.current.onSessionCreated = () => {
-      console.log('[RealtimeVoice] Session created')
       setConnected(true)
       toast.success('已连接到语音服务')
     }
 
     clientRef.current.onSessionUpdated = () => {
-      console.log('[RealtimeVoice] Session updated')
     }
 
     clientRef.current.onSpeechStarted = () => {
-      console.log('[RealtimeVoice] User speech started')
     }
 
     clientRef.current.onSpeechStopped = () => {
-      console.log('[RealtimeVoice] User speech stopped')
       setRecording(false)
     }
 
     clientRef.current.onResponseCreated = () => {
-      console.log('[RealtimeVoice] Response creating')
       setSpeaking(true)
       setProcessing(true)
     }
 
     clientRef.current.onResponseDone = () => {
-      console.log('[RealtimeVoice] Response done')
       setSpeaking(false)
       setProcessing(false)
 

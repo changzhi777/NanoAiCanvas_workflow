@@ -28,7 +28,7 @@ export function PerformanceMonitor({ children }: { children: React.ReactNode }) 
       document.body.classList.remove('performance-extreme', 'performance-high')
     }
 
-    console.log(`🚀 性能模式: ${performanceMode} (${nodeCount} 个节点)`)
+    // performance mode: ${performanceMode} (${nodeCount} 个节点)`)
   }, [nodes.length, performanceMode])
 
   return <>{children}</>

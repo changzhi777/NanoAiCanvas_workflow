@@ -58,7 +58,7 @@ export const StoryboardV2Node = memo(({ id, data }: { id: string; data: Storyboa
       if (sourceResult?.copywriteText) return sourceResult.copywriteText
       // 来自 TvcScriptNode 的 script/shots
       if (sourceResult?.script?.shots?.length) {
-        return sourceResult.script.shots.map((s: any) => s.scene_description || s.description || '').join('\n')
+        return sourceResult.script.shots.map((s: { scene_description?: string; description?: string }) => s.scene_description || s.description || '').join('\n')
       }
       // 来自其他节点的数据
       if (typeof sourceResult === 'object') {

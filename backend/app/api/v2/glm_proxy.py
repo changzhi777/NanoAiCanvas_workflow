@@ -1,4 +1,5 @@
 """
+import logging; logger = logging.getLogger(__name__)
 GLM API 代理路由 - 提示词优化
 前端通过此接口调用 GLM，API Key 安全存储在后端
 支持模型：glm-4.5-air, glm-4-flash, glm-4, glm-4.7-flash
@@ -399,13 +400,13 @@ async def generate_storyboard_script(
         # Extract shots using robust multi-format parser
         shots = _extract_shots_from_content(content)
         if not shots:
-            print(f"[GLM] No shots extracted. Raw content: {content[:500]}")
+            logger.debug(f"[GLM] No shots extracted. Raw content: {content[:500]}")
             raise HTTPException(status_code=502, detail=f"无法解析分镜头脚本，GLM 返回格式错误: {content[:200]}")
 
         # Check for truncation: if finish_reason is "length", we got cut off
         finish_reason = data.get("choices", [{}])[0].get("finish_reason", "")
         if finish_reason == "length":
-            print(f"[GLM] Output truncated (finish_reason=length). Got {len(shots)} shots, expected {req.shot_count}")
+            logger.debug(f"[GLM] Output truncated (finish_reason=length). Got {len(shots)} shots, expected {req.shot_count}")
 
         script = {
             "title": "分镜头脚本",
@@ -609,12 +610,12 @@ async def generate_screenplay(
                 screenplay = json.loads(cleaned)
             except json.JSONDecodeError as e2:
                 pos = e2.pos if hasattr(e2, 'pos') else 0
-                print(f"[GLM] Screenplay JSON repair failed at pos {pos}")
+                logger.debug(f"[GLM] Screenplay JSON repair failed at pos {pos}")
                 raise HTTPException(status_code=502, detail=f"剧本 JSON 解析失败: {e2}")
 
         # Validate and fill defaults
         if finish_reason == "length":
-            print(f"[GLM] Screenplay output truncated! Characters: {len(screenplay.get('characters', []))}, Scenes: {len(screenplay.get('scenes', []))}, Shots: {len(screenplay.get('shots', []))}")
+            logger.debug(f"[GLM] Screenplay output truncated! Characters: {len(screenplay.get('characters', []))}, Scenes: {len(screenplay.get('scenes', []))}, Shots: {len(screenplay.get('shots', []))}")
         screenplay.setdefault("title", "未命名故事")
         screenplay.setdefault("logline", "")
         screenplay.setdefault("characters", [])

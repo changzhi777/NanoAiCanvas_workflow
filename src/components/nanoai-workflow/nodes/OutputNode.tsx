@@ -332,7 +332,7 @@ export const OutputNode = memo(({ id, data }: NodeProps<OutputNodeData>) => {
           URL.revokeObjectURL(url);
           result.downloaded = true;
           result.downloadPath = params.downloadFolder;
-        } catch {
+        } catch (e) { console.warn('[OutputNode.tsx]', e)
           // 降级为直接链接下载
           const link = document.createElement('a');
           link.href = imageUrl;

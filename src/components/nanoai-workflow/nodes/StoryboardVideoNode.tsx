@@ -109,7 +109,7 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
       a.download = `TVC_Complete_${Date.now()}.mp4`
       a.click()
       URL.revokeObjectURL(url)
-    } catch {
+    } catch (e) { console.warn('[StoryboardVideoNode.tsx]', e)
       const a = document.createElement('a')
       a.href = composedUrl
       a.download = `TVC_Complete.mp4`

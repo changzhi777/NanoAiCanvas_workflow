@@ -59,7 +59,7 @@ interface ParamSchema {
   placeholder?: string;
   required?: boolean;
   options?: { label: string; value: string }[];
-  defaultValue?: any;
+  defaultValue?: string | number | boolean;
   min?: number;
   max?: number;
 }
@@ -117,7 +117,7 @@ interface ParamEditorProps {
 }
 
 const ParamEditor = memo(({ params, schema, onChange, disabled }: ParamEditorProps) => {
-  const handleChange = (key: string, value: any) => {
+  const handleChange = (key: string, value: string | number | boolean) => {
     onChange({ [key]: value });
   };
 

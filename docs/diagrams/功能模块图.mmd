@@ -1,0 +1,101 @@
+graph TB
+    subgraph CANVAS["🎨 无限画布模块"]
+        direction TB
+        CAN_CORE["画布核心<br/>React Flow 11.11<br/>缩放/平移/小地图"]
+        CAN_NODES["49 节点类型<br/>输入 × AI生成 × TVC × Skills<br/>MiniMax × 即梦 × GLM × 千问 × Kimi<br/>预览 × 输出 × 代理 × 连接器"]
+        CAN_TMPL["24 工作流模板<br/>故事板 × 角色设计 × 场景设计<br/>TVC × 文生图 × 18 Skills模板"]
+        CAN_EXEC["工作流引擎<br/>Kahn 拓扑排序<br/>同层并行执行"]
+        CAN_UI["32 UI 组件<br/>属性面板 × 模板选择 × TVC项目面板<br/>视频对话 × 进度条 × 快捷键"]
+    end
+
+    subgraph TVC["🎬 TVC 广告视频模块"]
+        direction TB
+        TVC_ENG["执行引擎<br/>6步线性编排<br/>积分预扣 + 退还"]
+        TVC_PRO["Provider 工厂<br/>3 图片 Provider<br/>Seedance 唯一视频"]
+        TVC_POL["Seedance 轮询<br/>max 300s / 15s 间隔<br/>隐私拦截自动重试"]
+        TVC_CFG["配置管理<br/>global / user scope<br/>用户覆盖 > 全局 > 默认"]
+        TVC_PRJ["项目管理<br/>文案→剧本→镜头→成片<br/>CRUD + 镜头管理"]
+        TVC_ASSET["资产自动保存<br/>生成结果关联资产库<br/>视频关键帧缩略图"]
+    end
+
+    subgraph SKILLS["🧩 Skills 插件模块"]
+        direction TB
+        SK_CHAT["聊天意图分析<br/>推荐模板"]
+        SK_TEMPL["4 Skills<br/>gpt-image-2<br/>kb-retriever<br/>web-design<br/>web-video"]
+        SK_QUEUE["Redis 队列<br/>LPUSH/BRPOP"]
+        SK_WORKER["后台 Worker<br/>5 步骤执行<br/>validating→completed"]
+    end
+
+    subgraph STORY["📖 故事板模块"]
+        direction TB
+        ST_WIZ["4步向导<br/>剧本→角色→场景→生成"]
+        ST_TASK["任务队列<br/>单任务/批量<br/>暂停/恢复/取消"]
+        ST_VOICE["角色配音<br/>TTS + 声音克隆<br/>25 故事板组件"]
+        ST_V2["分镜精细化<br/>ShotA / V2 / ScriptTable<br/>参考图 / 角色设计图"]
+    end
+
+    subgraph ADMIN["👔 管理后台模块"]
+        direction TB
+        ADM_USR["用户管理<br/>审批 / 角色 / 白名单"]
+        ADM_TEAM["团队管理<br/>积分账户 / 成员"]
+        ADM_KEY["API Key 管理<br/>Key池 / 健康检查<br/>模型检测 / 热加载"]
+        ADM_MODEL["模型管理<br/>渠道商 / 模型路由<br/>用量统计"]
+        ADM_TVC["TVC 配置<br/>全局/用户配置<br/>可见性控制"]
+    end
+
+    subgraph CHAT["💬 Chat 模块"]
+        direction TB
+        CH_REST["REST API<br/>会话管理 / 消息历史<br/>文件上传"]
+        CH_WS["WebSocket<br/>实时消息收发<br/>ConnectionManager"]
+        CH_PUBSUB["Redis Pub/Sub<br/>跨 Worker 消息分发<br/>多进程支持"]
+    end
+
+    subgraph POINTS["💰 积分系统"]
+        direction TB
+        PT_ENGINE["计价引擎<br/>模型价格自动计算"]
+        PT_BALANCE["余额校验<br/>团队优先扣减<br/>不足确认"]
+        PT_STAT["统计仪表盘<br/>用量 / 流水 / 趋势"]
+    end
+
+    subgraph CLI_AGENT["🛠️ CLI Agent 模块"]
+        direction TB
+        CLI_FF["FFmpeg 7 操作<br/>concat/amix/overlay<br/>subtitles/normalize"]
+        CLI_PIPE2["4 阶段管线<br/>拼接→对比→字幕→混音<br/>1080p + 4K"]
+        CLI_MCP2["MCP Server<br/>stdio 4 Tools"]
+        CLI_HTTP2["Fastify HTTP<br/>compose/tasks/health"]
+    end
+
+    %% 模块间依赖
+    CANVAS --> TVC
+    CANVAS --> SKILLS
+    CANVAS --> STORY
+    CANVAS --> POINTS
+    TVC_ENG --> TVC_PRO
+    TVC_PRO --> TVC_POL
+    TVC_CFG --> TVC_ENG
+    TVC_PRJ --> TVC_ENG
+    TVC_ENG --> TVC_ASSET
+    SK_CHAT --> SK_QUEUE
+    SK_QUEUE --> SK_WORKER
+    SK_WORKER --> SK_TEMPL
+    ST_WIZ --> ST_TASK
+    ST_VOICE --> ST_V2
+    ADMIN --> ADM_USR
+    ADMIN --> ADM_TEAM
+    ADMIN --> ADM_KEY
+    ADMIN --> ADM_MODEL
+    ADMIN --> ADM_TVC
+    CH_REST --> CH_WS
+    CH_WS --> CH_PUBSUB
+    PT_ENGINE --> PT_BALANCE
+    PT_BALANCE --> PT_STAT
+
+    %% 样式
+    style CANVAS fill:#1a4a6c,color:#e0e8f0
+    style TVC fill:#6c1a1a,color:#f0e0e0
+    style SKILLS fill:#1a5c3a,color:#e0f0e8
+    style STORY fill:#5c4a1a,color:#f0e8d0
+    style ADMIN fill:#3a3a4a,color:#e0e0f0
+    style CHAT fill:#4a1a5c,color:#e8d0f0
+    style POINTS fill:#5c5c1a,color:#f0f0d0
+    style CLI_AGENT fill:#5c1a4a,color:#f0d0e8

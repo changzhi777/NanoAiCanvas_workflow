@@ -1,3 +1,5 @@
+import type { StoryboardScript as StoryboardScriptData } from '@/stores/nanoImageStoryboardStore'
+
 // 节点类型
 export enum NodeType {
   TASK = 'task',
@@ -340,7 +342,7 @@ export interface StoryboardAsset {
   // 故事板数据
   title: string
   synopsis: string
-  script: any  // StoryboardScript JSON
+  script: StoryboardScriptData  // StoryboardScript JSON
   storyboardImages: string[]
   characterDesigns: Array<{ characterId: string; characterName: string; imageUrl?: string }>
   // 语音配置

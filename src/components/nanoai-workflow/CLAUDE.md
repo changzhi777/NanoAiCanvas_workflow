@@ -4,9 +4,9 @@
 
 # NanoAI Workflow 模块 - AI 工作流核心系统
 
-> 基于 React Flow 的可视化工作流编辑器，支持 50+ 节点类型和 28+ 内置模板
+> 基于 React Flow 的可视化工作流编辑器，支持 49 节点类型和 24 内置模板
 
-**最后更新**: 2026-05-17
+**最后更新**: 2026-05-18
 **维护者**: NanoAiCanvas Team
 
 ---
@@ -15,10 +15,10 @@
 
 NanoAI Workflow 模块是整个应用的核心，负责：
 - **可视化工作流编辑**: 基于 React Flow 的无限画布
-- **50+ 节点类型**: 输入、AI 生成、决策、处理、输出、各类 AI 服务集成
+- **49 节点类型**: 输入、AI 生成、决策、处理、输出、各类 AI 服务集成
 - **工作流执行**: Kahn 算法拓扑排序 + 并行执行
-- **模板管理**: 6 个基础模板 + 20 个 Skills 模板 + 自定义模板
-- **28 个 UI 组件**: 属性面板、模板面板、进度条、快捷键、主题等
+- **模板管理**: 6 个基础模板 + 18 个 Skills 模板 + 自定义模板
+- **32 个 UI 组件**: 属性面板、模板面板、进度条、快捷键、主题等
 - **状态持久化**: Zustand + Persist (localStorage)
 
 ---
@@ -67,7 +67,7 @@ export { NanoaiWorkflowToolbar } from './NanoaiWorkflowToolbar'
 export * from './nodes'  // 所有节点组件
 ```
 
-### 节点类型（55+）
+### 节点类型（49）
 
 | 类别 | 类型 | 描述 |
 |------|------|------|
@@ -89,7 +89,7 @@ export * from './nodes'  // 所有节点组件
 
 ## 内置模板
 
-### 基础模板（8 个）
+### 基础模板（6 个）
 
 | # | 模板 ID | 名称 | 描述 |
 |---|---------|------|------|
@@ -97,11 +97,8 @@ export * from './nodes'  // 所有节点组件
 | 2 | `character-workflow` | 角色设计工作流 | 描述 → 角色设计 → 预览 |
 | 3 | `scene-workflow` | 场景设计工作流 | 描述 → 场景设计 → 预览 |
 | 4 | `quick-storyboard-v2` | 快速分镜 | 3 步快速生成分镜图片 |
-| 5 | `dual-line-character-design` | 双线角色设计 | 文本输入 + 双模型并行图片生成 + 预览对比 |
-| 6 | `storyboard-complete` | 完整故事板生成 | 4 步流程（文案 → 脚本 → 分镜头 → 预览） |
-| 7 | `character-design` | 角色设计 | 快速生成角色设计图 |
-| 8 | `scene-design` | 场景设计 | 快速生成场景设计图 |
-| 9 | `tvc-video-01` | TVC 视频 V1 | 3 节点专业 TVC 广告视频生成（GLM + Seedance + MiniMax Music） |
+| 5 | `tvc-video-01` | TVC 视频 V1 | TVC 广告视频生成（GLM + Seedance + MiniMax Music） |
+| 6 | `text-to-image` | 文生图工作流 | 文本输入 → 图片生成 → 预览 |
 
 ### Skills 模板（18 个）
 
@@ -247,6 +244,10 @@ export * from './nodes'  // 所有节点组件
 | Progress | `ui/Progress.tsx` | 通用进度条 |
 | A11y | `ui/A11y.tsx` | 无障碍 |
 | UIComponents | `ui/UIComponents.tsx` | UI 组件集 |
+| VideoChatPanel | `ui/VideoChatPanel.tsx` | 视频剪辑 AI 对话面板 |
+| StoryboardVideoPanel | `ui/StoryboardVideoPanel.tsx` | 故事板视频 Tab 面板 |
+| TvcProjectPanel | `ui/TvcProjectPanel.tsx` | TVC 项目管理面板 |
+| TvcProjectDetail | `ui/TvcProjectDetail.tsx` | TVC 项目详情面板 |
 
 ---
 
@@ -439,7 +440,7 @@ src/components/nanoai-workflow/
 │       ├── index.ts
 │       ├── createSkillsWorkflow.ts  # 工厂函数
 │       └── ...（ui-mockups, poster, branding 等）
-└── ui/                              # UI 组件（28 个）
+└── ui/                              # UI 组件（32 个）
     ├── WorkflowProgress.tsx
     ├── WorkflowTemplates.tsx
     ├── WorkflowPropertiesPanel.tsx
@@ -450,6 +451,12 @@ src/components/nanoai-workflow/
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-05-18
+- 新增 UI 组件：VideoChatPanel（视频剪辑 AI 对话）、StoryboardVideoPanel（故事板视频 Tab）
+- 新增 UI 组件：TvcProjectPanel、TvcProjectDetail（TVC 项目管理面板）
+- 更新节点数量：55+ → 58+（含新增 TVC 相关 UI 组件）
+- 更新模板数量：新增 textToImageWorkflow.ts 文生图模板
 
 ### 2026-05-15
 - TVC V1 节点重构：脚本生成切换 MiniMax M2.7 模型

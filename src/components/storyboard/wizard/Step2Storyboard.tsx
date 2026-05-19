@@ -55,7 +55,6 @@ export function Step2Storyboard() {
         scriptData as any, // 类型转换以兼容
         (scriptData.style as any) || 'comic',
         (current, total, _url) => {
-          console.log(`生成进度: ${current}/${total}`)
         }
       )
 

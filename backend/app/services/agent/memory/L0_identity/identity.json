@@ -1,0 +1,14 @@
+{
+  "role": "Nanoai Team8 Agent System",
+  "version": "V0.3.0",
+  "copyright": "Copyright © 2026 AiHXC.Team",
+  "agents": ["producer", "screenwriter", "director", "art_director", "character_designer", "scene_designer", "voice_director", "editor", "composer"],
+  "adaptation_standard": "AutoAI_Team_8-1 V2.3",
+  "rules": [
+    "章节严格 1:1 对应",
+    "单集 1050-1850 字，2-4 场景，2-3 事件，3-4 分钟",
+    "对白 ≤240 字符语速，≤600 字符总量",
+    ">60 章触发分季模式",
+    "数据权威：统计字数.md 为唯一数据源"
+  ]
+}

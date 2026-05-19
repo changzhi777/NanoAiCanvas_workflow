@@ -313,7 +313,7 @@ export function AssetPreviewDialog({
                           <p className="text-sm text-white/90">{asset.synopsis}</p>
                         </div>
                       )}
-                      {scenes.map((scene: any, idx: number) => (
+                      {scenes.map((scene, idx: number) => (
                         <div key={scene.id || idx} className="mb-6 p-4 bg-white/5 rounded-lg">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 bg-primary/20 text-primary rounded text-sm">
@@ -324,7 +324,7 @@ export function AssetPreviewDialog({
                           <p className="text-sm mb-2">{scene.description}</p>
                           {scene.dialogues?.length > 0 && (
                             <div className="space-y-1 mt-2 border-t border-white/10 pt-2">
-                              {scene.dialogues.map((d: any, di: number) => (
+                              {scene.dialogues.map((d, di: number) => (
                                 <p key={di} className="text-sm text-white/80">
                                   <span className="font-medium text-primary">{d.characterName}：</span>
                                   {d.text}
@@ -385,7 +385,7 @@ export function AssetPreviewDialog({
                       <img src={img} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
-                  {previewType === 'character' && characters.map((char: any, idx: number) => {
+                  {previewType === 'character' && characters.map((char, idx: number) => {
                     const design = characterDesigns.find(d => d.characterId === char.id)
                     return (
                       <button
@@ -437,7 +437,7 @@ export function AssetPreviewDialog({
                           <div>
                             <h3 className="text-sm font-medium text-white/70 mb-2">对白</h3>
                             <div className="space-y-2">
-                              {currentScene.dialogues.map((d: any, idx: number) => {
+                              {currentScene.dialogues.map((d, idx: number) => {
                                 const audio = currentSceneAudios.find(a => a.dialogueId === `${currentScene.id}_${idx}`)
                                 return (
                                   <div key={idx} className="p-2 bg-white/5 rounded">
@@ -523,7 +523,7 @@ export function AssetPreviewDialog({
                           场景列表
                         </h3>
                         <div className="space-y-1 max-h-60 overflow-y-auto">
-                          {scenes.map((scene: any, idx: number) => (
+                          {scenes.map((scene, idx: number) => (
                             <button
                               key={scene.id || idx}
                               onClick={() => setCurrentIndex(idx)}

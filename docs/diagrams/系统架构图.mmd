@@ -1,0 +1,121 @@
+graph TB
+    subgraph BROWSER["🖥️ 客户端层 (Browser)"]
+        direction TB
+        RF["React Flow<br/>无限画布引擎"]
+        RDK["Redux Toolkit<br/>全局状态"]
+        ZST["Zustand × 23<br/>业务状态"]
+        UI["shadcn/ui + OKLCH<br/>Base Nova 暗色主题"]
+    end
+
+    subgraph FRONTEND["📦 前端应用 (React 19 + Vite 5 + TS 5.9)"]
+        direction TB
+        NODES["49 节点组件<br/>输入/AI生成/预览/TVC/Skills"]
+        TMPL["32 工作流模板<br/>8基础 + 24 Skills"]
+        PANELS["属性面板 + TVC项目管理<br/>模板选择 + 执行面板"]
+        ADMIN_FE["管理后台 25+ 页面<br/>用户/团队/积分/模型/渠道商"]
+        CHAT_FE["Chat 组件<br/>WebSocket + 文件上传"]
+        API_CLIENT["42 API 客户端<br/>HTTP + WebSocket"]
+    end
+
+    subgraph GATEWAY["🔀 网关层 (Nginx)"]
+        NX["反向代理 + 路由分发<br/>/nano2/api → FastAPI<br/>静态资源 → Vite"]
+    end
+
+    subgraph BACKEND["⚙️ 后端应用 (FastAPI 0.109 + Python 3.14)"]
+        direction TB
+        V1["V1 API — 16 路由<br/>认证/资产/工作流/积分/聊天<br/>WebSocket/通知/标签/文件夹"]
+        V2["V2 API — 16 路由<br/>TVC引擎/Provider/轮询/配置/项目<br/>GLM代理/MiniMax/Skills/图片生成<br/>资产库V2/生成日志/Key映射/Seedance常量"]
+    end
+
+    subgraph SERVICES["🔧 服务层 (11 个业务服务)"]
+        direction LR
+        SV_WF["WorkflowExecutor<br/>TVC 5步编排"]
+        SV_SK["SkillsWorker<br/>Redis队列消费"]
+        SV_TQ["TaskQueue<br/>任务队列管理"]
+        SV_PK["PointsService<br/>积分计价引擎"]
+        SV_AK["ApiKeyService<br/>Key热加载 60s"]
+        SV_PS["PubSub<br/>Redis Pub/Sub"]
+        SV_MS["ModelScanner<br/>模型可用性检测"]
+        SV_VT["VideoThumbnail<br/>FFmpeg关键帧"]
+    end
+
+    subgraph DATA["💾 数据层"]
+        direction LR
+        PG["PostgreSQL<br/>17 数据模型<br/>15 Alembic 迁移"]
+        RD["Redis<br/>Session / Queue / PubSub<br/>Key缓存 60s TTL"]
+    end
+
+    subgraph CLI["🎬 CLI Agent (Node.js + FFmpeg 7)"]
+        direction LR
+        CLI_MCP["MCP Server<br/>stdio 4 Tools"]
+        CLI_HTTP["Fastify HTTP<br/>compose/tasks"]
+        CLI_PIPE["4阶段管线<br/>拼接→对比→字幕→混音"]
+    end
+
+    subgraph EXTERNAL["🌐 外部 AI 服务"]
+        direction LR
+        AI_MINI["MiniMax<br/>Hailuo-2.3 视频<br/>M2.7 文本"]
+        AI_JM["即梦 Jimeng<br/>图片 + 视频"]
+        AI_GLM["智谱 GLM<br/>4.5-air / 4-flash<br/>TTS / 多模态"]
+        AI_SD["Seedance 2.0<br/>doubao-seedance<br/>480p/720p/1080p"]
+        AI_NB["NanoBanana<br/>2.0 / Pro"]
+        AI_GPT["GPT-Image-2<br/>图片生成"]
+        AI_QW["通义千问<br/>文本 + 编程"]
+        AI_KM["Kimi<br/>Moonshot 文本"]
+    end
+
+    %% 客户端 → 前端
+    RF --> NODES
+    RF --> TMPL
+    RF --> PANELS
+    UI --> ADMIN_FE
+    UI --> CHAT_FE
+    ZST --> API_CLIENT
+
+    %% 前端 → 网关
+    API_CLIENT --> NX
+
+    %% 网关 → 后端
+    NX --> V1
+    NX --> V2
+
+    %% 后端 → 服务
+    V2 --> SV_WF
+    V2 --> SV_SK
+    V2 --> SV_AK
+    V2 --> SV_PK
+    V1 --> SV_PS
+
+    %% 服务 → 数据
+    SV_WF --> RD
+    SV_SK --> RD
+    SV_TQ --> RD
+    SV_AK --> RD
+    SV_PS --> RD
+    V1 --> PG
+    V2 --> PG
+
+    %% 后端 → 外部AI
+    SV_WF --> AI_MINI
+    SV_WF --> AI_SD
+    SV_SK --> AI_GPT
+    SV_SK --> AI_NB
+    SV_SK --> AI_JM
+    V2 --> AI_GLM
+    V2 --> AI_QW
+    V2 --> AI_KM
+
+    %% CLI 关联
+    SV_WF -.-> CLI_PIPE
+    CLI_PIPE --> CLI_MCP
+    CLI_PIPE --> CLI_HTTP
+
+    %% 样式
+    style BROWSER fill:#1a3a5c,color:#e0e8f0
+    style FRONTEND fill:#1a4a6c,color:#e0e8f0
+    style GATEWAY fill:#3a3a3a,color:#fff
+    style BACKEND fill:#1a5c3a,color:#e0f0e8
+    style SERVICES fill:#5c4a1a,color:#f0e8d0
+    style DATA fill:#3a3a4a,color:#e0e0f0
+    style CLI fill:#5c1a4a,color:#f0d0e8
+    style EXTERNAL fill:#4a1a5c,color:#e8d0f0

@@ -111,7 +111,7 @@ export const ConnectorNode = ({ id, data }: NodeProps<ConnectorNodeData>) => {
 
   const handleParamsChange = useCallback((params: Record<string, any>) => {
     // 参数已通过ParamEditor更新到data.params中
-    console.log('连接器参数已更新:', params);
+    // connector params updated
   }, []);
 
   const getConnectorIcon = () => {

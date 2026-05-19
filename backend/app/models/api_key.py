@@ -1,4 +1,5 @@
 """
+import logging; logger = logging.getLogger(__name__)
 API Key 配置管理模块
 支持 frontend_key → multiple backend_keys 映射，实现热加载
 """
@@ -290,7 +291,7 @@ class ApiKeyManager:
                 self._last_refresh = time.time()
 
         except Exception as e:
-            print(f"Failed to refresh API key cache: {e}")
+            logger.error(f"Failed to refresh API key cache: {e}")
 
     def clear_cache(self):
         """手动清除缓存，强制下次重新加载"""

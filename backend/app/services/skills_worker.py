@@ -1,4 +1,5 @@
 """
+import logging; logger = logging.getLogger(__name__)
 Skills Worker - 后台任务执行器
 
 从 Redis 队列消费任务，步骤化执行图片生成：
@@ -59,7 +60,7 @@ class SkillsWorker:
             task = asyncio.create_task(self._consume_loop(f"worker-{i}"))
             self._tasks[f"worker-{i}"] = task
 
-        print(f"✅ SkillsWorker started (skill={self.skill_id}, concurrency={self.concurrency})")
+        logger.info(f"SkillsWorker started SkillsWorker started (skill={self.skill_id}, concurrency={self.concurrency})")
 
     async def stop(self):
         """优雅停止 Worker"""
@@ -75,7 +76,7 @@ class SkillsWorker:
                 pass
         self._tasks.clear()
 
-        print("👋 SkillsWorker stopped")
+        logger.info("SkillsWorker stopped SkillsWorker stopped")
 
     async def _consume_loop(self, worker_name: str):
         """消费循环"""
@@ -86,14 +87,14 @@ class SkillsWorker:
                     continue
 
                 task_id = task_data.get("task_id")
-                print(f"[{worker_name}] Processing task: {task_id}")
+                logger.info(f"[{worker_name}] Processing task: {task_id}")
 
                 await self._process_task(task_data)
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                print(f"[{worker_name}] Consume error: {e}")
+                logger.info(f"[{worker_name}] Consume error: {e}")
                 traceback.print_exc()
                 await asyncio.sleep(1)
 
@@ -153,7 +154,7 @@ class SkillsWorker:
             raise
         except Exception as e:
             error_msg = str(e)
-            print(f"[Worker] Task {task_id} failed: {error_msg}")
+            logger.error(f"[Worker] Task {task_id} failed: {error_msg}")
             traceback.print_exc()
 
             await self._publish_failed(task_id, error_msg)
@@ -363,7 +364,7 @@ class SkillsWorker:
                 await session.commit()
 
         except Exception as db_err:
-            print(f"[Worker] DB save failed for task {task_id}: {db_err}")
+            logger.error(f"[Worker] DB save failed for task {task_id}: {db_err}")
             traceback.print_exc()
 
 

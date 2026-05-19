@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useCallback } from 'react'
 import { getWebSocketUrl } from '@/lib/api/notifications-api'
+import type { Notification } from '@/lib/api/notifications-api'
 import { useNotificationStore } from '@/stores/notificationStore'
 
 const HEARTBEAT_INTERVAL = 30000 // 30秒
@@ -13,7 +14,7 @@ const MAX_RECONNECT_ATTEMPTS = 5
 interface UseNotificationSocketOptions {
   userId: string | null
   enabled?: boolean
-  onNewNotification?: (notification: any) => void
+  onNewNotification?: (notification: Notification) => void
 }
 
 export function useNotificationSocket({
@@ -32,7 +33,6 @@ export function useNotificationSocket({
     if (!userId || !enabled) return
 
     const wsUrl = getWebSocketUrl(userId)
-    console.log('[NotificationSocket] Connecting to:', wsUrl)
 
     try {
       const ws = new WebSocket(wsUrl)
@@ -56,7 +56,6 @@ export function useNotificationSocket({
 
         try {
           const message = JSON.parse(event.data)
-          console.log('[NotificationSocket] Received:', message)
 
           if (message.type === 'new_notification') {
             const notification = message.data

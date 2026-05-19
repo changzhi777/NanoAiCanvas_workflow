@@ -14,6 +14,7 @@ import httpx
 from app.database import get_db
 from app.models import User, Asset, AssetType, AssetCategory, Category
 from app.api.auth import get_current_user
+import logging; logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/assets", tags=["assets-import-export"])
 
@@ -91,7 +92,7 @@ async def export_assets(
                     prompt_content = generate_prompt_md(asset)
                     zip_file.writestr(f"prompts/{asset.id}.md", prompt_content)
             except Exception as e:
-                print(f"Failed to export asset {asset.id}: {e}")
+                logger.warning(f"Failed to export asset {asset.id}: {e}")
                 continue
 
     zip_buffer.seek(0)

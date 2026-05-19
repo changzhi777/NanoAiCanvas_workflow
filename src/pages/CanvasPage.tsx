@@ -95,7 +95,6 @@ function CanvasPageContent() {
   // 添加节点（示例）
   const handleAddNode = useCallback(() => {
     // TODO: 实现添加节点逻辑
-    console.log('Add node')
   }, [])
 
   // 撤销
@@ -111,7 +110,6 @@ function CanvasPageContent() {
   // 保存（示例）
   const handleSave = useCallback(() => {
     // TODO: 实现保存逻辑
-    console.log('Save')
   }, [])
 
   return (

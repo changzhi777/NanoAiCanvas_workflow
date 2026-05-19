@@ -291,7 +291,7 @@ export const useStoryboardVoiceStore = create<StoryboardVoiceState>((set, get) =
         sampleText,
         sampleText,
         (step, progress) => {
-          console.log(`[VoiceClone] ${step}: ${progress}%`)
+          set({ cloneProgress: { step, progress } })
         }
       )
 

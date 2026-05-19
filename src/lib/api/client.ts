@@ -294,12 +294,12 @@ export interface Asset {
   name: string;
   url: string;
   thumbnail_url?: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   category?: string;
   folder_id?: string;
   tags: string[];
   is_starred: boolean;
-  workflow_snapshot?: any;
+  workflow_snapshot?: Record<string, unknown>;
   version?: string;
   source_node_id?: string;
   workflow_id?: string;
@@ -312,10 +312,10 @@ export interface AssetCreate {
   name: string;
   url: string;
   thumbnail_url?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   category?: string;
   tags?: string[];
-  workflow_snapshot?: any;
+  workflow_snapshot?: Record<string, unknown>;
   version?: string;
   source_node_id?: string;
   workflow_id?: string;
@@ -529,7 +529,7 @@ export interface Operation {
   op_type: string;
   entity_type: string;
   entity_id: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -539,7 +539,7 @@ export const sync = {
     deviceId: string,
     token: string
   ) =>
-    request<{ synced_count: number; conflicts: any[] }>('/sync/push', {
+    request<{ synced_count: number; conflicts: unknown[] }>('/sync/push', {
       method: 'POST',
       body: JSON.stringify({ operations, device_id: deviceId }),
       token,
@@ -558,7 +558,7 @@ export interface Workflow {
   id: string;
   name: string;
   description?: string;
-  data: any;
+  data: Record<string, unknown>;
   version: number;
   cover_asset_id?: string;
   created_at: string;
@@ -566,7 +566,7 @@ export interface Workflow {
 }
 
 export const workflows = {
-  create: (data: { name: string; description?: string; data?: any }, token: string) =>
+  create: (data: { name: string; description?: string; data?: Record<string, unknown> }, token: string) =>
     request<Workflow>('/workflows', { method: 'POST', body: JSON.stringify(data), token }),
 
   list: (token: string, params?: { page?: number; page_size?: number }) => {

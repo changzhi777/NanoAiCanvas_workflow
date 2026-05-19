@@ -1,4 +1,5 @@
 """Email service for password reset and notifications"""
+import logging; logger = logging.getLogger(__name__)
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -44,7 +45,7 @@ async def _send_email(to: str, subject: str, html_body: str) -> bool:
 
     if not smtp_config["host"]:
         # No SMTP configured - log instead
-        print(f"[Email] SMTP not configured. Would send to {to}: {subject}")
+        logger.info(f"[Email] SMTP not configured. Would send to {to}: {subject}")
         return True
 
     try:
@@ -62,5 +63,5 @@ async def _send_email(to: str, subject: str, html_body: str) -> bool:
 
         return True
     except Exception as e:
-        print(f"[Email] Failed to send: {e}")
+        logger.info(f"[Email] Failed to send: {e}")
         return False

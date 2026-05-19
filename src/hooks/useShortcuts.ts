@@ -37,9 +37,7 @@ export function useShortcuts(options?: UseShortcutsOptions) {
       // Ctrl/Cmd + S: 保存
       if (cmdOrCtrl && e.key === 's') {
         e.preventDefault()
-        // TODO: 触发保存
         AchievementStorage.recordShortcutUsage('save-canvas')
-        console.log('保存')
       }
 
       // Ctrl/Cmd + Z: 撤销
@@ -53,7 +51,7 @@ export function useShortcuts(options?: UseShortcutsOptions) {
           }
         } else {
           AchievementStorage.recordShortcutUsage('undo')
-          console.log('撤销')
+          // undo executed
         }
       }
 
@@ -68,7 +66,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
           }
         } else {
           AchievementStorage.recordShortcutUsage('redo')
-          console.log('重做')
         }
       }
 
@@ -83,7 +80,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
           }
         } else {
           AchievementStorage.recordShortcutUsage('redo')
-          console.log('重做')
         }
       }
 
@@ -116,7 +112,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
         e.preventDefault()
         // TODO: 复制选中节点
         AchievementStorage.recordShortcutUsage('duplicate')
-        console.log('复制')
       }
 
       // Ctrl/Cmd + +: 放大
@@ -124,7 +119,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
         e.preventDefault()
         // TODO: 放大画布
         AchievementStorage.recordShortcutUsage('zoom-in')
-        console.log('放大')
       }
 
       // Ctrl/Cmd + -: 缩小
@@ -132,7 +126,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
         e.preventDefault()
         // TODO: 缩小画布
         AchievementStorage.recordShortcutUsage('zoom-out')
-        console.log('缩小')
       }
 
       // Ctrl/Cmd + 0: 适应屏幕
@@ -140,7 +133,6 @@ export function useShortcuts(options?: UseShortcutsOptions) {
         e.preventDefault()
         // TODO: 适应屏幕
         AchievementStorage.recordShortcutUsage('fit-view')
-        console.log('适应屏幕')
       }
 
       // F1: 切换属性面板

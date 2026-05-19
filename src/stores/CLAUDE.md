@@ -4,9 +4,9 @@
 
 # Stores 模块 - Zustand 状态管理
 
-> 22 个 Zustand Store，覆盖 Workflow、图片生成、故事板、应用管理等全部业务域
+> 23 个 Zustand Store，覆盖 Workflow、图片生成、故事板、TVC、应用管理等全部业务域
 
-**最后更新**: 2026-05-15
+**最后更新**: 2026-05-18
 **维护者**: NanoAiCanvas Team
 
 ---
@@ -21,6 +21,7 @@ Stores 模块使用 Zustand 管理前端全部业务状态，按功能域划分�
 | **业务 (Business)** | 6 | 聊天、通知中心、提示词模板、远程配置、应用可见性、应用配置 |
 | **图片生成 (Image Gen)** | 10 | 架构图、香蕉兄弟、角色设计、图片聊天、电商产品、知识卡片、故事板系列、任务队列 |
 | **图片辅助 (Image Support)** | 2 | 实时语音、故事板语音 |
+| **TVC** | 1 | TVC 广告视频制作状态 |
 
 ---
 
@@ -67,6 +68,12 @@ Stores 模块使用 Zustand 管理前端全部业务状态，按功能域划分�
 |---|-------|------|------|------|
 | 21 | `useRealtimeVoiceStore` | `nanoImageRealtimeVoiceStore.ts` | 117 | 实时语音：录音状态、语音消息 |
 | 22 | `useStoryboardVoiceStore` | `nanoImageStoryboardVoiceStore.ts` | 341 | 故事板语音：角色配音、TTS 状态 |
+
+### TVC 组
+
+| # | Store | 文件 | 行数 | 描述 |
+|---|-------|------|------|------|
+| 23 | `useTvcStore` | `tvcStore.ts` | - | TVC 广告视频制作：任务状态管理 |
 
 ---
 
@@ -421,6 +428,7 @@ src/stores/                                           # 5,451 行
 ├── nanoImageKnowledgeCardStore.ts                    #    37 行 — 知识卡片
 ├── nanoImageArchitectureStore.ts                     #    41 行 — 架构图生成
 └── nanoImageCharacterDesignStore.ts                  #    41 行 — 角色设计
+└── tvcStore.ts                                        #    TVC 广告视频任务状态
 ```
 
 ---

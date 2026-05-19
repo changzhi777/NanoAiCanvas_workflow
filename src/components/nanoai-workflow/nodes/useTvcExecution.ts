@@ -101,7 +101,7 @@ export function useTvcExecution(
             result: { ...data.result, script, tvcProjectId: created.id },
           });
         }
-      } catch {
+      } catch (e) { console.warn('[useTvcExecution.ts]', e)
         // 项目创建失败不影响主流程
       }
 
@@ -137,7 +137,7 @@ export function useTvcExecution(
           toast.error(`积分不足：需要 ${estimate.total}，当前余额 ${estimate.balance}`);
           return;
         }
-      } catch {
+      } catch (e) { console.warn('[useTvcExecution.ts]', e)
         // 积分服务不可用时放行
       }
 
@@ -192,7 +192,7 @@ export function useTvcExecution(
           tvcProjectId = created.id;
         }
         await tvcProjectsApi.update(tvcProjectId, { task_id: response.task_id, status: 'processing' });
-      } catch {
+      } catch (e) { console.warn('[useTvcExecution.ts]', e)
         // 项目创建失败不影响主流程
       }
 

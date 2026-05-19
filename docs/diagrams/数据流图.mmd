@@ -1,0 +1,77 @@
+graph LR
+    subgraph TVC_FLOW["🎬 TVC 广告视频数据流"]
+        direction LR
+        T0["用户输入<br/>产品描述 + 风格"] --> T1["Step 1: 脚本生成<br/>GLM优先/M2.7 Fallback"]
+        T1 --> T2["Step 2: 提示词优化<br/>GLM-5.1"]
+        T2 --> T3["Step 3: 分镜脚本<br/>自动拆分镜头"]
+        T3 --> T4{"Step 4: 生图<br/>Provider 路由"}
+        T4 -->|即梦| T4A["即梦 Jimeng<br/>分镜图片 × N"]
+        T4 -->|速创| T4B["GPT-Image-2<br/>分镜图片 × N"]
+        T4 -->|GLM| T4C["GLM<br/>分镜图片 × N"]
+        T4A --> T5
+        T4B --> T5
+        T4C --> T5
+        T5["Step 5: 视频生成<br/>Seedance 2.0"] --> T6["Seedance 轮询<br/>max 300s / 15s"]
+        T6 -->|隐私拦截| T6R["去尾帧首帧<br/>自动重试"]
+        T6R --> T5
+        T6 -->|成功| T7["BGM 生成<br/>MiniMax Music"]
+        T7 --> T8["FFmpeg 合成<br/>1080p + 4K"]
+        T8 --> T9["Step 6: 资产保存<br/>关联资产库 + 关键帧缩略图"]
+        T9 --> T10["成品输出"]
+
+        T1 -.->|积分预扣| PT1["PointsService"]
+        T10 -.->|退还/扣除| PT1
+    end
+
+    subgraph IMG_FLOW["🖼️ 图片生成数据流"]
+        direction LR
+        I0["用户请求<br/>prompt + 参数"] --> I1{"模型路由<br/>model_routing.ts"}
+        I1 -->|nano_banana_2| I2A["速创 API<br/>NanoBanana 2.0"]
+        I1 -->|nano_banana_pro| I2B["速创 API<br/>NanoBanana Pro"]
+        I1 -->|gpt_image_2| I2C["速创 API<br/>GPT-Image-2"]
+        I1 -->|jimeng| I2D["即梦 API<br/>图片生成"]
+        I1 -->|minimax_image| I2E["MiniMax<br/>图片生成"]
+        I2A --> I3["结果统一处理"]
+        I2B --> I3
+        I2C --> I3
+        I2D --> I3
+        I2E --> I3
+        I3 --> I4["资产库保存<br/>+ 版本标记"]
+        I4 --> I5["前端预览<br/>ImagePreviewNode"]
+    end
+
+    subgraph SKILLS_FLOW["🧩 Skills 任务数据流"]
+        direction LR
+        S0["用户输入<br/>自然语言描述"] --> S1["glm-4.5-air<br/>意图分析"]
+        S1 --> S2["模板推荐<br/>匹配 SKILLS_TEMPLATES"]
+        S2 --> S3["用户确认<br/>选择模板"]
+        S3 --> S4["Redis LPUSH<br/>任务入队"]
+        S4 --> S5["SkillsWorker<br/>BRPOP 消费"]
+        S5 --> S6["5 步骤执行"]
+        S6 --> S6A["1. validating<br/>参数校验"]
+        S6A --> S6B["2. prompt_build<br/>PromptBuilder"]
+        S6B --> S6C["3. api_submit<br/>Provider 调用"]
+        S6C --> S6D["4. generating<br/>轮询等待"]
+        S6D --> S6E["5. completed<br/>结果保存"]
+        S6D -->|失败| S6F["failed<br/>错误记录"]
+        S6E --> S7["Redis Pub/Sub<br/>状态推送"]
+        S6F --> S7
+        S7 --> S8["前端 SSE 更新<br/>步骤动画"]
+    end
+
+    subgraph CHAT_FLOW["💬 聊天数据流"]
+        direction LR
+        C0["用户发送消息"] --> C1["WebSocket<br/>ConnectionManager"]
+        C1 --> C2{"同 Worker?"}
+        C2 -->|是| C3["直接转发<br/>WebSocket"]
+        C2 -->|否| C4["Redis Pub/Sub<br/>跨 Worker 广播"]
+        C4 --> C5["目标 Worker<br/>WebSocket 推送"]
+        C5 --> C6["客户端接收"]
+    end
+
+    %% 样式
+    style TVC_FLOW fill:#2a1a1a,color:#f0e0e0
+    style IMG_FLOW fill:#1a2a1a,color:#e0f0e0
+    style SKILLS_FLOW fill:#1a1a2a,color:#e0e0f0
+    style CHAT_FLOW fill:#2a1a2a,color:#f0e0f0
+    style PT1 fill:#5c5c1a,color:#f0f0d0

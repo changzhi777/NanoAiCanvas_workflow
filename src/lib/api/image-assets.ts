@@ -184,7 +184,12 @@ export async function getStoryboardShotAssetsApi(options?: {
   pageSize?: number
 }): Promise<{
   success: boolean
-  items?: any[]
+  items?: Array<{
+    id: string
+    url: string
+    name: string
+    metadata?: Record<string, unknown>
+  }>
   total?: number
   error?: string
 }> {

@@ -82,21 +82,21 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
 
     // 开发环境：使用模拟连接
     if (IS_DEV) {
-      console.log('[Collaboration] Dev mode: Using mock connection');
+      // [Collaboration] Dev mode: Using mock connection');
       setTimeout(() => {
         set({ isConnected: true });
-        console.log('[Collaboration] Mock connected successfully');
+        // [Collaboration] Mock connected successfully');
       }, 500);
       return;
     }
 
     // 生产环境：连接真实 WebSocket 服务器
     try {
-      console.log('[Collaboration] Connecting to WebSocket server:', WS_URL);
+      // [Collaboration] Connecting to WebSocket server:', WS_URL);
       const ws = new WebSocket(`${WS_URL}/collaboration/${state.sessionId}`);
 
       ws.onopen = () => {
-        console.log('[Collaboration] WebSocket connected');
+        // [Collaboration] WebSocket connected');
         set({ isConnected: true });
       };
 
@@ -111,7 +111,7 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
       };
 
       ws.onclose = () => {
-        console.log('[Collaboration] WebSocket disconnected');
+        // [Collaboration] WebSocket disconnected');
         set({ isConnected: false });
       };
 
@@ -125,7 +125,7 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
 
   disconnect: () => {
     set({ isConnected: false });
-    console.log('[Collaboration] Disconnected');
+    // [Collaboration] Disconnected');
   },
 
   joinUser: (user) => {
@@ -198,7 +198,7 @@ export const useCollaborationStore = create<CollaborationStore>((set, get) => ({
     };
 
     // 发送到服务器（模拟）
-    console.log('[Collaboration] Sending operation:', operation);
+    // [Collaboration] Sending operation:', operation);
 
     set({
       operations: [...state.operations, operation],

@@ -1,0 +1,89 @@
+graph TB
+    subgraph "前端页面 (src/app/)"
+        P1["/nano2<br/>主画布页面"]
+        P2["/admin/*<br/>管理后台 25+ 页面"]
+        P3["/notifications<br/>通知中心"]
+        P4["/points<br/>积分页面"]
+    end
+
+    subgraph "前端组件 (src/components/)"
+        C1["nanoai-workflow<br/>55+ 节点 + 14 模板"]
+        C2["admin<br/>AdminSidebar/Header/AppConfig"]
+        C3["storyboard<br/>25 故事板组件"]
+        C4["canvas<br/>画布基础"]
+        C5["panels<br/>属性面板"]
+        C6["toolbar<br/>工具栏"]
+        C7["collaboration<br/>协作光标"]
+        C8["ui<br/>shadcn/ui 基础"]
+    end
+
+    subgraph "前端状态 (src/stores/)"
+        S1["23 Zustand Stores<br/>Workflow/Chat/StoryBoard<br/>Points/Notification/..."]
+        S2["Redux Store<br/>canvas/ui/settings"]
+    end
+
+    subgraph "后端 V1 API (/api)"
+        A1["auth.py 认证授权"]
+        A2["assets.py 资产管理"]
+        A3["workflows.py 工作流"]
+        A4["points.py 积分查询"]
+        A5["chat.py 聊天 + WebSocket"]
+        A6["notifications.py 通知"]
+        A7["其他 7 个路由"]
+    end
+
+    subgraph "后端 V2 API (/api/v2)"
+        V1["admin.py 渠道商/模型/Key CRUD"]
+        V2["key_mapper.py 前后端Key映射"]
+        V3["skills.py Skills 队列生成"]
+        V4["workflow_tasks.py TVC任务"]
+        V5["image.py 多Provider图片"]
+        V6["glm_proxy.py GLM代理"]
+        V7["app_visibility.py 可见性"]
+        V8["generation_log.py 生成日志"]
+        V9["tvc_config.py TVC配置"]
+        V10["minimax.py MiniMax代理"]
+        V11["tvc_projects.py TVC项目"]
+        V12["library.py 资产库V2"]
+    end
+
+    subgraph "后端服务层 (services/)"
+        SV1["workflow_executor<br/>TVC 5步线性流程"]
+        SV2["skills_worker<br/>Redis队列消费"]
+        SV3["task_queue<br/>任务队列管理"]
+        SV4["api_key_service<br/>Key热加载"]
+        SV5["points_service<br/>积分计价引擎"]
+        SV6["pubsub<br/>Redis Pub/Sub"]
+        SV7["model_scanner<br/>模型检测"]
+    end
+
+    subgraph "数据层"
+        DB["PostgreSQL<br/>19 Models"]
+        RD["Redis<br/>Session/Queue/PubSub"]
+    end
+
+    P1 --> C1
+    P2 --> C2
+    C1 --> S1
+    C1 --> S2
+    S1 --> A1
+    S1 --> V1
+    S1 --> V4
+    C3 --> S1
+
+    A1 --> DB
+    A2 --> DB
+    V1 --> DB
+    V3 --> SV2
+    V4 --> SV1
+    SV2 --> SV3
+    SV2 --> SV6
+    SV1 --> RD
+    SV6 --> RD
+    A5 --> RD
+    SV4 --> RD
+
+    style P1 fill:#1a6688,color:#fff
+    style V1 fill:#229933,color:#fff
+    style SV2 fill:#cc6622,color:#fff
+    style DB fill:#555555,color:#fff

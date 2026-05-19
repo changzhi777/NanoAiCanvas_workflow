@@ -164,7 +164,7 @@ export function StoryboardAssetPreview({
               角色 ({characters.length})
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              {characters.map((char: any) => {
+              {characters.map((char) => {
                 const design = asset.characterDesigns?.find(d => d.characterId === char.id)
                 return (
                   <div key={char.id} className="p-2 rounded-lg bg-white/5">
@@ -198,7 +198,7 @@ export function StoryboardAssetPreview({
               音频 ({audios.length})
             </h3>
             <div className="space-y-1 max-h-40 overflow-y-auto">
-              {audios.map((audio: any, idx: number) => (
+              {audios.map((audio, idx: number) => (
                 <div
                   key={audio.dialogueId || idx}
                   className="flex items-center gap-2 p-2 rounded bg-white/5"
@@ -238,7 +238,7 @@ export function StoryboardAssetPreview({
           <div>
             <h3 className="text-xs font-medium mb-2">场景列表</h3>
             <div className="space-y-1 max-h-48 overflow-y-auto">
-              {scenes.map((scene: any, idx: number) => (
+              {scenes.map((scene, idx: number) => (
                 <div key={scene.id || idx} className="p-2 rounded bg-white/5">
                   <div className="flex items-center gap-2 text-xs">
                     <span className="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px]">

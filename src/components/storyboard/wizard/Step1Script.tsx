@@ -152,7 +152,6 @@ export function Step1Script() {
       }
 
       const script = await generateStoryboardScript(user.textApiKey, inputText, (progress) => {
-        console.log('Progress:', progress)
       })
 
       setScriptData(script)

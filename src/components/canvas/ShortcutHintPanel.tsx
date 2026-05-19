@@ -50,7 +50,6 @@ export function ShortcutHintPanel({
   } = useShortcutSystem({
     disableGlobalListener: true, // 禁用全局监听
     onShortcutTrigger: (shortcutId) => {
-      console.log('快捷键触发:', shortcutId)
       // 这里可以添加其他逻辑
     },
   })
@@ -103,7 +102,6 @@ export function ShortcutHintPanel({
 
   // 成就解锁处理
   const handleAchievementUnlock = (achievement: any) => {
-    console.log('成就解锁:', achievement.title)
     // 这里可以显示通知
   }
 

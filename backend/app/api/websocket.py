@@ -88,7 +88,7 @@ async def websocket_task_status(websocket: WebSocket, task_id: str) -> None:
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        import logging; logging.getLogger(__name__).warning(f"WebSocket error: {e}")
     finally:
         subscriber.close()
         manager.disconnect(websocket, task_id)

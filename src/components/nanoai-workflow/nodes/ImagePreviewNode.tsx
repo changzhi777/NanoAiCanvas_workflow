@@ -153,7 +153,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           } else {
             initialStates[i] = 'error'
           }
-        } catch {
+        } catch (e) { console.warn('[ImagePreviewNode.tsx]', e)
           initialStates[i] = 'error'
         }
         setSaveStates({ ...initialStates })
@@ -191,21 +191,25 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
       if (cancelled || !res.success || !res.items?.length) return
 
       // 按 shotNumber 排序
-      const sorted = [...res.items].sort((a: any, b: any) => {
-        const na = (a.metadata?.params?.shotNumber as number) || 0
-        const nb = (b.metadata?.params?.shotNumber as number) || 0
+      const sorted = [...res.items].sort((a, b) => {
+        const na = ((a.metadata as Record<string, Record<string, number>>)?.params?.shotNumber) || 0
+        const nb = ((b.metadata as Record<string, Record<string, number>>)?.params?.shotNumber) || 0
         return na - nb
       })
 
-      const images = sorted.map((a: any) => a.url)
-      const loadedShots: StoryboardShot[] = sorted.map((a: any, i: number) => ({
-        shot_number: a.metadata?.params?.shotNumber || i + 1,
-        scene_description: a.metadata?.enhancedPrompt || '',
-        visual_prompt: a.metadata?.prompt || '',
-        camera_angle: a.metadata?.params?.cameraAngle || '',
-        mood: a.metadata?.params?.mood || '',
-        imageUrl: a.url,
-      }))
+      const images = sorted.map((a) => a.url)
+      const loadedShots: StoryboardShot[] = sorted.map((a, i) => {
+        const meta = a.metadata as Record<string, unknown> | undefined
+        const params = meta?.params as Record<string, unknown> | undefined
+        return {
+          shot_number: (params?.shotNumber as number) || i + 1,
+          scene_description: (meta?.enhancedPrompt as string) || '',
+          visual_prompt: (meta?.prompt as string) || '',
+          camera_angle: (params?.cameraAngle as string) || '',
+          mood: (params?.mood as string) || '',
+          imageUrl: a.url,
+        }
+      })
 
       updateNode(id, {
         result: {
@@ -213,11 +217,11 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
           images,
           shots: loadedShots,
           savedToAsset: true,
-          savedAssetIds: sorted.map((a: any) => String(a.id)),
+          savedAssetIds: sorted.map((a) => String(a.id)),
           scriptTitle,
         },
         status: NodeStatus.SUCCESS,
-      } as any)
+      })
     }
 
     loadAssets()
@@ -235,7 +239,7 @@ export const ImagePreviewNode = ({ id, data }: NodeProps<ImagePreviewNodeData>) 
       link.download = `nanoai_P${index + 1}_${Date.now()}.png`
       link.click()
       URL.revokeObjectURL(url)
-    } catch {
+    } catch (e) { console.warn('[ImagePreviewNode.tsx]', e)
       const link = document.createElement('a')
       link.href = imageUrl
       link.download = `nanoai_P${index + 1}.png`

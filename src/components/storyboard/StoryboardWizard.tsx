@@ -15,16 +15,16 @@ import { Step1Script } from './wizard/Step1Script'
 import { Step2Storyboard } from './wizard/Step2Storyboard'
 import { Step3Dialogue } from './wizard/Step3Dialogue'
 import { Step4Character } from './wizard/Step4Character'
-import type { WizardStep } from '@/stores/nanoImageStoryboardWizardStore'
+import type { WizardStep, StoryboardImage, DialogueLine as WizardDialogueLine, CharacterPrompt, ScriptData } from '@/stores/nanoImageStoryboardWizardStore'
 
 // 导出 payload 类型
 export type WizardPayload = {
   inputText: string
   style: string
-  script: any
-  storyboardImages: any[]
-  dialogues: any[]
-  characterPrompts: any[]
+  script: ScriptData | null
+  storyboardImages: StoryboardImage[]
+  dialogues: WizardDialogueLine[]
+  characterPrompts: CharacterPrompt[]
 }
 
 interface StoryboardWizardProps {

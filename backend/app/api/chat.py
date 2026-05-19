@@ -366,21 +366,49 @@ async def list_conversations(
     for m in my_members.scalars().all():
         my_member_map[m.conversation_id] = m
 
-    # 批量统计未读数
-    unread_counts: dict = {}
-    for conv_id in conv_ids:
-        member = my_member_map.get(conv_id)
-        last_read = member.last_read_at if member else None
-        unread_q = select(func.count()).select_from(Message).where(
-            Message.conversation_id == conv_id,
-            Message.sender_id != current_user.id,
+    # 批量统计未读数（单次查询替代 N+1）
+    unread_counts: dict = {conv_id: 0 for conv_id in conv_ids}
+    members_with_read = {conv_id: m for conv_id, m in my_member_map.items() if m.last_read_at}
+    members_no_read = [conv_id for conv_id in conv_ids if conv_id not in members_with_read]
+
+    if members_with_read:
+        case_stmt = func.sum(
+            func.cast(Message.sender_id != current_user.id, Integer)
         )
-        if last_read:
-            unread_q = unread_q.where(Message.created_at > last_read)
-        else:
-            unread_q = unread_q.where(Message.is_read == False)
-        count_result = await db.execute(unread_q)
-        unread_counts[conv_id] = count_result.scalar() or 0
+        read_conditions = []
+        params = {}
+        for i, (conv_id, member) in enumerate(members_with_read.items()):
+            read_conditions.append(
+                and_(
+                    Message.conversation_id == conv_id,
+                    Message.created_at > member.last_read_at,
+                    Message.sender_id != current_user.id,
+                )
+            )
+        if read_conditions:
+            from sqlalchemy import or_, case
+            unread_q = (
+                select(Message.conversation_id, func.count().label("cnt"))
+                .where(or_(*read_conditions))
+                .group_by(Message.conversation_id)
+            )
+            result = await db.execute(unread_q)
+            for conv_id, cnt in result.all():
+                unread_counts[conv_id] = cnt
+
+    if members_no_read:
+        unread_q = (
+            select(Message.conversation_id, func.count().label("cnt"))
+            .where(
+                Message.conversation_id.in_(members_no_read),
+                Message.sender_id != current_user.id,
+                Message.is_read == False,
+            )
+            .group_by(Message.conversation_id)
+        )
+        result = await db.execute(unread_q)
+        for conv_id, cnt in result.all():
+            unread_counts[conv_id] = cnt
 
     resp = []
     for conv_id in conv_ids:
@@ -570,6 +598,20 @@ async def delete_conversation(
     member = result.scalar_one_or_none()
     if not member:
         raise HTTPException(status_code=404, detail="会话不存在")
+    # 通知对方会话即将删除
+    conv_result = await db.execute(
+        select(ConversationMember.user_id).where(
+            ConversationMember.conversation_id == conv_id,
+            ConversationMember.user_id != current_user.id,
+        )
+    )
+    other_user_row = conv_result.first()
+    if other_user_row:
+        other_uid = str(other_user_row[0])
+        await manager.send_to_user(other_uid, {
+            "type": "conversation_deleted",
+            "payload": {"conversation_id": conv_id},
+        })
     # delete conversation (cascade deletes members + messages)
     conv_result = await db.execute(
         select(Conversation).where(Conversation.id == conv_id)
@@ -685,12 +727,6 @@ async def save_attachment_to_assets(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """将聊天中的附件保存到自己的资产库"""
-    type_map = {"image": AssetType.IMAGE, "video": AssetType.VIDEO, "audio": AssetType.AUDIO}
-    asset_type = type_map.get(data.type)
-    if not asset_type:
-        raise HTTPException(status_code=400, detail="不支持的类型")
-
     """将聊天中的附件保存到自己的资产库"""
     type_map = {"image": AssetType.IMAGE, "video": AssetType.VIDEO, "audio": AssetType.AUDIO}
     asset_type = type_map.get(data.type)

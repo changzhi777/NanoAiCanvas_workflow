@@ -102,33 +102,27 @@ export function BananaBrotherDialog({
     clientRef.current = new RealtimeVoiceClient()
 
     clientRef.current.onSessionCreated = () => {
-      console.log('[BananaBrother] Session created')
       setConnected(true)
       toast.success('香蕉哥哥已上线~')
     }
 
     clientRef.current.onSessionUpdated = () => {
-      console.log('[BananaBrother] Session updated')
     }
 
     clientRef.current.onSpeechStarted = () => {
-      console.log('[BananaBrother] User speech started')
     }
 
     clientRef.current.onSpeechStopped = () => {
-      console.log('[BananaBrother] User speech stopped')
       setRecording(false)
     }
 
     clientRef.current.onResponseCreated = () => {
-      console.log('[BananaBrother] Response creating')
       setSpeaking(true)
       setProcessing(true)
       transcriptBufferRef.current = ''
     }
 
     clientRef.current.onResponseDone = () => {
-      console.log('[BananaBrother] Response done')
       setSpeaking(false)
       setProcessing(false)
 

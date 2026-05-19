@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import {
   ZoomIn,
   ZoomOut,
@@ -13,7 +13,9 @@ import {
   Moon,
   Sun,
   MousePointer2,
+  Info,
 } from 'lucide-react'
+import { AboutDialog } from '@/components/ui/AboutDialog'
 import { Button } from '@/components/ui/button'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { setTheme, setLocale, selectAutosave } from '@/store/slices/settingsSlice'
@@ -31,6 +33,7 @@ export default function Toolbar() {
   const theme = useAppSelector((state) => state.settings.theme)
   const locale = useAppSelector((state) => state.settings.locale)
   const { enabled: cursorEnabled, toggleCursor } = useCursor()
+  const [aboutOpen, setAboutOpen] = useState(false)
 
   // 缩放操作
   const handleZoomIn = useCallback(() => {
@@ -194,6 +197,15 @@ export default function Toolbar() {
         <Button variant="ghost" size="icon-sm" aria-label={t('common.settings')}>
           <Settings className="h-4 w-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => setAboutOpen(true)}
+          aria-label="关于"
+        >
+          <Info className="h-4 w-4" />
+        </Button>
+        <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 """
+import logging; logger = logging.getLogger(__name__)
 Redis Pub/Sub 服务 - 任务状态实时推送
 """
 import asyncio
@@ -68,7 +69,7 @@ class TaskPublisher:
         try:
             await redis_client.publish(channel, message)
         except Exception as e:
-            print(f"Redis publish error: {e}")
+            logger.warning(f"Redis publish error: {e}")
 
     @classmethod
     async def publish_pending(cls, task_id: str, progress: int = 0) -> None:
@@ -153,7 +154,7 @@ class TaskSubscriber:
         except asyncio.TimeoutError:
             pass
         except Exception as e:
-            print(f"Redis get_message error: {e}")
+            logger.warning(f"Redis get_message error: {e}")
 
         return None
 
@@ -175,5 +176,5 @@ async def test_redis_connection() -> bool:
         await redis_client.ping()
         return True
     except Exception as e:
-        print(f"Redis connection test failed: {e}")
+        logger.warning(f"Redis connection test failed: {e}")
         return False

@@ -43,7 +43,7 @@ export interface PreviewNodeData extends WorkflowNodeData {
     compareMode?: boolean;
   };
   result?: {
-    content?: any;
+    content?: string | Array<Record<string, unknown>>;
     items?: PreviewItem[];
     images?: string[];
     text?: string;
@@ -51,7 +51,7 @@ export interface PreviewNodeData extends WorkflowNodeData {
     videoUrl?: string;
     thumbnail?: string;
     duration?: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   };
 }
 
@@ -397,11 +397,11 @@ export const PreviewNode = ({ id, data }: NodeProps<PreviewNodeData>) => {
       if (typeof resultData.content === 'string') {
         items.push({ id: generateId(), type: 'text', url: resultData.content, title: '内容' });
       } else if (Array.isArray(resultData.content)) {
-        resultData.content.forEach((c: any, i: number) => {
+        resultData.content.forEach((c: string | Record<string, unknown>, i: number) => {
           if (typeof c === 'string') {
             items.push({ id: generateId(), type: 'image', url: c, title: `内容 ${i + 1}` });
           } else if (c.url || c.imageUrl) {
-            items.push({ id: generateId(), type: c.type || 'image', url: c.url || c.imageUrl, title: c.title || `内容 ${i + 1}` });
+            items.push({ id: generateId(), type: (['image', 'video', 'audio', 'text'].includes(c.type as string) ? c.type : 'image') as PreviewItem['type'], url: (c.url as string) || (c.imageUrl as string), title: (c.title as string) || `内容 ${i + 1}` });
           }
         });
       }
