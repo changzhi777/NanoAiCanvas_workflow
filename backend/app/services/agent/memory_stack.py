@@ -14,6 +14,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import AgentMemory, AgentExecutionLog, MemoryLayer
+from app.services.agent import __version__ as agent_version
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ class MemoryStack:
         identity_file = L0_DIR / "identity.json"
         if identity_file.exists():
             return json.loads(identity_file.read_text())
-        return {"role": "Nanoai Team8 Agent", "version": "V0.1.0"}
+        return {"role": "Nanoai Team8 Agent", "version": agent_version}
 
     # ── L1: Essential (file-based, curated) ──
 
@@ -102,7 +103,8 @@ class MemoryStack:
         if category:
             stmt = stmt.where(AgentMemory.category == category)
         if keyword:
-            stmt = stmt.where(AgentMemory.content.ilike(f"%{keyword}%"))
+            escaped = keyword.replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(AgentMemory.content.ilike(f"%{escaped}%"))
 
         stmt = stmt.order_by(AgentMemory.stability.desc()).limit(limit)
         result = await self.db.execute(stmt)

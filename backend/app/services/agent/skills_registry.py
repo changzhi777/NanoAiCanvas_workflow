@@ -312,8 +312,11 @@ def _increment_version(version: str) -> str:
     """语义化版本 patch +1"""
     parts = version.split(".")
     if len(parts) == 3:
-        parts[2] = str(int(parts[2]) + 1)
-        return ".".join(parts)
+        try:
+            parts[2] = str(int(parts[2]) + 1)
+            return ".".join(parts)
+        except ValueError:
+            return version
     return version
 
 
