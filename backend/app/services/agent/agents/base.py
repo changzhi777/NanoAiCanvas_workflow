@@ -14,6 +14,7 @@ from typing import AsyncIterator, TYPE_CHECKING
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent import AgentExecutionLog
+from app.services.agent.model_router import AGENT_MODEL_MAP
 
 if TYPE_CHECKING:
     from app.services.agent.model_router import ModelRouter
@@ -95,7 +96,7 @@ class BaseAgent(ABC):
                 duration_ms=duration_ms,
                 success=success,
                 error_message=error_msg,
-                model_used=self.model_router.AGENT_MODEL_MAP.get(self.name, ("glm-4-flash",))[0],
+                model_used=AGENT_MODEL_MAP.get(self.name, ("glm-4-flash",))[0],
             )
             self.db.add(log)
             await self.db.commit()
