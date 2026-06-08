@@ -1,0 +1,28 @@
+[Unit]
+Description=NanoAiCanvas Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/nanoai/backend
+Environment="PATH=/opt/nanoai/backend/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/nanoai/backend/venv/bin/uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --workers 2 \
+    --loop uvloop \
+    --http httptools \
+    --access-log
+
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# 安全限制
+NoNewPrivileges=no
+ProtectSystem=false
+
+[Install]
+WantedBy=multi-user.target

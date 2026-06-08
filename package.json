@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.13.24",
+  "version": "2.13.27",
   "private": false,
   "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
@@ -114,7 +114,7 @@
     "@typescript-eslint/parser": "^7.9.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitejs/plugin-react-swc": "^3.6.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^1.6.1",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
