@@ -149,7 +149,7 @@ export function NotificationPopover() {
           </div>
 
           <div className="border-t bg-muted/20">
-            <button onClick={() => { setOpen(false); router.push('/nanoaicanvas/notifications'); }} className="flex items-center justify-center gap-1 w-full py-2.5 text-xs text-primary hover:text-primary/80 hover:bg-muted/40 transition-colors">
+            <button onClick={() => { setOpen(false); router.push('/nanoai/notifications'); }} className="flex items-center justify-center gap-1 w-full py-2.5 text-xs text-primary hover:text-primary/80 hover:bg-muted/40 transition-colors">
               查看全部通知<ArrowRight className="h-3 w-3" />
             </button>
           </div>

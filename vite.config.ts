@@ -7,7 +7,7 @@ const BACKEND = 'http://64.118.135.134:8002'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/nanoaicanvas/',
+  base: '/nanoai/',
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -32,54 +32,54 @@ export default defineConfig({
     host: true,
     open: true,
     proxy: {
-      // base-prefixed proxy rules (browser requests /nanoaicanvas/api/...)
-      '/nanoaicanvas/api/wuyinkeji': {
+      // base-prefixed proxy rules (browser requests /nanoai/api/...)
+      '/nanoai/api/wuyinkeji': {
         target: 'https://api.wuyinkeji.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas\/api\/wuyinkeji/, '/api'),
+        rewrite: (path) => path.replace(/^\/nanoai\/api\/wuyinkeji/, '/api'),
         secure: true,
       },
-      '/nanoaicanvas/v2/': {
+      '/nanoai/v2/': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
-      '/nanoaicanvas/ws/': {
+      '/nanoai/ws/': {
         target: BACKEND,
         changeOrigin: true,
         ws: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
-      '/nanoaicanvas/asset-uploads/': {
+      '/nanoai/asset-uploads/': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
-      '/nanoaicanvas/chat-uploads/': {
+      '/nanoai/chat-uploads/': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
-      '/nanoaicanvas/api': {
+      '/nanoai/api': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
-      '/nanoaicanvas/auth': {
+      '/nanoai/auth': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas\/auth/, '/api/auth'),
+        rewrite: (path) => path.replace(/^\/nanoai\/auth/, '/api/auth'),
         secure: false,
       },
-      '/nanoaicanvas/health': {
+      '/nanoai/health': {
         target: BACKEND,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/nanoaicanvas/, ''),
+        rewrite: (path) => path.replace(/^\/nanoai/, ''),
         secure: false,
       },
 

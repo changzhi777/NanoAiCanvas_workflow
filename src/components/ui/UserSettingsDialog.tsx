@@ -202,7 +202,7 @@ export function UserSettingsDialog({ open, onOpenChange }: UserSettingsDialogPro
                 className="w-full justify-start gap-2"
                 onClick={() => {
                   onOpenChange(false);
-                  window.location.href = '/nanoaicanvas/admin';
+                  window.location.href = '/nanoai/admin';
                 }}
               >
                 <Settings className="h-4 w-4" />

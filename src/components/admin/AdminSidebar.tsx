@@ -41,17 +41,17 @@ const navigation = [
     items: [
       {
         title: '渠道商列表',
-        href: '/nanoaicanvas/admin/providers',
+        href: '/nanoai/admin/providers',
         icon: Globe,
       },
       {
         title: 'API Key 池',
-        href: '/nanoaicanvas/admin/api-key-pool',
+        href: '/nanoai/admin/api-key-pool',
         icon: Key,
       },
       {
         title: 'MCP 配置',
-        href: '/nanoaicanvas/admin/mcp',
+        href: '/nanoai/admin/mcp',
         icon: Plug,
       },
     ],
@@ -61,17 +61,17 @@ const navigation = [
     items: [
       {
         title: 'Workflow 管理',
-        href: '/nanoaicanvas/admin/apps/workflow',
+        href: '/nanoai/admin/apps/workflow',
         icon: LayoutGrid,
       },
       {
         title: 'Nano 2 管理',
-        href: '/nanoaicanvas/admin/apps/nano2',
+        href: '/nanoai/admin/apps/nano2',
         icon: LayoutGrid,
       },
       {
         title: 'TVC 配置',
-        href: '/nanoaicanvas/admin/tvc-config',
+        href: '/nanoai/admin/tvc-config',
         icon: LayoutGrid,
       },
     ],
@@ -81,22 +81,22 @@ const navigation = [
     items: [
       {
         title: '模型配置',
-        href: '/nanoaicanvas/admin/models',
+        href: '/nanoai/admin/models',
         icon: Server,
       },
       {
         title: '用量统计',
-        href: '/nanoaicanvas/admin/models/usage',
+        href: '/nanoai/admin/models/usage',
         icon: BarChart3,
       },
       {
         title: '模型路由',
-        href: '/nanoaicanvas/admin/models/routes',
+        href: '/nanoai/admin/models/routes',
         icon: Activity,
       },
       {
         title: '积分管理',
-        href: '/nanoaicanvas/admin/points',
+        href: '/nanoai/admin/points',
         icon: Zap,
       },
     ],
@@ -106,12 +106,12 @@ const navigation = [
     items: [
       {
         title: '发送消息',
-        href: '/nanoaicanvas/admin/notifications/send',
+        href: '/nanoai/admin/notifications/send',
         icon: Bell,
       },
       {
         title: '消息记录',
-        href: '/nanoaicanvas/admin/notifications/records',
+        href: '/nanoai/admin/notifications/records',
         icon: MessageSquare,
       },
     ],
@@ -121,12 +121,12 @@ const navigation = [
     items: [
       {
         title: '团队列表',
-        href: '/nanoaicanvas/admin/teams',
+        href: '/nanoai/admin/teams',
         icon: Users,
       },
       {
         title: '创建团队',
-        href: '/nanoaicanvas/admin/teams/create',
+        href: '/nanoai/admin/teams/create',
         icon: UserPlus,
       },
     ],
@@ -136,12 +136,12 @@ const navigation = [
     items: [
       {
         title: '用户申请',
-        href: '/nanoaicanvas/admin/user-apply',
+        href: '/nanoai/admin/user-apply',
         icon: UserPlus,
       },
       {
         title: '统计分析',
-        href: '/nanoaicanvas/admin/statistics',
+        href: '/nanoai/admin/statistics',
         icon: TrendingUp,
       },
     ],
@@ -151,7 +151,7 @@ const navigation = [
     items: [
       {
         title: 'MQTT 配置',
-        href: '/nanoaicanvas/admin/mqtt',
+        href: '/nanoai/admin/mqtt',
         icon: Wifi,
       },
     ],
@@ -161,7 +161,7 @@ const navigation = [
     items: [
       {
         title: 'Kevin 算法',
-        href: '/nanoaicanvas/admin/kevin',
+        href: '/nanoai/admin/kevin',
         icon: Activity,
       },
     ],
@@ -171,7 +171,7 @@ const navigation = [
     items: [
       {
         title: '系统配置',
-        href: '/nanoaicanvas/admin/system',
+        href: '/nanoai/admin/system',
         icon: Settings,
       },
     ],
@@ -192,7 +192,7 @@ export function AdminSidebar() {
       {/* 返回按钮 */}
       <div className="p-3 border-b">
         <button
-          onClick={() => window.location.href = '/nanoaicanvas'}
+          onClick={() => window.location.href = '/nanoai'}
           className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
