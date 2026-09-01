@@ -47,7 +47,7 @@ def upgrade():
         sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
         sa.Column('session_id', UUID(as_uuid=True), sa.ForeignKey('agent_sessions.id', ondelete='SET NULL'), nullable=True, index=True),
         sa.Column('pipeline_type', sa.String(30), nullable=False),
-        sa.Column('status', sa.String(20), nullable=False, server_default='queued', index=True),
+        sa.Column('status', sa.String(20), nullable=False, server_default='queued'),
         sa.Column('params_json', JSONB, server_default='{}'),
         sa.Column('result_json', JSONB, nullable=True),
         sa.Column('progress', sa.Float, server_default='0.0'),
