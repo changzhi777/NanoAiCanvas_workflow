@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from datetime import datetime, timedelta
 from typing import Optional
 import base64
@@ -155,8 +155,10 @@ async def login(
     except Exception:
         redis_available = False
 
-    # Find user by email
-    result = await db.execute(select(User).where(User.email == login_data.username))
+    # Find user by email or username（支持 14455975 或 14455975@qq.com 登录）
+    result = await db.execute(
+        select(User).where(or_(User.email == login_data.username, User.username == login_data.username))
+    )
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(login_data.password, user.password_hash):
