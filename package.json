@@ -1,6 +1,6 @@
 {
   "name": "nanoai-canvas",
-  "version": "2.13.47",
+  "version": "2.13.48",
   "private": false,
   "description": "基于无限画布的 Workflow 任务工作流系统 - 可视化节点编辑器和 AI 工作流引擎",
   "main": "./dist/nanoai-canvas.cjs",
@@ -99,7 +99,8 @@
     "sonner": "^1.5.0",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",

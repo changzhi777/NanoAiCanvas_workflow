@@ -116,6 +116,9 @@ importers:
       uuid:
         specifier: ^14.0.0
         version: 14.0.0
+      zustand:
+        specifier: ^4.5.7
+        version: 4.5.7(@types/react@18.3.28)(immer@11.1.4)(react@19.2.5)
     devDependencies:
       '@playwright/test':
         specifier: ^1.44.0
