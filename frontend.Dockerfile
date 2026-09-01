@@ -13,12 +13,12 @@ COPY . .
 ARG VITE_API_BASE_URL=""
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
-RUN pnpm build
+RUN pnpm build && mkdir -p /pub && mv dist /pub/nanoai
 
 # Stage 2: Serve
 FROM nginx:alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /pub/nanoai /usr/share/nginx/html/nanoai
 
 # nginx配置：SPA路由 + API代理
 RUN cat > /etc/nginx/conf.d/default.conf << 'EOF'

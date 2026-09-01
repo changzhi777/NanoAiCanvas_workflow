@@ -1,6 +1,4 @@
-"""
-import logging; logger = logging.getLogger(__name__)
-Skills Worker - 后台任务执行器
+"""Skills Worker - 后台任务执行器
 
 从 Redis 队列消费任务，步骤化执行图片生成：
 1. validating    - 参数校验
@@ -13,6 +11,7 @@ Skills Worker - 后台任务执行器
 """
 
 import asyncio
+import logging
 import os
 import time
 import traceback
@@ -24,6 +23,8 @@ import httpx
 from app.config import get_settings
 from app.services.pubsub import TaskPublisher
 from app.services.task_queue import TaskQueue, TaskQueueManager
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
