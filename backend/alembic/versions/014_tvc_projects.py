@@ -18,7 +18,7 @@ def upgrade():
         'tvc_projects',
         sa.Column('id', UUID(as_uuid=True), primary_key=True),
         sa.Column('user_id', UUID(as_uuid=True), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column('team_id', sa.Integer, sa.ForeignKey('teams.id'), nullable=True, index=True),
+        sa.Column('team_id', UUID(as_uuid=True), sa.ForeignKey('teams.id'), nullable=True, index=True),
         sa.Column('name', sa.String(255), nullable=False),
         sa.Column('description', sa.Text, nullable=True),
         sa.Column('original_text', sa.Text, nullable=False, server_default=''),
