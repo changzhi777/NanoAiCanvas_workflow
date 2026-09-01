@@ -24,9 +24,9 @@ async function openPopover(page: import('@playwright/test').Page) {
 
 async function navigateToNotificationsPage(page: import('@playwright/test').Page) {
   await openPopover(page)
-  // router.push → window.location.href = '/nanoaicanvas/notifications'
+  // router.push → window.location.href = '/nanoai/notifications'
   await Promise.all([
-    page.waitForURL('**/nanoaicanvas/notifications', { timeout: 15000 }),
+    page.waitForURL('**/nanoai/notifications', { timeout: 15000 }),
     page.locator('text=查看全部通知').evaluate(el => (el as HTMLElement).click()),
   ])
   await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})

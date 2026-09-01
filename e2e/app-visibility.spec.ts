@@ -122,7 +122,7 @@ test.describe('应用可见性管理 - Nano 2', () => {
 
 test.describe('管理后台 - 应用管理页面', () => {
   test('Admin 侧边栏显示 Workflow 和 Nano 2 两个管理入口', async ({ page }) => {
-    await page.goto('http://localhost:3000/nanoaicanvas/admin')
+    await page.goto('http://localhost:3000/nanoai/admin')
     await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(1000)
 
@@ -139,7 +139,7 @@ test.describe('管理后台 - 应用管理页面', () => {
       if (msg.type() === 'error') consoleErrors.push(msg.text())
     })
 
-    await page.goto('http://localhost:3000/nanoaicanvas/admin')
+    await page.goto('http://localhost:3000/nanoai/admin')
     await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(1000)
 
@@ -176,7 +176,7 @@ test.describe('管理后台 - 应用管理页面', () => {
   })
 
   test('Nano 2 管理页面可正常加载', async ({ page }) => {
-    await page.goto('http://localhost:3000/nanoaicanvas/admin/apps/nano2')
+    await page.goto('http://localhost:3000/nanoai/admin/apps/nano2')
     await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(2000)
 
@@ -190,7 +190,7 @@ test.describe('管理后台 - 应用管理页面', () => {
   })
 
   test('可见性状态切换可正常工作', async ({ page }) => {
-    await page.goto('http://localhost:3000/nanoaicanvas/admin/apps/workflow')
+    await page.goto('http://localhost:3000/nanoai/admin/apps/workflow')
     await page.waitForSelector('.react-flow', { timeout: 10000 }).catch(() => {})
     await page.waitForTimeout(2000)
 

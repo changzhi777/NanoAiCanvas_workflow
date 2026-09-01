@@ -28,22 +28,22 @@ server {
     index index.html;
 
     location / {
-        try_files $uri $uri/ /nanoaicanvas/index.html;
+        try_files $uri $uri/ /nanoai/index.html;
     }
 
     # Nano2 独立入口 SPA fallback（前缀匹配，兼容 /nano2 和 /nano2/）
     location /nano2 {
-        try_files $uri /nanoaicanvas/index.html;
+        try_files $uri /nanoai/index.html;
     }
 
     # 管理后台 SPA fallback
     location /admin {
-        try_files $uri /nanoaicanvas/index.html;
+        try_files $uri /nanoai/index.html;
     }
 
     # Canvas SPA fallback
     location = /canvas {
-        try_files $uri /nanoaicanvas/index.html;
+        try_files $uri /nanoai/index.html;
     }
 
     location /api/ {

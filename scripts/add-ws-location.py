@@ -24,10 +24,10 @@ ws_config = '''
 # Find the last location inside the SSL server block and insert after it
 # The SSL server block ends at the second to last }
 lines = content.split('\n')
-# Find the line with "location /nanoaicanvas/assets/"
+# Find the line with "location /nanoai/assets/"
 insert_line = None
 for i, line in enumerate(lines):
-    if 'location /nanoaicanvas/assets/' in line:
+    if 'location /nanoai/assets/' in line:
         # Find the closing brace of this location block
         for j in range(i+1, len(lines)):
             if lines[j].strip() == '}':

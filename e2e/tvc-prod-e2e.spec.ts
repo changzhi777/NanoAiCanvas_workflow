@@ -3,7 +3,7 @@
  */
 import { test, expect } from '@playwright/test'
 
-const PROD_URL = 'https://nanoai.fun/nanoaicanvas'
+const PROD_URL = 'https://91zm.com.cn/nanoai'
 const EMAIL = 'cz@nanoai.fun'
 const PASSWORD = 'cz777777+'
 const TVC_SCRIPT = '李小龙真人大战游戏恐龙快打的真人角色,场景是在游戏厅内'
