@@ -2,15 +2,34 @@
 
 > 基于 React Flow 的无限画布 Workflow 任务工作流系统，支持多 AI 服务集成
 
-**项目版本**: 2.13.36
+**项目版本**: 2.13.63
 **最后更新**: 2026-09-01
 **技术栈**: React 19.2.4 + TypeScript 5.9.3 + Vite 5.2.11 + FastAPI + PostgreSQL + Redis
 **Agent 系统**: Nanoai Team8 V0.3.0（自进化短剧创作 Agent Team）
-**线上入口**: https://91zm.com.cn/nanoai（腾讯云香港生产环境）
+**线上入口**: https://91zm.com.cn/nanoai（43.129.205.22 轻量机 + Caddy 子路径反代 + 知命主站共存）
 
 ---
 
 ## 变更记录 (Changelog)
+
+### 2026-09-01 晚间 - 生产部署完成（91zm.com.cn/nanoai 上线 .22）+ 全链路验证
+
+**部署成果（v2.13.36 → 2.13.63，9+ commits）**：
+- 生产机：43.129.205.22（9aizm 轻量 2C/3.6G，Debian）+ 2G swap；SSH：`ssh -i ~/.ssh/id_ed25519_zhiming root@43.129.205.22`
+- 架构：Caddy（知命栈，`/nanoai/*` handle）→ nanoai-nginx-1:80（加入 deploy_default 网络）→ frontend:3000 / backend:8000；5 容器 + pg/redis
+- 代码 `/opt/nanoai`（GitHub main 同步）；`docker-compose.override.yml` 接 Caddy 网络（git 不冲突）
+
+**关键修复（全部推 main）**：
+- 容器构建：corepack pin `pnpm@10.33.0`（11.25 与 node20 不兼容）；pytest 8.3.3 + pytest-asyncio 0.24.0；package.json 补回 zustand^4.5.7（幽灵依赖）
+- 数据库：空库 alembic 链三 bug — api_keys 族表无迁移（upgrade 010 + create_all 手建 + stamp 011）、014_tvc team_id Integer→UUID、015 agent_tasks 索引重复
+- skills_worker.py：logger 定义误入 docstring（NameError）
+- frontend.Dockerfile：Vite base=/nanoai 产物挪 `mv dist /pub/nanoai`（消除 try_files 循环 500）
+- deploy/nginx-outer.conf：补 /nanoai 前缀 API 子路径剥前缀转发（/nanoai/api|v2|ws|uploads|health → backend）
+- Caddyfile 双副本坑：必须改 `/opt/zhiming/repo/deploy/Caddyfile` 源头 + commit，否则被知命自动部署覆盖还原
+
+**E2E 验证**：注册 200 落库（pending→active）→ UI 登录 → 登录态（用户名+已同步）；测试账号已清理
+
+**已知运维注意**：内存 3.6G 跑 8 容器（监控 OOM）；Caddy/nginx 单文件挂载改配置后须 `docker restart`/`--force-recreate`（inode 问题）
 
 ### 2026-09-01 - 增量索引更新（/nanoai 子路径迁移 + 91zm 香港生产环境）
 
