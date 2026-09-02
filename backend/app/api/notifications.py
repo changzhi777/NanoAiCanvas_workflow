@@ -90,7 +90,7 @@ async def list_notifications(
     )
     unread_result = await db.execute(
         select(func.count()).select_from(Notification)
-        .where(Notification.receiver_id == current_user.id, Notification.status != text("'READ'::notificationstatus"))
+        .where(Notification.receiver_id == current_user.id, Notification.status != 'read')
     )
     return {
         "notifications": items,
@@ -107,7 +107,7 @@ async def unread_count(
     result = await db.execute(
         select(func.count()).select_from(Notification).where(
             Notification.receiver_id == current_user.id,
-            Notification.status != text("'READ'::notificationstatus"),
+            Notification.status != 'read',
         )
     )
     return UnreadCountResponse(count=result.scalar() or 0)
@@ -141,8 +141,8 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.receiver_id == current_user.id, Notification.status != text("'READ'::notificationstatus"))
-        .values(status=text("'READ'::notificationstatus"), read_at=datetime.utcnow())
+        .where(Notification.receiver_id == current_user.id, Notification.status != 'read')
+        .values(status='read', read_at=datetime.utcnow())
     )
     await db.commit()
     return {"success": True}
@@ -176,7 +176,7 @@ async def delete_read_notifications(
     result = await db.execute(
         select(Notification).where(
             Notification.receiver_id == current_user.id,
-            Notification.status == text("'READ'::notificationstatus"),
+            Notification.status == 'read',
         )
     )
     rows = result.scalars().all()
