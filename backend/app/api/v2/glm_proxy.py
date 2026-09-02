@@ -207,6 +207,7 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
     payload = {"model": model, "max_tokens": max_tokens, "messages": chat, "temperature": temperature}
     if system:
         payload["system"] = system
+    settings = get_settings()
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             ANTHROPIC_GLM_URL,
