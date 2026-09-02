@@ -174,6 +174,61 @@ def _extract_shots_from_content(content: str) -> list:
 router = APIRouter(prefix="/api/glm", tags=["glm"])
 
 
+ANTHROPIC_GLM_URL = "https://open.bigmodel.cn/api/anthropic/v1/messages"
+
+
+def _convert_content(content) -> list:
+    """v4 content（str 或 块数组）→ Anthropic content 块数组（图片 image_url → image source）。"""
+    if isinstance(content, str):
+        return [{"type": "text", "text": content}]
+    blocks = []
+    for b in content:
+        if b.get("type") == "text":
+            blocks.append({"type": "text", "text": b.get("text", "")})
+        elif b.get("type") == "image_url":
+            url = b.get("image_url", {}).get("url", "")
+            if url.startswith("data:"):
+                header, b64 = url.split(",", 1)
+                media = header.split(";")[0].split(":")[1] or "image/png"
+                blocks.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+            else:
+                blocks.append({"type": "image", "source": {"type": "url", "url": url}})
+    return blocks
+
+
+async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500) -> dict:
+    """GLM Coding 套餐 key 走 Anthropic 兼容端点；入参/返回保持 v4 chat/completions 形状。
+
+    返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
+    非 200 时抛 HTTPException(502)（与原 v4 直调语义一致）。
+    """
+    system = "\n".join(m["content"] for m in messages if m["role"] == "system" and isinstance(m["content"], str))
+    chat = [{"role": m["role"], "content": _convert_content(m["content"])} for m in messages if m["role"] != "system"]
+    payload = {"model": model, "max_tokens": max_tokens, "messages": chat, "temperature": temperature}
+    if system:
+        payload["system"] = system
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(
+            ANTHROPIC_GLM_URL,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": settings.GLM_API_KEY,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+        )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
+    data = resp.json()
+    text, thinking = "", ""
+    for block in data.get("content", []):
+        if block.get("type") == "text":
+            text += block.get("text", "")
+        elif block.get("type") == "thinking":
+            thinking += block.get("thinking", "")
+    return {"choices": [{"message": {"content": text, "reasoning_content": thinking}}]}
+
+
 class OptimizeRequest(BaseModel):
     prompt: str
     model: str = "glm-4.5-air"
@@ -291,28 +346,15 @@ async def optimize_prompt(
     user_content = f"请优化以下描述，生成图片提示词：\n{req.prompt}"
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{settings.GLM_API_BASE_URL}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
-                },
-                json={
-                    "model": req.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "temperature": req.temperature,
-                    "max_tokens": 500,
-                },
-            )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-
-        data = resp.json()
+        data = await _glm_chat(
+            model=req.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=req.temperature,
+            max_tokens=500,
+        )
         msg = data.get("choices", [{}])[0].get("message", {})
         optimized = msg.get("content", "").strip()
         # Reasoning models (glm-4.7) put output in reasoning_content
@@ -363,28 +405,15 @@ async def generate_storyboard_script(
         system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中，格式：<output>{...}</output>"
 
     try:
-        async with httpx.AsyncClient(timeout=90) as client:
-            resp = await client.post(
-                f"{settings.GLM_API_BASE_URL}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
-                },
-                json={
-                    "model": req.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"请将以下故事拆分为{req.shot_count}个分镜头：\n{req.prompt}"},
-                    ],
-                    "temperature": req.temperature,
-                    "max_tokens": 4000,
-                },
-            )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-
-        data = resp.json()
+        data = await _glm_chat(
+            model=req.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"请将以下故事拆分为{req.shot_count}个分镜头：\n{req.prompt}"},
+            ],
+            temperature=req.temperature,
+            max_tokens=4000,
+        )
         msg = data.get("choices", [{}])[0].get("message", {})
         content = msg.get("content", "").strip()
 
@@ -546,28 +575,15 @@ async def generate_screenplay(
         system_prompt += "\n\n重要：请将最终JSON结果放在 <output> 标签中"
 
     try:
-        async with httpx.AsyncClient(timeout=300) as client:
-            resp = await client.post(
-                f"{settings.GLM_API_BASE_URL}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
-                },
-                json={
-                    "model": req.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"请根据以下故事梗概生成完整剧本：\n{req.premise}"},
-                    ],
-                    "temperature": req.temperature,
-                    "max_tokens": 16000,
-                },
-            )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-
-        data = resp.json()
+        data = await _glm_chat(
+            model=req.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"请根据以下故事梗概生成完整剧本：\n{req.premise}"},
+            ],
+            temperature=req.temperature,
+            max_tokens=16000,
+        )
         msg = data.get("choices", [{}])[0].get("message", {})
         content = msg.get("content", "").strip()
         finish_reason = data.get("choices", [{}])[0].get("finish_reason", "")
@@ -842,20 +858,12 @@ async def generate_tvc_script(
         api_params["thinking"] = {"type": "enabled"}
 
     try:
-        async with httpx.AsyncClient(timeout=180) as client:
-            resp = await client.post(
-                f"{settings.GLM_API_BASE_URL}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
-                },
-                json=api_params,
-            )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-
-        data = resp.json()
+        data = await _glm_chat(
+            model=api_params["model"],
+            messages=api_params["messages"],
+            temperature=api_params.get("temperature", 0.7),
+            max_tokens=api_params.get("max_tokens", 8192),
+        )
         msg = data.get("choices", [{}])[0].get("message", {})
         content = msg.get("content", "").strip()
 
@@ -999,20 +1007,12 @@ async def analyze_product_reference(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{settings.GLM_API_BASE_URL}/chat/completions",
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {settings.GLM_API_KEY}",
-                },
-                json=api_params,
-            )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-
-        data = resp.json()
+        data = await _glm_chat(
+            model=api_params["model"],
+            messages=api_params["messages"],
+            temperature=api_params.get("temperature", 0.7),
+            max_tokens=api_params.get("max_tokens", 2048),
+        )
         msg = data.get("choices", [{}])[0].get("message", {})
         content = msg.get("content", "").strip()
 
