@@ -33,7 +33,7 @@ class PointsAccount(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=True, index=True)  # 团队账户
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True, index=True)
     balance = Column(Integer, default=0, nullable=False)  # 当前积分余额
     total_granted = Column(Integer, default=0)  # 历史总发放
     total_used = Column(Integer, default=0)  # 历史总消耗
@@ -91,7 +91,7 @@ class TeamMember(Base):
     __tablename__ = "team_members"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     role = Column(String(32), default="member")  # owner, admin, member
     can_edit = Column(Boolean, default=False)  # 是否可编辑团队资产
@@ -107,7 +107,7 @@ class TeamAsset(Base):
     __tablename__ = "team_assets"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=False)
     asset_id = Column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=False)
     added_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
