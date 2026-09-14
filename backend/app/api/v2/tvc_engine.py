@@ -328,7 +328,7 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
 
     if endpoint == "anthropic":
         # minimax 国内 /anthropic/v1/messages（Anthropic 兼容）
-        url = f"{base_url}/anthropic/v1/messages"
+        url = f"{anthropic_base}/anthropic/v1/messages"
         headers = {
             "x-api-key": api_key,
             "anthropic-version": "2023-06-01",
@@ -393,6 +393,8 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     cfg = (config or {}).get("step1_script", {})
     api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
     base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
+    # 兼容 base_url 带 /v1 后缀的拼接：直接拼路径会产生 /v1/anthropic/v1/messages
+    anthropic_base = base_url.rstrip("/").removesuffix("/v1")
     vision_endpoint = getattr(settings, "IMG_DESC_VISION_ENDPOINT", "anthropic")
     if not api_key:
         raise Exception("MiniMax API Key 未配置")
@@ -490,7 +492,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
         async with httpx.AsyncClient(timeout=300) as client:
             if use_vision and vision_endpoint == "anthropic":
                 resp = await client.post(
-                    f"{base_url}/anthropic/v1/messages",
+                    f"{anthropic_base}/anthropic/v1/messages",
                     headers={
                         "x-api-key": api_key,
                         "anthropic-version": "2023-06-01",
