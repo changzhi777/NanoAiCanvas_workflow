@@ -1,10 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Save, RotateCcw, Loader2 } from 'lucide-react'
+import { Save, RotateCcw, Loader2, Trash2, Database, TrendingUp, Hash } from 'lucide-react'
 import { AdminHeader } from '@/components/admin/AdminHeader'
 import { client } from '@/lib/api/client'
 import { toast } from 'sonner'
+
+interface CacheStats {
+  total_entries: number
+  hit_entries: number
+  hit_rate: number
+  total_hits: number
+  recent_hits_1h: number
+  redis_keys: number
+  top_hashes: { hash: string; hits: number }[]
+  config: { max_rows: number; ttl_days: number; vision_endpoint: string }
+}
 
 interface StepConfig {
   model?: string
@@ -48,6 +59,102 @@ const STEP_LABELS: Record<string, string> = {
   step4_image: 'Step 4: 生图',
   step5_video: 'Step 5: 视频生成',
   step5_bgm: 'Step 5: BGM',
+}
+
+function CacheStatsCard() {
+  const [stats, setStats] = useState<CacheStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [cleaning, setCleaning] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const data = await client.get('/v2/tvc-config/cache-stats') as CacheStats
+      setStats(data)
+    } catch (e) {
+      toast.error('加载缓存统计失败：' + (e as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleClean = async () => {
+    if (!confirm('确认手动触发 LRU + TTL 清理？将删除过期和超限条目。')) return
+    setCleaning(true)
+    try {
+      const r = await client.post('/v2/tvc-config/cache-cleanup', {}) as { deleted: number }
+      toast.success(`已清理 ${r.deleted} 条`)
+      await load()
+    } catch (e) {
+      toast.error('清理失败：' + (e as Error).message)
+    } finally {
+      setCleaning(false)
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-900/40 p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Database className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-base font-semibold">M3 视觉描述缓存</h2>
+          {stats && (
+            <span className="text-xs text-slate-500">
+              {stats.config.vision_endpoint} · max {stats.config.max_rows} · ttl {stats.config.ttl_days}d
+            </span>
+          )}
+        </div>
+        <button
+          onClick={handleClean}
+          disabled={cleaning}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md bg-orange-600/20 text-orange-300 hover:bg-orange-600/30 disabled:opacity-50"
+        >
+          {cleaning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+          清理缓存
+        </button>
+      </div>
+      {loading && !stats ? (
+        <div className="text-sm text-slate-500">加载中…</div>
+      ) : stats ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Metric label="总条数" value={stats.total_entries} icon={<Hash className="w-3.5 h-3.5" />} />
+          <Metric label="命中率" value={`${(stats.hit_rate * 100).toFixed(1)}%`} sub={`${stats.hit_entries}/${stats.total_entries}`} />
+          <Metric label="累计命中" value={stats.total_hits} />
+          <Metric label="近 1h hit" value={stats.recent_hits_1h} sub={`Redis: ${stats.redis_keys}`} />
+        </div>
+      ) : (
+        <div className="text-sm text-red-400">加载失败</div>
+      )}
+      {stats && stats.top_hashes.length > 0 && (
+        <div className="text-xs text-slate-400 space-y-1">
+          <div className="flex items-center gap-1.5 text-slate-300">
+            <TrendingUp className="w-3.5 h-3.5" /> TOP 5
+          </div>
+          <div className="font-mono space-y-0.5">
+            {stats.top_hashes.map(t => (
+              <div key={t.hash} className="flex justify-between">
+                <span>{t.hash}</span><span>{t.hits} hits</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Metric({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon?: React.ReactNode }) {
+  return (
+    <div className="rounded-md bg-white/5 p-3">
+      <div className="text-[11px] text-slate-400 mb-1 flex items-center gap-1">
+        {icon}{label}
+      </div>
+      <div className="text-xl font-semibold">{value}</div>
+      {sub && <div className="text-[10px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  )
 }
 
 function StepCard({ step, label, config, onChange }: {
@@ -201,6 +308,8 @@ export default function TvcConfigPage() {
           </div>
         }
       />
+
+      <CacheStatsCard />
 
       <div className="grid gap-4">
         {(Object.keys(STEP_LABELS) as (keyof TvcConfig)[]).map(step => (

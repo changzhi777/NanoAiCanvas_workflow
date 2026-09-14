@@ -12,7 +12,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, async_session_maker
 from app.api.auth import get_current_user, require_admin
 from app.models import User
 from app.models.tvc_config import TvcWorkflowConfig
@@ -216,3 +216,64 @@ async def resolve_config(
             merged = _merge_config(merged, _config_to_dict(user_config))
 
     return merged
+
+
+@router.get("/cache-stats")
+async def get_image_cache_stats():
+    """M3 视觉描述缓存统计：总数/命中率/Redis 占用/最近 1h hit/TOP5。"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+    from app.models.image_description import ImageDescription
+    from app.redis import redis_client
+    from app.config import get_settings
+
+    settings = get_settings()
+    async with async_session_maker() as db:
+        total = (await db.execute(select(func.count()).select_from(ImageDescription))).scalar() or 0
+        # hit > 0 的行 + 累计 hit 总和
+        hit_rows = (await db.execute(
+            select(func.count(), func.coalesce(func.sum(ImageDescription.hit_count), 0))
+            .where(ImageDescription.hit_count > 0)
+        )).one()
+        hit_count = hit_rows[0] or 0
+        total_hits = int(hit_rows[1] or 0)
+        # 最近 1h 内 hit
+        recent = (await db.execute(
+            select(func.count()).where(
+                ImageDescription.last_hit_at >= datetime.utcnow() - timedelta(hours=1)
+            )
+        )).scalar() or 0
+        # TOP 5
+        top = (await db.execute(
+            select(ImageDescription.image_hash, ImageDescription.hit_count)
+            .order_by(ImageDescription.hit_count.desc()).limit(5)
+        )).all()
+    # Redis 统计
+    redis_keys = 0
+    try:
+        async for _ in redis_client.scan_iter("img_desc:*", count=100):
+            redis_keys += 1
+    except Exception:
+        pass
+    return {
+        "total_entries": total,
+        "hit_entries": hit_count,
+        "hit_rate": round(hit_count / total, 3) if total else 0,
+        "total_hits": total_hits,
+        "recent_hits_1h": recent,
+        "redis_keys": redis_keys,
+        "top_hashes": [{"hash": h[:12] + "...", "hits": c} for h, c in top],
+        "config": {
+            "max_rows": settings.IMG_DESC_CACHE_MAX_ROWS,
+            "ttl_days": settings.IMG_DESC_CACHE_TTL_DAYS,
+            "vision_endpoint": settings.IMG_DESC_VISION_ENDPOINT,
+        },
+    }
+
+
+@router.post("/cache-cleanup")
+async def trigger_image_cache_cleanup():
+    """手动触发 img_desc 缓存 LRU + TTL 清理。"""
+    from app.services.image_description_cache import ImageDescriptionCache
+    deleted = await ImageDescriptionCache.cleanup_expired()
+    return {"deleted": deleted}
