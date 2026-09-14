@@ -323,6 +323,23 @@ def _to_data_uri(image: str) -> str:
     return f"data:{mime};base64,{image}"
 
 
+def _build_minimax_image_block(image: str, source_type: str = "anthropic") -> dict:
+    """构造 minimax 视觉端点的 image block。
+
+    source_type=anthropic → {type: image, source: {type: base64|url, media_type, data|url}}
+    source_type=openai    → {type: image_url, image_url: {url, ...}}
+    """
+    if source_type == "openai":
+        # OpenAI 兼容：image_url 必须包 data URI 或 URL
+        return {"type": "image_url", "image_url": {"url": _to_data_uri(image)}}
+    # anthropic 兼容：data URI / URL 自适应
+    mime = _sniff_image_mime(image)
+    if image.startswith("data:") or not image.startswith("http"):
+        b64 = image.split(",", 1)[1] if image.startswith("data:") else image
+        return {"type": "image", "source": {"type": "base64", "media_type": mime, "data": b64}}
+    return {"type": "image", "source": {"type": "url", "url": image}}
+
+
 async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
     """调 minimax M3 视觉理解，输出中文图描述（150-300 字）。
 
@@ -361,11 +378,7 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt_text},
-                    (
-                        {"type": "image", "source": {"type": "base64", "media_type": _sniff_image_mime(image) or "image/jpeg", "data": image.split(",", 1)[1]}}
-                        if image.startswith("data:") or not image.startswith("http")
-                        else {"type": "image", "source": {"type": "url", "url": image}}
-                    ),
+                    _build_minimax_image_block(image, source_type="anthropic"),
                 ],
             }],
             "temperature": 0.5,
