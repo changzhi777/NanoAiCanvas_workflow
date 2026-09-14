@@ -271,7 +271,40 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     return {"raw_content": content, "parsed_script": script}
 
 
+def _sniff_image_mime(b64_or_url: str) -> str:
+    """从裸 base64 magic bytes 嗅探 MIME；URL/已带 data: 前缀则透传。"""
+    if b64_or_url.startswith("data:"):
+        return b64_or_url  # 已带 data URI 直接用
+    if b64_or_url.startswith("http://") or b64_or_url.startswith("https://"):
+        return b64_or_url
+    # 裸 base64：取前 16 字节猜 MIME
+    head = b64_or_url[:24]
+    try:
+        import base64
+        raw = base64.b64decode(head + "==", validate=False)
+        if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        if raw.startswith(b"\xff\xd8\xff"):
+            return "image/jpeg"
+        if raw.startswith(b"RIFF") and b"WEBP" in raw:
+            return "image/webp"
+        if raw.startswith(b"GIF87a") or raw.startswith(b"GIF89a"):
+            return "image/gif"
+    except Exception:
+        pass
+    return "image/jpeg"  # fallback
+
+
+def _to_data_uri(image: str) -> str:
+    """URL/已带 data URI 直接返回；裸 base64 补前缀。"""
+    if image.startswith("data:") or image.startswith("http://") or image.startswith("https://"):
+        return image
+    mime = _sniff_image_mime(image)
+    return f"data:{mime};base64,{image}"
+
+
 async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
+    """minimax 剧本生成 — 有 reference_image 走 M3 多模态，无图走 M2.7 文本。"""
     from .minimax import SCREENPLAY_PROMPT
     import os
     cfg = (config or {}).get("step1_script", {})
@@ -281,21 +314,76 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
         raise Exception("MiniMax API Key 未配置")
 
     style = getattr(req, "style", "realistic")
-    model = cfg.get("fallback_model", "MiniMax-M2.7")
+    reference_image = getattr(req, "reference_image", None)
+    use_vision = bool(reference_image)
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        resp = await client.post(
-            f"{base_url}/text/chatcompletion_v2",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": SCREENPLAY_PROMPT},
-                    {"role": "user", "content": f"创作一个短片剧本。主题：{req.prompt}\n风格：{style}\n镜头数：{req.shot_count}\n每镜头时长：{req.shot_duration}秒"},
-                ],
-                "temperature": 0.8,
-            },
+    # 选择模型：有图=M3 多模态，无图=M2.7 文本（可被 cfg 覆盖）
+    if use_vision:
+        model = cfg.get("vision_model", "MiniMax-M3")
+    else:
+        model = cfg.get("fallback_model", "MiniMax-M2.7")
+
+    # 构造 system prompt（保留原风格/Seedance 增强）
+    system_prompt = SCREENPLAY_PROMPT
+    style_instruction = ""
+    # Seedance 增强
+    try:
+        from .seedance_constants import build_seedance_hints
+        hints = build_seedance_hints(
+            camera_movement=getattr(req, "camera_movement", None),
+            light_style=getattr(req, "light_style", None),
+            negative_prompts=getattr(req, "negative_prompts", None),
         )
+        if hints:
+            system_prompt += "\n\n## Seedance 2.0 提示词增强约束\n" + "\n".join(f"- {h}" for h in hints)
+    except Exception:
+        pass
+    # style_reference
+    if getattr(req, "style_reference", None):
+        system_prompt += f"\n\n## 产品视觉风格约束（必须遵循）\n{req.style_reference}"
+    if style:
+        system_prompt += f"\n\n## 画面风格\n{style}"
+
+    # 构造 user content：有图用多模态 content 数组
+    if use_vision:
+        image_uri = _to_data_uri(reference_image)
+        user_content = [
+            {"type": "text", "text": (
+                f"创作一个短片剧本。主题：{getattr(req, 'prompt', '')}\n"
+                f"风格：{style}\n"
+                f"镜头数：{getattr(req, 'shot_count', 6)}\n"
+                f"每镜头时长：{getattr(req, 'shot_duration', 5)}秒\n"
+                "请仔细分析参考图中的产品/场景/人物/风格/色调，并据此构思 TVC。"
+            )},
+            {"type": "image_url", "image_url": {"url": image_uri}},
+        ]
+    else:
+        user_content = (
+            f"创作一个短片剧本。主题：{getattr(req, 'prompt', '')}\n"
+            f"风格：{style}\n"
+            f"镜头数：{getattr(req, 'shot_count', 6)}\n"
+            f"每镜头时长：{getattr(req, 'shot_duration', 5)}秒"
+        )
+
+    api_params = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+        "temperature": 0.8,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=180) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=api_params,
+            )
+    except Exception as e:
+        # TimeoutException / 网络错：让上游 fallback（不再吞 502）
+        raise Exception(f"minimax API 调用失败: {type(e).__name__}: {e}")
 
     if resp.status_code != 200:
         raise Exception(f"MiniMax script error: {resp.status_code} {resp.text[:200]}")

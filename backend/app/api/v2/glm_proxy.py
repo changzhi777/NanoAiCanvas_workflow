@@ -797,98 +797,6 @@ class TvcScriptRequest(BaseModel):
     camera_movement: Optional[str] = None
     light_style: Optional[str] = None
     negative_prompts: Optional[list[str]] = None
-    # 视觉参考图（base64 或 URL；存在时自动改用 minimax M3 多模态）
-    reference_image: Optional[str] = None
-
-
-def _convert_image_url(image: str) -> str:
-    """base64 data URI 或直传 URL；M3 多模态要求 image_url.url 是可解析 URL 或 data URI。"""
-    if image.startswith("data:") or image.startswith("http"):
-        return image
-    # 裸 base64 补前缀
-    return f"data:image/jpeg;base64,{image}"
-
-
-async def _tvc_script_with_vision(req: TvcScriptRequest, settings, api_key: str) -> dict:
-    """用 minimax M3 多模态（图+文）生成 TVC 脚本 — 支持参考图输入。"""
-    import json as _json
-    base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
-    system_prompt = TVC_SCRIPT_PROMPT.format(
-        shot_count=req.shot_count,
-        shot_duration=req.shot_duration,
-        total_duration=req.total_duration,
-    )
-    style_instruction = STYLE_MAP.get(req.style or "realistic", "")
-    if style_instruction:
-        system_prompt += f"\n\n## 画面风格\n{style_instruction}"
-    mode_instruction = TVC_MODE_CONSTRAINTS.get(req.mode, TVC_MODE_CONSTRAINTS["cinematic"])
-    system_prompt += f"\n\n## 创作模式\n{mode_instruction}"
-    system_prompt += "\n\n重要：请将最终 JSON 结果放在 <output> 标签中，格式：<output>{...}</output>"
-
-    image_url = _convert_image_url(req.reference_image)
-    user_content = [
-        {"type": "text", "text": f"请分析这张参考图并基于以下创意生成 TVC 结构化脚本：\n{req.prompt}"},
-        {"type": "image_url", "image_url": {"url": image_url}},
-    ]
-
-    api_params = {
-        "model": "MiniMax-M3",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        "temperature": 1.0,
-        "max_tokens": 8192,
-    }
-
-    async with httpx.AsyncClient(timeout=180) as client:
-        resp = await client.post(
-            f"{base_url}/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json=api_params,
-        )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"minimax M3 错误: {resp.text[:200]}")
-    data = resp.json()
-    content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-    if not content:
-        rc = data.get("choices", [{}])[0].get("message", {}).get("reasoning_content", "").strip()
-        if rc:
-            import re as _re
-            mm = _re.search(r"<output>(.*?)</output>", rc, _re.DOTALL)
-            content = mm.group(1).strip() if mm else rc
-    if not content:
-        raise HTTPException(status_code=502, detail="minimax M3 返回为空")
-
-    import re as _re
-    m = _re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
-    json_str = _find_balanced(m.group(1), '{', '}') if m else None
-    if not json_str:
-        m = _re.search(r'<output>([\s\S]*?)</output>', content)
-        if m:
-            json_str = _find_balanced(m.group(1), '{', '}')
-    if not json_str:
-        json_str = _find_balanced(content, '{', '}')
-    if not json_str:
-        raise HTTPException(status_code=502, detail=f"无法解析脚本: {content[:200]}")
-
-    try:
-        script = _json.loads(json_str)
-    except _json.JSONDecodeError:
-        cleaned = _repair_json(json_str)
-        script = _json.loads(cleaned)
-
-    script.setdefault("tvc_title", "未命名TVC")
-    script.setdefault("logline", "")
-    script.setdefault("total_duration", req.total_duration)
-    script.setdefault("shot_duration", req.shot_duration)
-    script.setdefault("shot_count", req.shot_count)
-    script.setdefault("characters", [])
-    script.setdefault("scenes", [])
-    script.setdefault("shots", [])
-    script.setdefault("narration", "")
-    script.setdefault("timeline_summary", {})
-    return script
 
 
 @router.post("/tvc-script")
@@ -896,22 +804,9 @@ async def generate_tvc_script(
     req: TvcScriptRequest,
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """TVC 专用脚本生成 — GLM-5.1 thinking 模式（无图）/ minimax M3 多模态（有图）"""
+    """TVC 专用脚本生成 — GLM-5.1 thinking 模式"""
     import json, re
     settings = get_settings()
-
-    # 有图 → 走 minimax M3 多模态
-    if getattr(req, "reference_image", None):
-        minimax_key = getattr(settings, "MINIMAX_API_KEY", "")
-        if minimax_key:
-            try:
-                return await _tvc_script_with_vision(req, settings, minimax_key)
-            except Exception as e:
-                import logging as _lg
-                _lg.getLogger(__name__).warning(
-                    f"minimax M3 多模态失败,降级到 GLM: {_vis_err}"
-                )
-
     if not settings.GLM_API_KEY:
         raise HTTPException(status_code=500, detail="GLM API Key 未配置")
 
