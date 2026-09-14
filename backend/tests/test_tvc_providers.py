@@ -4,10 +4,54 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.api.v2.tvc_providers import (
     get_image_provider, get_video_provider,
-    VIDEO_PROVIDER_NAMES,
     _gen_one_jimeng, _gen_one_gpt_image_2, _gen_one_minimax,
-    _submit_video_seedance, _submit_video_minimax, _submit_video_glm,
+    _submit_video_seedance, _submit_video_minimax, _enhance_image_prompt,
 )
+
+
+# ==================== Prompt 增强 ====================
+
+class TestEnhanceImagePrompt:
+    def test_no_enhance_cfg_returns_base(self):
+        assert _enhance_image_prompt(base_prompt="base") == "base"
+        assert _enhance_image_prompt(base_prompt="base", enhance_cfg=None) == "base"
+
+    def test_markers_and_base_concatenated(self):
+        cfg = {
+            "prefix_markers": ["cinematic", "high detail"],
+            "suffix_markers": ["sharp focus"],
+        }
+        out = _enhance_image_prompt(base_prompt="a cat", enhance_cfg=cfg)
+        assert out == "cinematic, high detail, a cat, sharp focus"
+
+    def test_camera_and_style_included_when_provided(self):
+        cfg = {
+            "include_camera": True,
+            "include_style": True,
+        }
+        out = _enhance_image_prompt(
+            base_prompt="cat", camera_movement="slow push", style="cinematic", enhance_cfg=cfg
+        )
+        assert "cinematic camera: slow push" in out
+        assert "style: cinematic" in out
+        assert "cat" in out
+
+    def test_image_desc_appended_at_end(self):
+        cfg = {"include_image_description": True}
+        out = _enhance_image_prompt(
+            base_prompt="cat", image_desc="white background", enhance_cfg=cfg
+        )
+        # 中文描述独立段，避免污染 marker 列表
+        assert out.endswith("参考风格（中文）：white background")
+        assert "white background" in out
+
+    def test_disable_all_flags_still_uses_base(self):
+        cfg = {"include_image_description": False, "include_camera": False, "include_style": False}
+        out = _enhance_image_prompt(
+            base_prompt="x", image_desc="y", camera_movement="z", style="w", enhance_cfg=cfg
+        )
+        # 仅 base prompt
+        assert out == "x"
 
 
 # ==================== 工厂函数 ====================

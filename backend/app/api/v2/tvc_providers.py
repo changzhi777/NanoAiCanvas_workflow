@@ -11,26 +11,39 @@ from app.config import Settings
 
 # ==================== 图片 Provider ====================
 
-def _enhance_image_prompt(subtask: dict, image_desc: str = None, enhance_cfg: dict = None) -> str:
-    """结构化 prompt 增强：prefix_markers + image_description(cached) + 镜头 + base prompt + 风格 + suffix_markers。"""
+def _enhance_image_prompt(
+    base_prompt: str = "",
+    image_desc: str = None,
+    camera_movement: str = None,
+    style: str = None,
+    enhance_cfg: dict = None,
+) -> str:
+    """结构化 prompt 增强：prefix_markers + image_description(cached) + 镜头 + base_prompt + 风格 + suffix_markers。
+
+    base_prompt 是必传真值（来自 breakdown.character_ref_prompt 等），不会丢。
+    image_desc/camera/style 可选（缓存/req 字段），未提供则跳过对应段。
+    """
     if not enhance_cfg:
-        return subtask.get("prompt", "")
+        return base_prompt
     parts = []
+    # 1. 统一英文前缀 markers（image models 期待逗号分隔的英文修饰词列表）
     if enhance_cfg.get("prefix_markers"):
         parts.append(", ".join(enhance_cfg["prefix_markers"]))
-    if enhance_cfg.get("include_image_description") and image_desc:
-        parts.append(f"参考风格：{image_desc}")
-    if enhance_cfg.get("include_camera"):
-        cam = subtask.get("camera_movement", "")
-        if cam:
-            parts.append(f"运镜：{cam}")
-    parts.append(subtask.get("prompt", ""))
-    if enhance_cfg.get("include_style"):
-        st = subtask.get("style", "")
-        if st:
-            parts.append(f"风格：{st}")
+    # 2. 镜头维度（短句）
+    if enhance_cfg.get("include_camera") and camera_movement:
+        parts.append(f"cinematic camera: {camera_movement}")
+    # 3. 基础 prompt（核心）
+    if base_prompt:
+        parts.append(base_prompt)
+    # 4. 风格
+    if enhance_cfg.get("include_style") and style:
+        parts.append(f"style: {style}")
+    # 5. 统一英文后缀 markers
     if enhance_cfg.get("suffix_markers"):
         parts.append(", ".join(enhance_cfg["suffix_markers"]))
+    # 6. 图像描述（中文）作独立段，避免污染 marker 列表
+    if enhance_cfg.get("include_image_description") and image_desc:
+        parts.append(f"参考风格（中文）：{image_desc}")
     return ", ".join(parts)
 
 
@@ -171,16 +184,63 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
     base_factory = factory(settings)
     if not enhance_cfg:
         return base_factory
+    from app.services.image_description_cache import ImageDescriptionCache  # 提到模块级逻辑外
+
+    async def _describe_via_m3(image_url: str) -> Optional[str]:
+        """闭包：cache miss 时调 M3 视觉端点描述。"""
+        # 这里不能再 import 全套 tvc_engine（循环依赖），用最小直接调用
+        import os
+        import httpx
+        settings_env_key = os.environ.get("MINIMAX_API_KEY", "")
+        if not settings_env_key:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    "https://api.minimax.cn/anthropic/v1/messages",
+                    headers={
+                        "x-api-key": settings_env_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "MiniMax-M3",
+                        "max_tokens": 300,
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "用 100-200 字中文描述这张图的核心元素：产品/人物/场景/颜色/风格/构图/光线。"},
+                                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_url.split(",", 1)[1] if image_url.startswith("data:") else image_url}},
+                            ],
+                        }],
+                    },
+                )
+            if resp.status_code == 200:
+                return "".join(b.get("text", "") for b in resp.json().get("content", []) if b.get("type") == "text").strip()
+        except Exception:
+            pass
+        return None
+
     async def _gen_enhanced(subtask, prompt):
-        # 尝试用 M3 缓存拉图描述
+        # image_description：M3 缓存复用（与 Step 1 视觉描述共享 cache）
         img_desc = None
-        if enhance_cfg.get("include_image_description") and subtask.get("image_url"):
-            from app.services.image_description_cache import ImageDescriptionCache
+        if enhance_cfg.get("include_image_description"):
             try:
-                img_desc = await ImageDescriptionCache.get_or_describe(subtask["image_url"])
+                # 优先复用 req.reference_image 缓存（character-ref 复用同图）
+                ref = subtask.get("reference_image") or ""
+                if ref:
+                    img_desc = await ImageDescriptionCache.get_or_describe(
+                        ref, describe_fn=_describe_via_m3
+                    )
             except Exception:
                 pass
-        enhanced = _enhance_image_prompt(subtask, image_desc=img_desc, enhance_cfg=enhance_cfg)
+        enhanced = _enhance_image_prompt(
+            base_prompt=prompt,
+            image_desc=img_desc,
+            camera_movement=None,  # 当前 Step 4 未传（req 上有但未透传）
+            style=None,
+            enhance_cfg=enhance_cfg,
+        )
         return await base_factory(subtask, enhanced)
     return _gen_enhanced
 

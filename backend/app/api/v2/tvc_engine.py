@@ -160,15 +160,23 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor.update_node(task_id, 3, {"status": "running", "progress": 0})
         await _generate_images_parallel(task_id, 3, breakdown, req, settings, config)
 
-        # Step 5: 参考图生视频（minimax 主路 → Seedance 兜底）
+        # Step 5: 参考图生视频（minimax 主路 → Seedance 兜底；同 provider 失败不重复）
         await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
-        primary_video_model = req.video_model or "MiniMax-H3"
+        # 优先级：用户显式 > cfg step5_video default_provider > minimax
+        cfg5 = (config or {}).get("step5_video", {})
+        user_pick = getattr(req, "video_model", None)
+        primary_video_model = user_pick or cfg5.get("default_provider") or "MiniMax-H3"
         try:
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=primary_video_model)
         except Exception as e:
-            logger.warning(f"primary video ({primary_video_model}) failed, fallback to seedance: {e}")
+            # 兜底：选与主路不同的 provider（避免重复失败）
+            fallback = "seedance" if not primary_video_model.startswith("MiniMax") else "MiniMax-H3"
+            if fallback == primary_video_model:
+                # 用户显式选的就是 seedance，第二次仍失败 → 用 minimax 兜底
+                fallback = "MiniMax-H3"
+            logger.warning(f"primary video ({primary_video_model}) failed, fallback to {fallback}: {e}")
             await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
-            await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model="seedance")
+            await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=fallback)
 
         # Step 6: 保存资产到资产库
         if user_id:
@@ -353,7 +361,11 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt_text},
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_uri.split(",", 1)[1]}},
+                    (
+                        {"type": "image", "source": {"type": "base64", "media_type": _sniff_image_mime(image) or "image/jpeg", "data": image.split(",", 1)[1]}}
+                        if image.startswith("data:") or not image.startswith("http")
+                        else {"type": "image", "source": {"type": "url", "url": image}}
+                    ),
                 ],
             }],
             "temperature": 0.5,
@@ -474,8 +486,23 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
 
     # endpoint 开关：anthropic 走 minimax 兼容 messages API（更快无噪音）；openai 走 chat/completions
     if use_vision and vision_endpoint == "anthropic":
-        # minimax Anthropic 兼容端点 — system 走顶层 field，image 走 image source（base64）
-        b64_data = image_uri.split(",", 1)[1] if image_uri.startswith("data:") else image_uri
+        # minimax Anthropic 兼容端点 — system 走顶层 field，image 走 image source
+        if image_uri.startswith("data:") or not image_uri.startswith("http"):
+            # base64 data URI 或裸 base64 → 内嵌
+            image_block = {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": _sniff_image_mime(image_uri) or "image/jpeg",
+                    "data": image_uri.split(",", 1)[1] if image_uri.startswith("data:") else image_uri,
+                },
+            }
+        else:
+            # http/https URL → 用 url source（Anthropic API 支持）
+            image_block = {
+                "type": "image",
+                "source": {"type": "url", "url": image_uri},
+            }
         api_params = {
             "model": model,
             "system": system_prompt,
@@ -483,7 +510,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": text_block},
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64_data}},
+                    image_block,
                 ],
             }],
             "temperature": 0.8,
@@ -742,6 +769,15 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     if bgm_task:
         await bgm_task
 
+    # 若所有 video subtask 都失败，标 failed（避免掩盖总失败）
+    final_state = await workflow_executor.load_task(task_id)
+    final_video_subtasks = [st for st in final_state["nodes"][node_idx].get("subtasks", []) if st["id"] != "bgm"]
+    has_success = any(st.get("status") == "success" for st in final_video_subtasks)
+    if final_video_subtasks and not has_success:
+        await workflow_executor.update_node(task_id, node_idx, {
+            "status": "failed", "progress": 0, "error": "All video providers failed (H3 + Seedance)",
+        })
+        raise Exception("All video providers failed")
     await workflow_executor.update_node(task_id, node_idx, {"status": "success", "progress": 100})
 
 

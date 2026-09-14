@@ -7,7 +7,7 @@ TVC 工作流配置 API
 - POST /api/v2/tvc-config/resolve — 解析最终配置（用户 > 全局 > 硬编码默认）
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,12 +67,21 @@ DEFAULT_CONFIG = {
 # ==================== Schema ====================
 
 class TvcConfigUpdate(BaseModel):
+    model_config = {"protected_namespaces": ()}  # 静默 pydantic 警告
     step1_script: Optional[dict] = None
     step2_optimize: Optional[dict] = None
     step3_breakdown: Optional[dict] = None
     step4_image: Optional[dict] = None
     step5_video: Optional[dict] = None
     step5_bgm: Optional[dict] = None
+
+    @field_validator("step4_image", "step5_video", "step5_bgm", mode="before")
+    @classmethod
+    def _reject_non_dict(cls, v):
+        """防御：admin PUT 错类型（如 step4_image='on' 字符串）→ 4xx 拒绝。"""
+        if v is not None and not isinstance(v, dict):
+            raise ValueError("must be a dict")
+        return v
 
 
 # ==================== Helpers ====================
