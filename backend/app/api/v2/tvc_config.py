@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v2/tvc-config", tags=["tvc-config"])
 DEFAULT_CONFIG = {
     "step1_script": {
         "model": "glm-5.1",
-        "fallback_model": "MiniMax-M2.7",
+        "fallback_model": "abab6.5s-chat",
         "temperature": 1.0,
         "max_tokens": 8192,
     },
