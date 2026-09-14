@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     MINIMAX_API_KEY: str = ""
     MINIMAX_API_BASE_URL: str = "https://api.minimax.cn/v1"
 
+    # Image description cache（minimax M3 视觉描述）
+    IMG_DESC_CACHE_MAX_ROWS: int = 5000  # LRU 上限
+    IMG_DESC_CACHE_TTL_DAYS: int = 30   # TTL（天）
+
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587

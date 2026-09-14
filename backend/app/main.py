@@ -51,6 +51,14 @@ async def lifespan(app: FastAPI):
     await agent_gateway.start()
     print("✅ Agent Gateway started")
 
+    # img_desc 缓存启动清理（LRU + TTL）
+    from app.services.image_description_cache import ImageDescriptionCache
+    try:
+        await ImageDescriptionCache.cleanup_expired()
+        print("✅ Image description cache cleanup done")
+    except Exception as e:
+        print(f"⚠️ Image description cache cleanup failed: {e}")
+
     yield
 
     for t in _background_tasks:
