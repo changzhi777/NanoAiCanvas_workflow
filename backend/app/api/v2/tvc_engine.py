@@ -6,6 +6,7 @@ import json
 import asyncio
 import logging
 import re
+from typing import Optional
 import httpx
 
 from app.config import get_settings
