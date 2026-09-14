@@ -118,4 +118,3 @@ __all__ = [
     "MemoryLayer",
 ]
 from app.models.image_description import ImageDescription
-]
