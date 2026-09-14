@@ -65,6 +65,7 @@ function CacheStatsCard() {
   const [stats, setStats] = useState<CacheStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [cleaning, setCleaning] = useState(false)
+  const [threshold, setThreshold] = useState(0.3)  // 命中率告警阈值（默认 30%）
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,6 +80,16 @@ function CacheStatsCard() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // 命中率告警：低于阈值时 toast 提示
+  useEffect(() => {
+    if (!stats || stats.total_entries < 10) return  // 数据太少不告警
+    if (stats.hit_rate < threshold) {
+      toast.warning(
+        `缓存命中率告警：${(stats.hit_rate * 100).toFixed(1)}% < ${(threshold * 100).toFixed(0)}%（${stats.hit_entries}/${stats.total_entries}）`
+      )
+    }
+  }, [stats, threshold])
 
   const handleClean = async () => {
     if (!confirm('确认手动触发 LRU + TTL 清理？将删除过期和超限条目。')) return
@@ -106,6 +117,20 @@ function CacheStatsCard() {
             </span>
           )}
         </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-400">
+            <span>告警阈值</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(threshold * 100)}
+              onChange={e => setThreshold(Math.min(100, Math.max(0, +e.target.value || 0)) / 100)}
+              className="w-14 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded text-slate-200"
+            />
+            <span>%</span>
+          </label>
         <button
           onClick={handleClean}
           disabled={cleaning}
