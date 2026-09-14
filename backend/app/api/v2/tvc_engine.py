@@ -122,14 +122,18 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor._save(task_id, state)
         await workflow_executor._publish(task_id, state)
 
-        # Step 1: 剧本生成（GLM优先，失败fallback MiniMax）
+        # Step 1: 剧本生成 — 有图直接 minimax M3 多模态（图不被浪费）；无图先 GLM 失败 fallback minimax
         await workflow_executor.update_node(task_id, 0, {"status": "running", "progress": 0})
-        script_result = None
-        try:
-            script_result = await _call_glm_tvc_script(req, settings, config)
-        except Exception as e:
-            logger.warning(f"GLM script failed, fallback to MiniMax: {e}")
+        has_ref_image = bool(getattr(req, "reference_image", None))
+        if has_ref_image:
+            logger.info("reference_image provided, using MiniMax M3 directly")
             script_result = await _call_minimax_tvc_script(req, settings, config)
+        else:
+            try:
+                script_result = await _call_glm_tvc_script(req, settings, config)
+            except Exception as e:
+                logger.warning(f"GLM script failed, fallback to MiniMax: {e}")
+                script_result = await _call_minimax_tvc_script(req, settings, config)
         if not script_result:
             raise Exception("剧本生成失败：GLM 和 MiniMax 均不可用")
         await workflow_executor.update_node(task_id, 0, {
