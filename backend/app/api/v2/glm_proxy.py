@@ -907,7 +907,10 @@ async def generate_tvc_script(
             try:
                 return await _tvc_script_with_vision(req, settings, minimax_key)
             except Exception as e:
-                logger.warning(f"minimax M3 多模态失败,降级到 GLM: {e}")
+                import logging as _lg
+                _lg.getLogger(__name__).warning(
+                    f"minimax M3 多模态失败,降级到 GLM: {_vis_err}"
+                )
 
     if not settings.GLM_API_KEY:
         raise HTTPException(status_code=500, detail="GLM API Key 未配置")
