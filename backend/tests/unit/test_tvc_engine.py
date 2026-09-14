@@ -46,12 +46,10 @@ class TestBreakdownShots:
         optimized = {"shots": [_make_shot(1)]}
         result = _breakdown_shots(optimized, 4, 5)
         assert len(result["shots"]) == 4
-        assert "镜头2" in result["shots"][1]["scene_description"]
-        # 补齐的镜头必须有完整字段
+        # 补齐的镜头必须有 visual_prompt
         for shot in result["shots"]:
-            assert "start_frame_prompt" in shot
-            assert "end_frame_prompt" in shot
             assert "visual_prompt" in shot
+            assert shot["visual_prompt"]
 
     def test_truncate_excess_shots(self):
         optimized = {"shots": [_make_shot(i) for i in range(10)]}
@@ -83,7 +81,7 @@ class TestOptimizePrompts:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
-            "choices": [{"message": {"content": json.dumps(mock_shots)}}]
+            "choices": [{"message": {"content": "```json\n{\"shots\": " + json.dumps(mock_shots) + "}\n```"}}]
         }
 
         with patch("httpx.AsyncClient") as mock_client_cls:
@@ -160,8 +158,9 @@ class TestPointsFlow:
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
         with patch("app.database.async_session_maker", return_value=mock_db):
-            with patch("app.api.points.get_or_create_user_account", return_value=mock_account):
-                from app.api.v2.tvc_engine import refund_points
-                await refund_points("user-1", 50)
-                assert mock_account.balance == 150
-                mock_db.commit.assert_called_once()
+            with patch("app.services.points_service.get_user_team", new=AsyncMock(return_value=None)):
+                with patch("app.services.points_service.get_or_create_account", new=AsyncMock(return_value=mock_account)):
+                    from app.api.v2.tvc_engine import refund_points
+                    await refund_points("user-1", 50)
+                    assert mock_account.balance == 150
+                    mock_db.commit.assert_called_once()

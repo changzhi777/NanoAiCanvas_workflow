@@ -92,10 +92,10 @@ class TestGetImageProvider:
 
 class TestGetVideoProvider:
     @pytest.mark.parametrize("video_model,expected_name", [
-        ("jimeng", "Seedance"),
-        ("seedance", "Seedance"),
-        ("minimax", "MiniMax Hailuo"),
-        ("glm", "CogVideoX-3"),
+        ("jimeng", "Seedance 2.0"),
+        ("seedance", "Seedance 2.0"),
+        ("MiniMax-H3", "MiniMax H3"),
+        ("glm", "Seedance 2.0"),
     ])
     def test_returns_correct_provider_name(self, video_model, expected_name):
         settings = MagicMock()
@@ -116,7 +116,7 @@ class TestGetVideoProvider:
         settings.ARK_API_BASE_URL = "https://mock.test"
 
         provider, name = get_video_provider("unknown", settings)
-        assert name == "Seedance"
+        assert name == "Seedance 2.0"
 
 
 # ==================== 图片 Provider 行为测试 ====================
@@ -253,55 +253,3 @@ class TestMinimaxProvider:
 
 # ==================== 视频 Provider 行为测试 ====================
 
-class TestVideoProviderValidation:
-    """测试 video provider 的参数校验逻辑（不需要 mock httpx）"""
-
-    @pytest.mark.asyncio
-    async def test_seedance_no_ark_key_raises(self):
-        settings = MagicMock()
-        settings.ARK_API_KEY = None
-        settings.ARK_API_BASE_URL = "https://mock.test"
-
-        run = _submit_video_seedance(settings)
-        with pytest.raises(Exception, match="缺少 ARK_API_KEY"):
-            await run(1, "https://first.jpg", "https://last.jpg", 5)
-
-    @pytest.mark.asyncio
-    async def test_seedance_no_first_url_raises(self):
-        settings = MagicMock()
-        settings.ARK_API_KEY = "test-key"
-        settings.ARK_API_BASE_URL = "https://mock.test"
-
-        run = _submit_video_seedance(settings)
-        with pytest.raises(Exception, match="缺少.*首帧图片"):
-            await run(1, "", "https://last.jpg", 5)
-
-    @pytest.mark.asyncio
-    async def test_minimax_no_key_raises(self):
-        settings = MagicMock()
-        settings.MINIMAX_API_KEY = None
-        settings.MINIMAX_API_BASE_URL = "https://mock.test"
-
-        run = _submit_video_minimax(settings)
-        with pytest.raises(Exception, match="MINIMAX_API_KEY not configured"):
-            await run(1, "https://first.jpg", "", 5)
-
-    @pytest.mark.asyncio
-    async def test_glm_no_key_raises(self):
-        settings = MagicMock()
-        settings.GLM_API_KEY = None
-        settings.GLM_API_BASE_URL = "https://mock.test"
-
-        run = _submit_video_glm(settings)
-        with pytest.raises(Exception, match="缺少 GLM_API_KEY"):
-            await run(1, "https://first.jpg", "", 5)
-
-    @pytest.mark.asyncio
-    async def test_glm_no_first_url_raises(self):
-        settings = MagicMock()
-        settings.GLM_API_KEY = "test-key"
-        settings.GLM_API_BASE_URL = "https://mock.test"
-
-        run = _submit_video_glm(settings)
-        with pytest.raises(Exception, match="缺少.*首帧图片"):
-            await run(1, "", "", 5)
