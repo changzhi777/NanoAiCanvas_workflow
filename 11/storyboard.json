@@ -1,0 +1,161 @@
+{
+  "title": "阿嬷的情书·取景地寻迹",
+  "theme": "循着电影的脚步，在汕头老街寻找侨批里的半世纪情书",
+  "story_interpretation": "1940年代，郑木生为逃抓壮丁远下南洋，与妻子叶淑柔天各一方。半世纪里，一封封侨批维系着山海两端的思念。孙子晓伟赴泰国寻亲，却揭开惊天秘密：阿公早已牺牲，而冒名写信十八载的人，是素昧平生的陌生人谢南枝。一纸侨批，跨越生死，写尽了潮汕人最深沉的爱与信义。",
+  "shots": [
+    {
+      "shot_id": 1,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "镇邦美食街牌坊",
+      "visual": "镇邦美食街牌坊正面，红柱金顶气势恢宏，街道向远方延伸",
+      "mood": "开篇引入，气势恢宏",
+      "narration": "百年骑楼间，藏着一封跨越半世纪的情书",
+      "photo_file": "微信图片_20260811142504_835_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 2,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "汕头小公园骑楼街区·夜景",
+      "visual": "夜晚小公园骑楼街区全景，灯火辉煌，骑楼建筑灯光勾勒出百年商埠轮廓",
+      "mood": "穿越时空，温暖怀旧",
+      "narration": "这里是《给阿嬷的情书》故事发生的地方",
+      "photo_file": "微信图片_20260811142916_847_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 3,
+      "duration": 9,
+      "scene_type": "animation",
+      "location": "1940年代汕头码头（AI插画）",
+      "visual": "动画写实风格：1940年代汕头码头，年轻男子背对家乡远眺海面上巨轮，码头上行人匆匆，远处是老式帆船与蒸汽轮",
+      "mood": "离别、悲壮",
+      "narration": "那一年，为了逃避抓壮丁，他踏上南洋的船",
+      "photo_file": null,
+      "animation_prompt": "Cinematic realistic animation, 1940s Chinese coastal port, a young man in worn traditional shirt standing at dock gazing at ocean liner, black smoke rising, sepia warm golden light, departure scene, old sailing ships and steam vessel in background, dust particles in sunbeam, melancholic farewell atmosphere, wide composition, no real people, painterly animation style"
+    },
+    {
+      "shot_id": 4,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "暹罗电影院旧址（海平路77号）",
+      "visual": "暹罗电影院霓虹灯闪耀，经典电影海报尽显复古情怀，影院外立面斑驳而有韵味",
+      "mood": "时光交错，电影感",
+      "narration": "暹南电影院——电影里阿嬷与南枝相遇的地方",
+      "photo_file": "微信图片_20260811142811_844_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 5,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "骑楼老街夜景",
+      "visual": "夜晚南洋骑楼老街灯火辉煌，霓虹招牌与骑楼建筑交织，少年倚门探望",
+      "mood": "温暖、童趣",
+      "narration": "骑楼下的灯火，照亮了等候的家门",
+      "photo_file": "微信图片_20260811142827_845_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 6,
+      "duration": 9,
+      "scene_type": "animation",
+      "location": "侨批书信特写（AI插画）",
+      "visual": "动画写实风格：粗糙的手握着毛笔，在泛黄的侨批纸上一字一句书写，旁边煤油灯火苗摇曳，桌上有家书和汇款单",
+      "mood": "思念、深沉",
+      "narration": "一封侨批，就是一封写给家的情书",
+      "photo_file": null,
+      "animation_prompt": "Cinematic realistic animation close-up, weathered hands writing Chinese calligraphy with brush on aged yellow paper, kerosene lamp flickering beside, overseas remittance letter and old coins on wooden table, warm amber glow, dust particles, intimate emotional atmosphere, painterly animation style, no real people"
+    },
+    {
+      "shot_id": 7,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "老街深巷",
+      "visual": "狭窄巷弄中老建筑与现代生活交织，电线纵横，骑楼林立",
+      "mood": "探索、沧桑",
+      "narration": "走进巷弄深处，寻找电影里的每一帧画面",
+      "photo_file": "微信图片_20260811143012_850_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 8,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "百年骑楼建筑",
+      "visual": "百年骑楼建筑特写，中西合璧的立面，雕花窗棂与罗马柱并存",
+      "mood": "厚重、敬畏",
+      "narration": "百年骑楼，中西合璧，刻着一代代人的记忆",
+      "photo_file": "微信图片_20260811143049_853_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 9,
+      "duration": 9,
+      "scene_type": "animation",
+      "location": "阿嬷读信（AI插画）",
+      "visual": "动画写实风格：老式藤椅上，一双手颤抖着展开泛黄的书信，阳光从骑楼窗棂间洒落，光影斑驳，信纸上是密密麻麻的潮汕方言",
+      "mood": "温情、泪目",
+      "narration": "阿嬷等了一辈子的信，写信的人却不是阿公",
+      "photo_file": null,
+      "animation_prompt": "Cinematic realistic animation, elderly woman hands trembling holding open aged letter, sunlight streaming through window lattice casting dappled shadows, old rattan chair, warm golden afternoon light, Teochew dialect writing visible on paper, nostalgic emotional atmosphere, painterly animation style, no real people face visible"
+    },
+    {
+      "shot_id": 10,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "汕头开埠文化陈列馆",
+      "visual": "汕头开埠文化陈列馆正面，近代历史建筑风貌，港口文化变迁的见证",
+      "mood": "庄严、历史厚重",
+      "narration": "开埠文化陈列馆，记录着远渡重洋的故事",
+      "photo_file": "微信图片_20260811143250_861_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 11,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "庙宇燕尾脊",
+      "visual": "传统庙宇屋脊龙凤剪粘与门神彩绘，燕尾脊在天空下精美的轮廓",
+      "mood": "文化传承、敬意",
+      "narration": "燕尾脊上的龙凤，守护着潮汕人的根",
+      "photo_file": "微信图片_20260811143155_857_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 12,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "骑楼街区·夕照",
+      "visual": "傍晚历史步行街，悬挂的诗词灯饰照亮古朴街巷，游客漫步其中",
+      "mood": "诗意、温暖收束",
+      "narration": "诗词灯下，每一步都是写给这片土地的情书",
+      "photo_file": "微信图片_20260811143341_864_45.jpg",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 13,
+      "duration": 9,
+      "scene_type": "animation",
+      "location": "侨批跨越山海（AI插画）",
+      "visual": "动画写实风格：从汕头骑楼到泰国曼谷寺庙的鸟瞰全景，海面上有帆船航线，虚线的信件符号连接两地，夕阳映照海面",
+      "mood": "宏大、升华",
+      "narration": "从汕头到曼谷，一封情书跨越了生死与山海",
+      "photo_file": null,
+      "animation_prompt": "Cinematic realistic animation aerial view, sweeping panorama from Chinese arcade buildings to Thai temple, ocean with sailing ship routes between, translucent letter symbols connecting two lands, golden sunset reflecting on sea, epic emotional landscape, painterly animation style, no real people"
+    },
+    {
+      "shot_id": 14,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "骑楼老街·暮色",
+      "visual": "夕阳下的骑楼老街剪影，学生漫步街区，暖色光线洒满石板路",
+      "mood": "温暖、余韵悠长",
+      "narration": "故事写在骑楼的每一块砖瓦里，等着你来读懂",
+      "photo_file": "微信图片_20260811143326_863_45.jpg",
+      "animation_prompt": null
+    }
+  ]
+}

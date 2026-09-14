@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
     # MiniMax
     MINIMAX_API_KEY: str = ""
-    MINIMAX_API_BASE_URL: str = "https://api.minimaxi.com/v1"
+    MINIMAX_API_BASE_URL: str = "https://api.minimax.cn/v1"
 
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""

@@ -25,7 +25,7 @@ export { default as NanoBanana2Node } from './NanoBanana2Node';
 export { default as NanoBananaProNode } from './NanoBananaProNode';
 export { default as GPTImage2Node } from './GPTImage2Node';
 export { default as VideoGeneratorNode } from './VideoGeneratorNode';
-export { default as BackgroundMusicNode } from './BackgroundMusicNode';
+export { BackgroundMusicNode } from './BackgroundMusicNode';
 export { default as TransitionNode } from './TransitionNode';
 
 // 即梦（字节AI）节点

@@ -1,68 +1,99 @@
 {
-  "timestamp": "2026-05-14T00:00:00+08:00",
-  "version": "4.0.0",
+  "timestamp": "2026-09-01T11:05:03+08:00",
+  "previousTimestamp": "2026-08-11T13:54:27+08:00",
+  "version": "5.1.0",
   "projectName": "NanoAiCanvas",
-  "description": "无限画布创作平台 - React Flow Workflow + FastAPI Backend + Garden Skills",
-  "projectVersion": "2.12.273",
+  "description": "无限画布创作平台 - React Flow Workflow + FastAPI Backend + cli-agent (FFmpeg) + garden-skills + Agent Team8 V0.3.0 + 部署工具链（91zm.com.cn 香港生产）",
+  "projectVersion": "2.13.36",
+  "agentSystemVersion": "V0.3.0",
+  "production": {
+    "provider": "腾讯云香港（nanoai-hk-2）",
+    "domain": "91zm.com.cn",
+    "entry": "https://91zm.com.cn/nanoai",
+    "https": true,
+    "reverseProxy": "deploy/conf/nginx-91zm.conf（宿主机 Nginx → Docker 127.0.0.1:8080）",
+    "subPathMigration": "/nanoaicanvas → /nanoai（commit c8201f1，v2.13.3x）"
+  },
   "techStack": {
     "frontend": {
-      "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11"],
-      "stateManagement": ["Redux Toolkit 2.2.5", "Zustand (22 stores)"],
+      "core": ["React 19.2.4", "TypeScript 5.9.3", "Vite 5.2.11 (base: /nanoai/)"],
+      "stateManagement": ["Redux Toolkit 2.2.5", "Zustand (24 stores)"],
       "ui": ["shadcn/ui", "Tailwind CSS 3.4.19", "Lucide React 0.468.0", "Framer Motion 12.38.0"],
       "canvas": ["React Flow 11.11.4"],
-      "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"]
+      "i18n": ["i18next 23.11.5", "react-i18next 14.1.2"],
+      "testing": ["Vitest 1.6.1", "@testing-library/react", "Playwright 1.59.1"]
     },
     "backend": {
       "framework": ["FastAPI 0.109.2", "uvicorn 0.27.1"],
       "orm": ["SQLAlchemy 2.0.25 (async)", "asyncpg 0.29.0"],
       "database": ["PostgreSQL", "Redis 5.0.1"],
       "auth": ["python-jose", "passlib[bcrypt]"],
-      "testing": ["pytest 8.0.0", "pytest-asyncio 0.23.4"]
+      "testing": ["pytest 8.0.0", "pytest-asyncio 0.23.4", "pytest-cov 4.1.0"]
     },
-    "testing": ["Vitest", "Playwright", "@testing-library/react"]
+    "subpackages": {
+      "cli-agent": "Node >=20, TypeScript 5.9.3, FFmpeg, @modelcontextprotocol/sdk 1.12.1, Fastify 5.3.3, Vitest 1.6.1",
+      "garden-skills": "Node >=20, MIT license, SKILL.md-compatible skills (4 个)"
+    }
   },
   "stats": {
-    "frontendFiles": 406,
-    "backendFiles": 74,
-    "nodeTypes": 55,
-    "templates": 13,
-    "zustandStores": 22,
-    "apiModules": 40,
-    "backendModels": 16,
-    "alembicVersions": 12,
+    "frontendTsFiles": 470,
+    "backendPyFiles": 146,
+    "deployScripts": 11,
+    "deployTests": 7,
+    "deployConfigs": 5,
+    "nodeTypes": 49,
+    "templates": 24,
+    "zustandStores": 24,
+    "zustandStoreTests": 24,
+    "apiClientModules": 43,
+    "apiClientTests": 12,
+    "backendV1Routes": 15,
+    "backendV2Routes": 17,
+    "agentRoutes": 17,
+    "backendModels": 26,
+    "alembicVersions": 16,
     "hooks": 18,
-    "adminPages": 25,
-    "gardenSkills": 4
+    "hookTests": 8,
+    "adminPages": 29,
+    "gardenSkills": 4,
+    "agentRoles": 9,
+    "agentMemoryLayers": 4,
+    "agentSleepStages": 6,
+    "agentPipelineStages": 8,
+    "frontendTestFiles": 48,
+    "backendTestFiles_unit": 6,
+    "backendTestFiles_agent": 1,
+    "backendTestFiles_integration": 6,
+    "cliAgentSourceFiles": 17
   },
   "modules": [
     {
       "name": "Root CLAUDE.md",
       "path": "./CLAUDE.md",
       "status": "updated",
-      "lastUpdated": "2026-05-14"
+      "lastUpdated": "2026-09-01"
     },
     {
       "name": "NanoAI Workflow",
       "path": "src/components/nanoai-workflow",
-      "responsibility": "AI 工作流核心 - 55+ 节点、13 模板、可视化编辑器",
-      "status": "updated",
-      "lastUpdated": "2026-05-14",
+      "responsibility": "AI 工作流核心 - 49 节点、24 模板、可视化编辑器、2 节点测试",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
       "doc": "src/components/nanoai-workflow/CLAUDE.md"
     },
     {
       "name": "Storyboard",
       "path": "src/components/storyboard",
       "responsibility": "故事板组件集 - 25 组件（向导/资产/角色/对话/语音/动画）",
-      "status": "new",
-      "lastUpdated": "2026-05-14",
+      "status": "stable",
       "doc": "src/components/storyboard/CLAUDE.md"
     },
     {
       "name": "Admin Components",
       "path": "src/components/admin",
-      "responsibility": "管理后台 UI - Sidebar/Header/AppConfig/Kevin 监控",
-      "status": "new",
-      "lastUpdated": "2026-05-14"
+      "responsibility": "管理后台 UI - Sidebar/Header/AppConfig/Kevin 监控/apps",
+      "status": "stable",
+      "doc": "src/components/admin/CLAUDE.md"
     },
     {
       "name": "Canvas",
@@ -81,9 +112,9 @@
     {
       "name": "Zustand Stores",
       "path": "src/stores",
-      "responsibility": "22 个业务状态管理（Workflow/Chat/StoryBoard/Points/Notification/图片生成）",
-      "status": "updated",
-      "lastUpdated": "2026-05-14",
+      "responsibility": "24 个业务状态管理 + 24 测试文件（全覆盖，2026-09-01 实测复核）",
+      "status": "stable",
+      "lastVerified": "2026-09-01",
       "doc": "src/stores/CLAUDE.md"
     },
     {
@@ -96,53 +127,79 @@
     {
       "name": "Hooks",
       "path": "src/hooks",
-      "responsibility": "18 个自定义 React Hooks",
+      "responsibility": "18 个自定义 React Hooks + 8 测试文件（2026-09-01 实测复核）",
       "status": "stable",
+      "lastVerified": "2026-09-01",
       "doc": "src/hooks/CLAUDE.md"
     },
     {
       "name": "Lib/API",
       "path": "src/lib/api",
-      "responsibility": "40+ API 客户端模块 + Adapters",
+      "responsibility": "43 API 客户端 + 5 Adapters + 12 测试文件；client.ts 同源相对路径（生产基址修复 8a1d0fa）",
+      "status": "stable",
+      "lastVerified": "2026-09-01",
+      "doc": "src/lib/api/CLAUDE.md"
+    },
+    {
+      "name": "Lib/BasePath",
+      "path": "src/lib/basePath.ts",
+      "responsibility": "子路径统一入口：BASE_PATH='/nanoai' + getFullPath()（/nanoaicanvas → /nanoai 迁移核心）",
       "status": "new",
-      "lastUpdated": "2026-05-14"
+      "lastUpdated": "2026-09-01"
     },
     {
       "name": "Backend V1 API",
       "path": "backend/app/api",
       "responsibility": "核心业务 API（15 路由 + WebSocket）",
-      "status": "updated",
-      "lastUpdated": "2026-05-14",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
       "doc": "backend/app/api/CLAUDE.md"
     },
     {
       "name": "Backend V2 API",
       "path": "backend/app/api/v2",
-      "responsibility": "新版 API（10 路由：admin/image/skills/TVC/glm/minimax/visibility）",
-      "status": "new",
-      "lastUpdated": "2026-05-14",
+      "responsibility": "新版 API（17 路由：admin/image/skills/TVC×5/glm/minimax/agent/library/key_mapper/visibility/log）",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
       "doc": "backend/app/api/v2/CLAUDE.md"
+    },
+    {
+      "name": "Agent System",
+      "path": "backend/app/services/agent",
+      "responsibility": "Nanoai Team8 V0.3.0 - 9 角色 + 4 层记忆 + 6 阶段睡眠 + 8 阶段管线 + 双模型路由 + Git 式技能 + 5 MCP Tools",
+      "status": "stable",
+      "lastUpdated": "2026-08-11",
+      "doc": "backend/app/services/agent/CLAUDE.md",
+      "highlights": [
+        "9 Agent: producer / screenwriter / director / art_director / character_designer / scene_designer / voice_director / editor / composer",
+        "17 HTTP/WS routes via backend/app/api/v2/agent.py",
+        "7 数据表 + alembic 015_agent_system.py",
+        "MemoryStack 4 层 + 半衰期评分",
+        "SleepScheduler 每日 3:00 自动优化"
+      ]
     },
     {
       "name": "Backend Services",
       "path": "backend/app/services",
-      "responsibility": "业务服务层（workflow_executor/skills_worker/task_queue/api_key_service/points_service/pubsub）",
-      "status": "new",
-      "lastUpdated": "2026-05-14"
+      "responsibility": "业务服务层（11 服务 + skills 子系统 + agent 子系统）",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
+      "doc": "backend/app/services/CLAUDE.md"
     },
     {
       "name": "Backend Providers",
       "path": "backend/app/providers",
       "responsibility": "AI 服务提供商统一接口（base/wuyinkeji/caohua_jimeng）",
-      "status": "new",
-      "lastUpdated": "2026-05-14"
+      "status": "stable",
+      "doc": "backend/app/providers/CLAUDE.md"
     },
     {
       "name": "Backend Models",
       "path": "backend/app/models",
-      "responsibility": "16 个数据模型（User/Asset/Workflow/ApiKey/AppVisibility/Conversation/Points...）",
-      "status": "updated",
-      "lastUpdated": "2026-05-14"
+      "responsibility": "18 模型文件 / 26 模型类（User/Asset/Workflow/ApiKey/AppVisibility/Conversation/Points/TVC/Agent×7...）",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
+      "doc": "backend/app/models/CLAUDE.md"
     },
     {
       "name": "Points Model",
@@ -152,11 +209,150 @@
       "doc": "backend/app/models/points/CLAUDE.md"
     },
     {
+      "name": "Backend Tests",
+      "path": "backend/tests",
+      "responsibility": "三层测试（unit 6 + agent 1 + integration 6 + 3 conftest）+ pytest.ini",
+      "status": "stable",
+      "lastUpdated": "2026-08-11",
+      "doc": "backend/tests/CLAUDE.md",
+      "highlights": [
+        "三层 conftest 分层（root 真实 PG + unit/agent mock 注入）",
+        "单元测试用 --confcutdir=tests/unit 避免 asyncpg 触发",
+        "Agent 测试用 _TestBase(DeclarativeBase) 替身"
+      ]
+    },
+    {
+      "name": "Deploy",
+      "path": "deploy",
+      "responsibility": "部署运维（腾讯云香港生产 91zm.com.cn + LXC 裸机 + Docker Compose + HTTPS + DNS + 备份 + 日志 + 7 维度测试）",
+      "status": "updated",
+      "lastUpdated": "2026-09-01",
+      "doc": "deploy/CLAUDE.md",
+      "highlights": [
+        "香港生产：91zm.com.cn → 宿主机 Nginx（conf/nginx-91zm.conf）→ Docker 127.0.0.1:8080，入口 /nanoai",
+        "LXC 部署链：pve-create-lxc → lxc-setup → lxc-deploy（内网 10.10.10.31）",
+        "7 维度部署测试（network/services/frontend/api/db/perf/stress）",
+        "11 部署/运维脚本 + 7 测试 + 5 配置（含 setup-adguard-dns.sh）"
+      ]
+    },
+    {
       "name": "Garden Skills",
       "path": "garden-skills",
       "responsibility": "Skills 插件生态（gpt-image-2/kb-retriever/web-design-engineer/web-video-presentation）",
-      "status": "new",
-      "lastUpdated": "2026-05-14"
+      "status": "stable",
+      "lastUpdated": "2026-05-14",
+      "doc": "garden-skills/CLAUDE.md"
+    },
+    {
+      "name": "CLI Agent",
+      "path": "cli-agent",
+      "responsibility": "FFmpeg 视频合成 CLI + MCP Server（4 Tools）+ Fastify HTTP + Skill 接口（17 源文件）",
+      "status": "stable",
+      "lastUpdated": "2026-05-18",
+      "doc": "cli-agent/CLAUDE.md"
+    },
+    {
+      "name": "App Pages",
+      "path": "src/app",
+      "responsibility": "页面路由（admin 26+ 页面 + nano2 + points + notifications，挂载于 /nanoai 子路径）",
+      "status": "stable",
+      "doc": "src/app/CLAUDE.md"
+    },
+    {
+      "name": "Types",
+      "path": "src/types",
+      "responsibility": "TypeScript 类型定义",
+      "status": "stable",
+      "doc": "src/types/CLAUDE.md"
+    },
+    {
+      "name": "Config",
+      "path": "src/config",
+      "responsibility": "快捷键 / 应用配置",
+      "status": "stable",
+      "doc": "src/config/CLAUDE.md"
+    },
+    {
+      "name": "Scripts",
+      "path": "scripts",
+      "responsibility": "AI 媒体制作脚本（ahma_love_letter / cultural_visit_video）+ 杂项工具（6 文件，2026-08-28 索引）",
+      "status": "stable",
+      "lastUpdated": "2026-08-28"
     }
-  ]
+  ],
+  "coverage": {
+    "truncated": false,
+    "summary": "增量扫描（2026-09-01）：聚焦 /nanoai 子路径迁移 + 91zm 香港生产上线 + 版本 2.13.36；stores/hooks/api 统计实测复核无变化；17 个模块 CLAUDE.md 均无 /nanoaicanvas 旧路径引用，无需修正",
+    "incrementScope": [
+      "package.json 版本 2.13.30 → 2.13.36（实测）",
+      "vite.config.ts base '/nanoai/' + dev proxy 前缀（实测）",
+      "src/lib/basePath.ts BASE_PATH='/nanoai'（实测）",
+      "src/lib/api/client.ts 同源相对路径（实测）",
+      "deploy/conf/nginx-91zm.conf + setup-adguard-dns.sh（实测）"
+    ],
+    "frontendScanned": true,
+    "backendScanned": false,
+    "deployScanned": true,
+    "agentScanned": false,
+    "testsScanned": true,
+    "ignoredTopDirs": [
+      "node_modules/（依赖，按 .gitignore）",
+      "cli-agent/node_modules/（依赖）",
+      "dist/、build/、coverage/、.vite/（构建产物）",
+      ".git/、.husky/_/（git/husky 内部）",
+      "backend/chat-uploads/（运行时上传）",
+      "11/（媒体产物目录，建议移出仓库）",
+      "5088a44a-*/、s（临时/可疑目录，建议清理）",
+      ".zcf/plan/history/（历史规划归档，仅记录不扫描）",
+      "docs/reports/*.png/.jpeg/.zip（二进制报告资产）"
+    ],
+    "legacyPathResidue": {
+      "note": "源码中残留 /nanoaicanvas 旧路径（不在文档修改范围）：e2e/*.spec.ts × 3、frontend.Dockerfile、deploy/setup-https.sh、deploy/tests/03~07、deploy/conf/nginx-nanoai.conf、deploy/lxc-deploy.sh、scripts/add-ws-location.py",
+      "priority": "medium",
+      "suggestion": "建议统一清理为 /nanoai（尤其 e2e 与部署脚本，避免测试误报）"
+    },
+    "gaps": [
+      {
+        "module": "src/components/nanoai-workflow/nodes/",
+        "issue": "49 节点组件，仅 2 个测试（StoryboardShotANode + useTvcExecution）。建议补齐高流量节点测试：ScriptGeneratorNode / TvcScriptNode / VideoGeneratorNode",
+        "priority": "medium"
+      },
+      {
+        "module": "backend/app/api/v2/",
+        "issue": "17 路由，仅 TVC engine/providers 有集成测试。建议补 agent.py / workflow_tasks.py / image.py / skills.py 的集成测试",
+        "priority": "high"
+      },
+      {
+        "module": "backend/app/services/agent/sleep/",
+        "issue": "睡眠阶段（EfficiencyOptimizer / AutoUpdater）缺单元测试，仅 gateway/pipeline/router 有覆盖",
+        "priority": "medium"
+      },
+      {
+        "module": "backend/app/services/agent/mcp/bridge.py",
+        "issue": "MCP 桥接无单元测试，建议补 stdio 协议解析 + Redis Pub/Sub 双向测试",
+        "priority": "medium"
+      },
+      {
+        "module": "cli-agent/",
+        "issue": "package.json 显示 vitest 配置存在但未发现实际 tests/ 目录。建议补 FFmpeg 操作 + pipeline + MCP tools 测试",
+        "priority": "low"
+      },
+      {
+        "module": "src/components/admin/",
+        "issue": "26+ 管理后台页面缺组件测试，建议补关键页面（用户审批 / 积分授权 / Key 映射）",
+        "priority": "low"
+      },
+      {
+        "module": "e2e/ + frontend.Dockerfile + deploy 旧配置",
+        "issue": "/nanoaicanvas 旧路径残留（e2e × 3 / Dockerfile / setup-https.sh / tests 03-07 / nginx-nanoai.conf / lxc-deploy.sh），子路径迁移后未同步清理",
+        "priority": "medium"
+      }
+    ],
+    "nextStepRecommendations": [
+      "清理 e2e/*.spec.ts 与 frontend.Dockerfile 中的 /nanoaicanvas 残留（改 /nanoai），恢复 E2E 可用性",
+      "对香港生产（91zm.com.cn）跑一轮 deploy/test-deploy.sh 验证 7 维度基线",
+      "优先补扫 backend/app/api/v2/agent.py 全量路由（WebSocket + Skills + Pipeline 端点）测试",
+      "仓库卫生：移出 11/ 媒体产物 + 清理 5088a44a-*/ 与 s 临时目录"
+    ]
+  }
 }

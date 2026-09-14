@@ -1,13 +1,14 @@
 /**
- * TVC 视频 V1 模板 — 3 节点专业 TVC 广告视频生成
+ * TVC 视频 V1 模板 — 5 节点专业 TVC 广告视频生成
  *
  * 工作流步骤：
- * 1. 文案/剧本生成（输入+参考图+提示词优化+剧本）
- *    → 2. 分镜头故事板（生成分镜图片 + 单镜头视频 + BGM）
- *    → 3. 视频合成（FFmpeg 串联所有镜头 + BGM 混音 → 完整 TVC 预览）
+ * 1. 文案/剧本（minimax M3 多模态）
+ *    → 2. 分镜+视频（速创 GPT-Image-2 + Hailuo/Seedance）
+ *    → 2.5 BGM 上传（MiniMax Audio 弹窗 → dropzone）
+ *    → 3. 视频合成（FFmpeg 串联镜头 + BGM 混音）
  *
  * 执行模式：分步执行 / 一键生成
- * 默认模型：GLM-5.1(剧本) + GPT-Image-2(图片) + MiniMax Hailuo(视频) + MiniMax Music(BGM)
+ * 默认模型：minimax M3(剧本) + GPT-Image-2(图片) + Hailuo/Seedance(视频) + 用户上传(BGM)
  */
 
 import { WorkflowNode, WorkflowEdge } from '@/stores/nanoaiWorkflowStore';
@@ -92,6 +93,27 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
       },
     },
 
+    // ==================== 节点 2.5：BGM 上传 ====================
+    {
+      id: 'node-tvc-bgm',
+      type: 'background_music',
+      position: { x: startX + nodeWidth + horizontalGap, y: startY + 280 },
+      data: {
+        label: '②.5 背景音乐',
+        params: {
+          source: 'upload' as const,
+          volume: 80,
+          fadeIn: 2,
+          fadeOut: 3,
+        },
+        inputs: [],
+        outputs: [
+          { id: 'output-bgm', name: 'BGM 文件', type: 'audio', required: false, description: '用户上传的 BGM（来自 MiniMax Audio）' },
+        ],
+        status: 'idle' as any,
+      },
+    },
+
     // ==================== 节点 3：FFmpeg 合成整段视频 ====================
     {
       id: 'node-tvc-compose',
@@ -147,13 +169,26 @@ export const createTvcVideo01Edges = (): WorkflowEdge[] => {
       labelStyle: { fill: '#86efac', fontSize: 11, fontWeight: 600 },
       style: { stroke: '#3ecf8e', strokeWidth: 2.5 },
     },
+    {
+      id: 'edge-tvc-bgm-to-compose',
+      source: 'node-tvc-bgm',
+      target: 'node-tvc-compose',
+      sourceHandle: 'output-bgm',
+      targetHandle: 'input-bgm',
+      type: 'smoothstep',
+      animated: true,
+      label: 'BGM',
+      labelBgStyle: { fill: '#1e293b', fillOpacity: 0.85, rx: 6, ry: 6 },
+      labelStyle: { fill: '#fcd34d', fontSize: 11, fontWeight: 600 },
+      style: { stroke: '#fbbf24', strokeWidth: 2 },
+    },
   ];
 };
 
 export const tvcVideo01Template: TvcVideo01Template = {
   id: 'tvc-video-01',
   name: 'TVC视频V1',
-  description: '3步TVC广告视频：文案剧本 → 分镜+视频+BGM → FFmpeg合成整段预览',
+  description: '5节点TVC广告视频：文案剧本(M3) → 分镜+视频(GPT-Image-2+Hailuo) → BGM上传(MiniMax Audio) → FFmpeg合成整段预览',
   category: 'story',
   tags: ['TVC', '视频', '广告', '3步流程', '推荐'],
   createdAt: new Date().toISOString(),

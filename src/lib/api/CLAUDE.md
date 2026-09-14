@@ -2,8 +2,8 @@
 
 > [根目录](../../../CLAUDE.md) > [src](../../) > [lib](../) > **api**
 
-**最后更新**: 2026-05-18
-**文件数**: 43+ 模块
+**最后更新**: 2026-08-11
+**文件数**: 43+ 业务模块 + 5 Adapters + 11 测试文件
 
 前端统一 API 客户端层，封装所有后端和第三方 AI 服务调用。
 
@@ -61,9 +61,13 @@
 | 文件 | 行数 | 职责 |
 |------|------|------|
 | `tvc-api.ts` | 117 | TVC 视频 V1：脚本生成、产品分析、SSE 流式 |
+| `tvc-projects-api.ts` | - | TVC 项目管理 CRUD + 镜头管理 |
+| `video-editor-api.ts` | - | 视频编辑（FFmpeg cli-agent 调用） |
 | `storyboard.ts` | 497 | 故事板：分镜脚本、图片生成、角色/场景设计 |
 | `chat-api.ts` | 153 | 即时聊天，SSE 流式对话 |
 | `assets.ts` | 168 | 资产管理 CRUD、批量操作 |
+| `image-assets.ts` | - | 图片资产专用操作 |
+| `asset-auto-save.ts` | - | 资产自动保存（生成结果落库） |
 | `points-api.ts` | 224 | 积分系统：查询余额、计价、扣减 |
 | `tasks.ts` | 80 | 任务管理：创建/查询/取消 |
 | `users-api.ts` | - | 用户注册/登录/资料 |
@@ -71,6 +75,7 @@
 | `notifications-api.ts` | - | 通知推送 |
 | `admin-api.ts` | - | 管理后台 API |
 | `admin.ts` | - | 管理后台辅助 |
+| `kevin-api.ts` | - | Kevin 监控服务 |
 
 ---
 
@@ -78,10 +83,10 @@
 
 | 文件 | 职责 |
 |------|------|
+| `agent-api.ts` | Agent Team8 V0.3.0 客户端（17 路由：chat / pipeline / skills / memories / sessions / sleep） |
 | `ai-skill.ts` | AI Skill 调用，技能执行 |
 | `app-visibility-api.ts` | 应用可见性控制 |
 | `apps-api.ts` | 应用配置管理 |
-| `image-assets.ts` | 图片资产专用操作 |
 | `image-to-prompt.ts` | 图片→提示词反推 |
 | `prompt-restrictions.ts` | 提示词限制规则 |
 | `prompt-wizard.ts` | 提示词向导/优化 |
@@ -90,7 +95,6 @@
 | `ecommerce-product-analyze.ts` | 电商产品分析 |
 | `realtime-voice.ts` | 实时语音 WebSocket |
 | `websocket-client.ts` | 通用 WebSocket 客户端 |
-| `kevin-api.ts` | Kevin 监控服务 |
 
 ---
 
@@ -107,3 +111,59 @@ UI 组件 / Store
 **SSE 流式接口**: `chat-api.ts`、`tvc-api.ts`、`storyboard.ts`、`glm-api.ts` 使用 EventSource / fetch stream 实现流式响应。
 
 **模型路由**: 所有 AI 服务通过 `model-routing.ts` 动态获取 `category→(provider, model_code)` 映射，支持后端热切换模型。
+
+---
+
+## 测试与质量
+
+### 测试文件清单（11 个）
+
+| 测试文件 | 覆盖模块 |
+|---------|---------|
+| `client.test.ts` | client.ts（HTTP 基础、错误分级、重试） |
+| `agent-api.test.ts` | agent-api.ts（Agent Team8 17 路由） |
+| `chat-api.test.ts` | chat-api.ts（SSE 流式对话） |
+| `image-gen-api.test.ts` | nanobanana2 / nanobanana-pro / gpt-image-api |
+| `kimi-qwen-api.test.ts` | kimi-api / qwen-api |
+| `notifications-api.test.ts` | notifications-api.ts |
+| `points-api.test.ts` | points-api.ts |
+| `small-api-clients.test.ts` | 多个小客户端聚合测试 |
+| `teams-api.test.ts` | teams-api.ts |
+| `tvc-projects-api.test.ts` | tvc-projects-api.ts |
+| `video-editor-api.test.ts` | video-editor-api.ts |
+| `tvc-api.test.ts` | tvc-api.ts |
+
+### 测试基础设施
+
+依赖 `src/test/setup.ts` 提供：
+- Mock `fetch` / `Response` — HTTP 客户端测试
+- Mock `EventSource` — SSE 流式接口测试（含 `simulateOpen/simulateError/emit` 测试辅助）
+- Mock `localStorage` — API Key 持久化测试
+
+### 运行测试
+
+```bash
+pnpm test src/lib/api/                 # 仅 API 层测试
+pnpm test:coverage                     # 覆盖率
+```
+
+**覆盖率**：核心客户端（client.ts）+ 主要业务 API 均有测试，覆盖率约 31%（11/43+）。
+
+---
+
+## 变更记录 (Changelog)
+
+### 2026-08-11
+- 增量更新：新增 11 个测试文件
+- 补全 API 模块清单（从 42 → 43+，含 agent-api.ts / video-editor-api.ts / tvc-projects-api.ts）
+- 新增"测试与质量"章节，记录测试基础设施和测试清单
+- 标注 SSE 流式接口和模型路由策略
+
+### 2026-05-18
+- 文件数从 40+ 增长到 43+
+- 新增 video-editor-api.ts、tvc-projects-api.ts
+- 完整 adapters/ 子目录说明
+
+### 2026-05-14
+- 初始化 API 客户端层文档
+- 40+ 模块分类（核心 / 适配器 / AI 服务 / 业务 / 特色）

@@ -1,0 +1,71 @@
+```json
+{
+  "title": "文化探访｜《给阿嬷的情书》取景地打卡",
+  "theme": "骑楼老街寻电影足迹，侨批情书品半世纪潮人乡愁",
+  "story_interpretation": "1940年代，郑木生为逃抓壮丁下南洋，与妻叶淑柔天各一方。半世纪侨批维系情缘，写信人却早已易主。孙子晓伟赴泰寻亲揭开真相，一封情书跨越生死山海，诉尽潮人最深沉的爱。",
+  "shots": [
+    {
+      "shot_id": 1,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "汕头小公园骑楼街区",
+      "visual": "黄昏航拍，汕头小公园中山纪念亭与环形骑楼群全景，夕阳为骑楼镀上金色光辉",
+      "mood": "震撼、唯美",
+      "narration": "百年骑楼，一封情书",
+      "photo_hint": "黄昏黄金时刻航拍俯视，骑楼群与纪念亭同心圆构图，暖色调",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 2,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "镇邦美食街",
+      "visual": "镜头平视穿过镇邦美食街牌坊，牌坊上书法清晰可见，街道延伸远方",
+      "mood": "沉浸、期待",
+      "narration": "汕头老街，藏着半个世纪的秘密",
+      "photo_hint": "正对牌坊中景，路人剪影虚化，暖黄灯光",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 3,
+      "duration": 9,
+      "scene_type": "photo",
+      "location": "镇邦美食街牌坊",
+      "visual": "牌坊特写，青砖灰瓦与烫金书法对比，斑驳岁月痕迹",
+      "mood": "怀旧、厚重",
+      "narration": "这里是故事的起点",
+      "photo_hint": "低角度仰拍牌坊细节，浅景深，突出书法字迹",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 4,
+      "duration": 10,
+      "scene_type": "animation",
+      "location": "1940年代汕头老码头（动画场景）",
+      "visual": "1940年代码头，郑木生与叶淑柔相拥告别，远方南洋巨轮汽笛长鸣",
+      "mood": "悲壮、温情",
+      "narration": "1948年，木生踏上南洋的船",
+      "photo_hint": null,
+      "animation_prompt": "1940s Chinese coastal dock, realistic cinematic animation, a young man in worn traditional shirt embracing an elderly woman, ocean liner in background with black smoke, sepia and warm golden light, emotional farewell scene, dust particles in sunlight, vintage atmosphere, wide cinematic composition"
+    },
+    {
+      "shot_id": 5,
+      "duration": 8,
+      "scene_type": "photo",
+      "location": "海平路77号暹南电影院旧址",
+      "visual": "暹南电影院旧址正面，斑驳外墙上依稀可见老电影海报痕迹",
+      "mood": "时光交错",
+      "narration": "暹南影院，时代的记忆",
+      "photo_hint": "建筑正面平视，柔和阴天光线，凸显岁月质感",
+      "animation_prompt": null
+    },
+    {
+      "shot_id": 6,
+      "duration": 10,
+      "scene_type": "animation",
+      "location": "侨批局旧址（动画场景）",
+      "visual": "特写一双粗糙的手握着毛笔，在侨批上一字一句写下思念，旁边是煤油灯",
+      "mood": "思念、深沉",
+      "narration": "一封侨批，跨越山海",
+      "photo_hint": null,
+      "animation_prompt": "Realistic animation close-up of weathered hands writing a Chinese overseas letter with fountain pen on rice paper, beside a
