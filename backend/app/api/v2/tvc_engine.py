@@ -375,7 +375,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     }
 
     try:
-        async with httpx.AsyncClient(timeout=180) as client:
+        async with httpx.AsyncClient(timeout=300) as client:
             resp = await client.post(
                 f"{base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
