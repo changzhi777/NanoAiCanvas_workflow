@@ -317,6 +317,8 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
     if not api_key:
         return None
     base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
+    # 兼容 base_url 带 /v1 后缀的拼接：直接拼路径会产生 /v1/anthropic/v1/messages
+    anthropic_base = base_url.rstrip("/").removesuffix("/v1")
     endpoint = getattr(settings, "IMG_DESC_VISION_ENDPOINT", "anthropic")
 
     image_uri = _to_data_uri(image)
