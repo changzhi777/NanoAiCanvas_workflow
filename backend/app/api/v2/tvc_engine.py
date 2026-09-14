@@ -156,9 +156,15 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor.update_node(task_id, 3, {"status": "running", "progress": 0})
         await _generate_images_parallel(task_id, 3, breakdown, req, settings, config)
 
-        # Step 5: 参考图生视频
+        # Step 5: 参考图生视频（minimax 主路 → Seedance 兜底）
         await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
-        await _generate_videos(task_id, 4, breakdown, req, settings, config)
+        primary_video_model = req.video_model or "MiniMax-H3"
+        try:
+            await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=primary_video_model)
+        except Exception as e:
+            logger.warning(f"primary video ({primary_video_model}) failed, fallback to seedance: {e}")
+            await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
+            await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model="seedance")
 
         # Step 6: 保存资产到资产库
         if user_id:
@@ -655,7 +661,7 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
 
 # ==================== Step 5: 视频生成 ====================
 
-async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, settings, config: dict = None):
+async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, settings, config: dict = None, video_model: str = None):
     state = await workflow_executor.load_task(task_id)
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
@@ -682,7 +688,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     if bgm_subtask:
         bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
-    submit_fn, provider_name = get_video_provider("seedance", settings, resolution=video_resolution)
+    submit_fn, provider_name = get_video_provider(video_model or "seedance", settings, resolution=video_resolution)
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
 
     async def _process_video(i: int, st: dict):

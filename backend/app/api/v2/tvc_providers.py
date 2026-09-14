@@ -148,6 +148,51 @@ def get_image_provider(image_model: str, settings: Settings) -> Callable:
 
 # ==================== 视频 Provider ====================
 
+def _submit_video_minimax(
+    settings: Settings, resolution: str = "768P", model: str = "MiniMax-H3"
+) -> Callable:
+    """调 minimax H3 / H3-Max 视频生成（content 用 first_frame role 接分镜图）。"""
+    from .tvc_polling import poll_minimax_video
+
+    api_key = settings.MINIMAX_API_KEY
+    base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
+
+    async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
+        if not api_key or not first_url:
+            raise Exception(f"缺少 MINIMAX_API_KEY 或首帧图片 (shot {shot_num})")
+
+        text_prompt = prompt or f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质"
+        content = [
+            {"type": "text", "text": text_prompt},
+            {"type": "image_url", "image_url": {"url": first_url}, "role": "first_frame"},
+        ]
+        if last_url:
+            content.append({"type": "image_url", "image_url": {"url": last_url}, "role": "last_frame"})
+
+        body = {
+            "model": model,
+            "content": content,
+            "resolution": resolution,
+            "duration": max(4, min(15, duration)),
+            "ratio": "16:9",
+        }
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{base_url}/v2/video_generation",
+                json=body,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            )
+        if resp.status_code != 200:
+            raise Exception(f"MiniMax video submit error: {resp.status_code} {resp.text}")
+        task_id = resp.json().get("task_id", "")
+        if not task_id:
+            raise Exception(f"No task_id in MiniMax response: {resp.text}")
+        video_url = await poll_minimax_video(api_key, base_url, task_id)
+        return {"video_url": video_url, "provider_task_id": task_id}
+
+    return _run
+
+
 def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Callable:
     from .tvc_polling import poll_seedance
 
@@ -194,4 +239,7 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
 
 
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
+    """minimax 主路（videoModel 以 MiniMax 开头）/ Seedance 兜底"""
+    if video_model and video_model.startswith("MiniMax"):
+        return _submit_video_minimax(settings, resolution=resolution, model=video_model), "MiniMax H3"
     return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"

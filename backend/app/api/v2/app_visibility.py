@@ -100,7 +100,7 @@ DEFAULT_NODES = [
     {"item_id": "output_save", "item_name": "结果保存", "description": "保存结果", "category": "输出", "visibility": "disabled"},
     {"item_id": "minimax_text", "item_name": "MiniMax文本", "description": "MiniMax文本生成", "category": "MiniMax", "visibility": "disabled"},
     {"item_id": "minimax_speech", "item_name": "MiniMax语音", "description": "MiniMax语音合成", "category": "MiniMax", "visibility": "disabled"},
-    {"item_id": "minimax_video", "item_name": "MiniMax视频", "description": "MiniMax视频生成", "category": "MiniMax", "visibility": "disabled"},
+    {"item_id": "minimax_video", "item_name": "MiniMax视频", "description": "MiniMax视频生成", "category": "MiniMax", "visibility": "enabled"},
     {"item_id": "minimax_music", "item_name": "MiniMax音乐", "description": "MiniMax音乐生成", "category": "MiniMax", "visibility": "disabled"},
     {"item_id": "minimax_image", "item_name": "MiniMax图片", "description": "MiniMax图片生成", "category": "MiniMax", "visibility": "disabled"},
     {"item_id": "minimax_coding", "item_name": "MiniMax编程", "description": "MiniMax编程搜索", "category": "MiniMax", "visibility": "disabled"},
