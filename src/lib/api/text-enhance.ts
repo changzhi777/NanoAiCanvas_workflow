@@ -7,7 +7,7 @@
 import type { EnhanceMode, EnhanceOptions } from '@/types/image'
 
 // MiniMax Token Plan API (Anthropic 兼容格式)
-const MINIMAX_API_URL = 'https://api.minimaxi.com/anthropic/v1/messages'
+const MINIMAX_API_URL = 'https://api.minimax.cn/anthropic/v1/messages'
 const MINIMAX_MODEL = 'MiniMax-M2.7'
 
 // 生成随机参数

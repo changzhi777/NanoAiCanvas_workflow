@@ -79,7 +79,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           imageModel: 'gpt-image-2',
           videoModel: 'seedance',
           videoDuration: 5,
-          enableBgm: true,
+          enableBgm: false,
           enableVoiceover: false,
           enableAssetSave: true,
         },
@@ -97,7 +97,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
     {
       id: 'node-tvc-bgm',
       type: 'background_music',
-      position: { x: startX + nodeWidth + horizontalGap, y: startY + 280 },
+      position: { x: startX + nodeWidth + horizontalGap, y: startY + 360 },
       data: {
         label: '②.5 背景音乐',
         params: {

@@ -156,7 +156,7 @@ export function PromptWizardDialog({ open, onOpenChange, apiKey, onPromptGenerat
         userContent = `[用户上传了一张参考图片]\n${userContent}`
       }
 
-      const response = await fetch('https://api.minimaxi.com/anthropic/v1/messages', {
+      const response = await fetch('https://api.minimax.cn/anthropic/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,7 +201,7 @@ export function PromptWizardDialog({ open, onOpenChange, apiKey, onPromptGenerat
         finalPromptInput = `[用户上传了参考图片]\n${conversationText}`
       }
 
-      const response = await fetch('https://api.minimaxi.com/anthropic/v1/messages', {
+      const response = await fetch('https://api.minimax.cn/anthropic/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

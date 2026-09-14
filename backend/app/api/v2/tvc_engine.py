@@ -276,7 +276,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     import os
     cfg = (config or {}).get("step1_script", {})
     api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
-    base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimaxi.com/v1")
+    base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
     if not api_key:
         raise Exception("MiniMax API Key 未配置")
 

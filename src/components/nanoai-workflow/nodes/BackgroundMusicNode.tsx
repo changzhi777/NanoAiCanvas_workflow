@@ -4,11 +4,11 @@ import { useCallback, useRef, useState } from 'react'
 import { Music, Volume2, Play, Pause, Upload, ExternalLink, X, Loader2, CheckCircle2 } from 'lucide-react'
 import { NodeProps } from 'reactflow'
 import { useNanoaiWorkflowStore, NodeStatus, WorkflowNodeData } from '@/stores/nanoaiWorkflowStore'
+import { getFullPath } from '@/lib/basePath'
 import { BaseNode, ParamEditor, ExecuteButton } from './BaseNode'
 
 export interface BackgroundMusicData extends WorkflowNodeData {
   params: {
-    source: 'upload'
     volume: number
     fadeIn: number
     fadeOut: number
@@ -28,66 +28,98 @@ const PARAM_SCHEMA = [
 ]
 
 const MINIMAX_AUDIO_URL = 'https://www.minimaxi.com/audio'
-const ACCEPT = '.mp3,.wav,.m4a,.ogg,audio/mpeg,audio/wav,audio/mp4,audio/ogg'
-const MAX_BYTES = 20 * 1024 * 1024
+const ACCEPT_EXT = '.mp3,.wav,.m4a,.ogg'
+const ACCEPT_MIME = 'audio/mpeg,audio/wav,audio/mp4,audio/ogg'
+const ACCEPT = `${ACCEPT_EXT},${ACCEPT_MIME}`
+const MAX_BYTES = 50 * 1024 * 1024  // 与服务端 chat.py audio max_size 一致
+const XHR_TIMEOUT_MS = 60_000
+const META_TIMEOUT_MS = 5_000
 
 type UploadState = 'idle' | 'uploading' | 'done' | 'error'
+
+function isAudioFile(file: File): boolean {
+  if (ACCEPT_MIME.split(',').includes(file.type)) return true
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+  return ACCEPT_EXT.split(',').includes(ext)
+}
+
+async function getAudioDuration(url: string): Promise<number | undefined> {
+  return Promise.race([
+    new Promise<number | undefined>(resolve => {
+      const a = new Audio(url)
+      a.addEventListener('loadedmetadata', () => resolve(a.duration), { once: true })
+      a.addEventListener('error', () => resolve(undefined), { once: true })
+    }),
+    new Promise<number | undefined>(resolve => setTimeout(() => resolve(undefined), META_TIMEOUT_MS)),
+  ])
+}
 
 export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>) => {
   const { updateNodeParams, updateNode } = useNanoaiWorkflowStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const xhrRef = useRef<XMLHttpRequest | null>(null)
   const [state, setState] = useState<UploadState>(data.result?.musicUrl ? 'done' : 'idle')
   const [progress, setProgress] = useState(0)
   const [errorMsg, setErrorMsg] = useState<string>('')
   const [isPlaying, setIsPlaying] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.src = ''
+      audioRef.current = null
+    }
+    setIsPlaying(false)
+  }, [])
 
   const handleParamsChange = useCallback((params: Record<string, any>) => {
     updateNodeParams(id, params)
   }, [id, updateNodeParams])
 
-  const getAudioDuration = (url: string): Promise<number | undefined> => {
-    return new Promise(resolve => {
-      const a = new Audio(url)
-      a.addEventListener('loadedmetadata', () => resolve(a.duration), { once: true })
-      a.addEventListener('error', () => resolve(undefined), { once: true })
-    })
-  }
-
   const doUpload = useCallback(async (file: File) => {
     setErrorMsg('')
+    setProgress(0)
+    if (!isAudioFile(file)) {
+      setErrorMsg('仅支持 mp3 / wav / m4a / ogg 音频文件')
+      setState('error')
+      return
+    }
     if (file.size > MAX_BYTES) {
-      setErrorMsg(`文件过大（${(file.size / 1024 / 1024).toFixed(1)}MB > 20MB）`)
+      setErrorMsg(`文件过大（${(file.size / 1024 / 1024).toFixed(1)}MB > 50MB）`)
       setState('error')
       return
     }
     setState('uploading')
     setProgress(10)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      const xhr = new XMLHttpRequest()
-      const uploadPromise = new Promise<{ url: string; name: string }>((resolve, reject) => {
-        xhr.upload.addEventListener('progress', e => {
-          if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 80) + 10)
-        })
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const r = JSON.parse(xhr.responseText)
-              resolve({ url: r.url || r.file_url || '', name: r.name || file.name })
-            } catch (e) { reject(new Error('响应解析失败')) }
-          } else {
-            reject(new Error(`上传失败: HTTP ${xhr.status}`))
-          }
-        })
-        xhr.addEventListener('error', () => reject(new Error('网络错误')))
-        xhr.open('POST', '/nanoai/api/chat/upload')
-        const token = localStorage.getItem('nanoai_token')
-        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
-        xhr.send(form)
+    const xhr = new XMLHttpRequest()
+    xhrRef.current = xhr
+    xhr.timeout = XHR_TIMEOUT_MS
+    const uploadPromise = new Promise<{ url: string; name: string }>((resolve, reject) => {
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) setProgress(Math.round((e.loaded / e.total) * 80) + 10)
       })
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const r = JSON.parse(xhr.responseText)
+            resolve({ url: r.url || r.file_url || '', name: r.name || file.name })
+          } catch { reject(new Error('响应解析失败')) }
+        } else {
+          reject(new Error(`上传失败: HTTP ${xhr.status}`))
+        }
+      })
+      xhr.addEventListener('error', () => reject(new Error('网络错误')))
+      xhr.addEventListener('timeout', () => reject(new Error('上传超时（60s）')))
+      xhr.addEventListener('abort', () => reject(new Error('上传已取消')))
+      xhr.open('POST', getFullPath('/api/chat/upload'))
+      const token = localStorage.getItem('nanoai_token')
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+      xhr.send(formDataWithFile(file))
+    })
+    try {
       const r = await uploadPromise
+      xhrRef.current = null
       setProgress(95)
       const duration = await getAudioDuration(r.url)
       updateNode(id, {
@@ -103,7 +135,10 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
       setState('done')
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : '上传失败')
+      setProgress(0)
       setState('error')
+    } finally {
+      xhrRef.current = null
     }
   }, [id, updateNode])
 
@@ -113,31 +148,35 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
   }, [doUpload])
 
   const handleClear = useCallback(() => {
+    if (xhrRef.current) {
+      try { xhrRef.current.abort() } catch { /* noop */ }
+      xhrRef.current = null
+    }
+    stopAudio()
     updateNode(id, { result: undefined, status: NodeStatus.IDLE })
     setState('idle')
     setProgress(0)
+    setErrorMsg('')
     if (fileInputRef.current) fileInputRef.current.value = ''
-  }, [id, updateNode])
+  }, [id, updateNode, stopAudio])
 
   const handlePlayToggle = useCallback(() => {
     if (!data.result?.musicUrl) return
-    if (!audioRef.current) {
-      audioRef.current = new Audio(data.result.musicUrl)
-      audioRef.current.addEventListener('ended', () => setIsPlaying(false))
-    }
     if (isPlaying) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    } else {
-      audioRef.current.play()
-      setIsPlaying(true)
+      stopAudio()
+      return
     }
-  }, [data.result?.musicUrl, isPlaying])
+    stopAudio()  // 释放旧实例
+    const a = new Audio(data.result.musicUrl)
+    a.addEventListener('ended', () => setIsPlaying(false))
+    a.addEventListener('error', () => setIsPlaying(false))
+    audioRef.current = a
+    a.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
+  }, [data.result?.musicUrl, isPlaying, stopAudio])
 
   return (
     <BaseNode data={data} icon={<Music className="w-4 h-4" />}>
       <div className="space-y-3">
-        {/* MiniMax Audio 引导横幅 */}
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-md p-2.5 text-[11px] text-amber-200/90 leading-relaxed">
           <div className="flex items-start gap-1.5">
             <ExternalLink className="w-3 h-3 mt-0.5 flex-shrink-0" />
@@ -154,13 +193,12 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
                 >
                   打开 MiniMax Audio
                 </a>
-                {' '}生成音乐 → 2. 下载 mp3 → 3. 上传到此
+                <span>{' '}生成音乐 → 2. 下载 mp3 → 3. 上传到此</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 上传区 */}
         {state === 'idle' && (
           <button
             onClick={() => fileInputRef.current?.click()}
@@ -174,7 +212,7 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
           >
             <Upload className="w-5 h-5" />
             <span>点击或拖拽 mp3 / wav / m4a / ogg</span>
-            <span className="text-[10px] opacity-60">最大 20MB</span>
+            <span className="text-[10px] opacity-60">最大 50MB</span>
           </button>
         )}
 
@@ -256,7 +294,6 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
           onChange={e => handleFileSelect(e.target.files?.[0])}
         />
 
-        {/* 参数（淡入/淡出/音量）*/}
         {state === 'done' && (
           <ParamEditor
             params={data.params}
@@ -269,4 +306,8 @@ export const BackgroundMusicNode = ({ id, data }: NodeProps<BackgroundMusicData>
   )
 }
 
-export const backgroundMusicNodeType = 'background-music'
+function formDataWithFile(file: File): FormData {
+  const form = new FormData()
+  form.append('file', file)
+  return form
+}

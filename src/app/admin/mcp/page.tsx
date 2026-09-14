@@ -90,7 +90,7 @@ const MCP_TEMPLATES = [
     args: ['minimax-coding-plan-mcp', '-y'],
     env: {
       MINIMAX_API_KEY: '${MINIMAX_API_KEY}',
-      MINIMAX_API_HOST: 'https://api.minimaxi.com',
+      MINIMAX_API_HOST: 'https://api.minimax.cn',
     },
     tools: ['web_search', 'understand_image'],
   },
@@ -123,7 +123,7 @@ const mockMCPServers: MCPServerConfig[] = [
     args: ['minimax-coding-plan-mcp', '-y'],
     env: {
       MINIMAX_API_KEY: 'sk-xxxxx',
-      MINIMAX_API_HOST: 'https://api.minimaxi.com',
+      MINIMAX_API_HOST: 'https://api.minimax.cn',
     },
     enabled: true,
     description: 'MiniMax Token Plan 图片理解和网络搜索',
@@ -792,7 +792,7 @@ export default function MCPPage() {
                 className="w-full min-h-[100px] px-3 py-2 bg-background border border-input rounded-md text-sm font-mono"
                 value={formData.envVars}
                 onChange={(e) => setFormData({ ...formData, envVars: e.target.value })}
-                placeholder="MINIMAX_API_KEY=sk-xxxx&#10;MINIMAX_API_HOST=https://api.minimaxi.com"
+                placeholder="MINIMAX_API_KEY=sk-xxxx&#10;MINIMAX_API_HOST=https://api.minimax.cn"
               />
             </div>
             <div className="space-y-2">

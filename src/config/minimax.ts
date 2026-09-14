@@ -9,7 +9,7 @@
 
 export const MINIMAX_CONFIG = {
   API_KEY: import.meta.env.VITE_MINIMAX_API_KEY || '',
-  API_BASE_URL: 'https://api.minimaxi.com/v1',
+  API_BASE_URL: 'https://api.minimax.cn/v1',
 
   MODELS: {
     TEXT: {
