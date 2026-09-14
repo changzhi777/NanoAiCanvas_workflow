@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     # Image description cache（minimax M3 视觉描述）
     IMG_DESC_CACHE_MAX_ROWS: int = 5000  # LRU 上限
     IMG_DESC_CACHE_TTL_DAYS: int = 30   # TTL（天）
+    # "anthropic" → minimax /anthropic/v1/messages（推荐，更快无噪音）
+    # "openai"    → minimax /chat/completions（旧路径，兼容回退）
+    IMG_DESC_VISION_ENDPOINT: str = "anthropic"
 
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""

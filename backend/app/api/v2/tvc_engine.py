@@ -309,55 +309,80 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
     """调 minimax M3 视觉理解，输出中文图描述（150-300 字）。
 
     返回 None 表示失败（让调用方 fallback）。
+    默认走 /anthropic/v1/messages（更快 + 输出无 reasoning_content 噪音），
+    可设 IMG_DESC_VISION_ENDPOINT=openai 走旧 chat/completions 兼容回退。
     """
     import os
     api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
     if not api_key:
         return None
     base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
+    endpoint = getattr(settings, "IMG_DESC_VISION_ENDPOINT", "anthropic")
 
     image_uri = _to_data_uri(image)
-    api_params = {
-        "model": "MiniMax-M3",
-        "messages": [
-            {
+    prompt_text = (
+        "用 150-300 字中文描述这张图的核心元素："
+        "产品/人物/场景/构图/颜色/光线/情绪/风格/质感。"
+        "输出要可直接用于 TVC 镜头脚本。"
+    )
+
+    if endpoint == "anthropic":
+        # minimax 国内 /anthropic/v1/messages（Anthropic 兼容）
+        url = f"{base_url}/anthropic/v1/messages"
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        }
+        api_params = {
+            "model": "MiniMax-M3",
+            "max_tokens": 500,
+            "messages": [{
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": (
-                            "用 150-300 字中文描述这张图的核心元素："
-                            "产品/人物/场景/构图/颜色/光线/情绪/风格/质感。"
-                            "输出要可直接用于 TVC 镜头脚本。"
-                        ),
-                    },
-                    {"type": "image_url", "image_url": {"url": image_uri}},
+                    {"type": "text", "text": prompt_text},
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": image_uri.split(",", 1)[1]}},
                 ],
-            }
-        ],
-        "temperature": 0.5,
-        "max_tokens": 500,
-    }
+            }],
+            "temperature": 0.5,
+        }
+    else:
+        # minimax /chat/completions（OpenAI 兼容回退）
+        url = f"{base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        api_params = {
+            "model": "MiniMax-M3",
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": prompt_text},
+                {"type": "image_url", "image_url": {"url": image_uri}},
+            ]}],
+            "temperature": 0.5,
+            "max_tokens": 500,
+        }
+
     try:
         async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json=api_params,
-            )
+            resp = await client.post(url, headers=headers, json=api_params)
         if resp.status_code != 200:
-            logger.warning(f"M3 描述失败 status={resp.status_code} text={resp.text[:120]}")
+            logger.warning(f"M3 描述失败 endpoint={endpoint} status={resp.status_code} text={resp.text[:120]}")
             return None
-        content = (
-            resp.json()
-            .get("choices", [{}])[0]
+        data = resp.json()
+        if endpoint == "anthropic":
+            # Anthropic 响应：content 是数组 [{type, text}, ...]
+            blocks = data.get("content", [])
+            return "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip() or None
+        # OpenAI 响应：choices[0].message.content
+        return (
+            data.get("choices", [{}])[0]
             .get("message", {})
             .get("content", "")
             .strip()
-        )
-        return content or None
+        ) or None
     except Exception as e:
-        logger.warning(f"M3 描述异常: {e}")
+        logger.warning(f"M3 描述异常 endpoint={endpoint}: {e}")
         return None
 
 
@@ -368,6 +393,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     cfg = (config or {}).get("step1_script", {})
     api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
     base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
+    vision_endpoint = getattr(settings, "IMG_DESC_VISION_ENDPOINT", "anthropic")
     if not api_key:
         raise Exception("MiniMax API Key 未配置")
 
@@ -432,22 +458,52 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
             f"每镜头时长：{getattr(req, 'shot_duration', 5)}秒"
         )
 
-    api_params = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
-        "temperature": 0.8,
-    }
+    # endpoint 开关：anthropic 走 minimax 兼容 messages API（更快无噪音）；openai 走 chat/completions
+    if use_vision and vision_endpoint == "anthropic":
+        # minimax Anthropic 兼容端点 — system 走顶层 field，image 走 image source（base64）
+        b64_data = image_uri.split(",", 1)[1] if image_uri.startswith("data:") else image_uri
+        api_params = {
+            "model": model,
+            "system": system_prompt,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": text_block},
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64_data}},
+                ],
+            }],
+            "temperature": 0.8,
+            "max_tokens": 8192,
+        }
+    else:
+        api_params = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_content},
+            ],
+            "temperature": 0.8,
+            "max_tokens": 8192,
+        }
 
     try:
         async with httpx.AsyncClient(timeout=300) as client:
-            resp = await client.post(
-                f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json=api_params,
-            )
+            if use_vision and vision_endpoint == "anthropic":
+                resp = await client.post(
+                    f"{base_url}/anthropic/v1/messages",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json=api_params,
+                )
+            else:
+                resp = await client.post(
+                    f"{base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json=api_params,
+                )
     except Exception as e:
         # TimeoutException / 网络错：让上游 fallback（不再吞 502）
         raise Exception(f"minimax API 调用失败: {type(e).__name__}: {e}")
@@ -455,7 +511,14 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     if resp.status_code != 200:
         raise Exception(f"MiniMax script error: {resp.status_code} {resp.text[:200]}")
 
-    content = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    resp_data = resp.json()
+    if use_vision and vision_endpoint == "anthropic":
+        # Anthropic 响应：content 是 [{type, text}, ...]
+        content = "".join(
+            b.get("text", "") for b in resp_data.get("content", []) if b.get("type") == "text"
+        ).strip()
+    else:
+        content = resp_data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
     json_match = re.search(r'\{.*\}', content, re.DOTALL)
     if json_match:
         try:
