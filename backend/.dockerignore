@@ -1,7 +1,8 @@
 __pycache__
-*.pyc
-venv
+**/__pycache__
 .env
-*.log
+.env.*
 .pytest_cache
-tests
+node_modules
+.git
+.DS_Store
