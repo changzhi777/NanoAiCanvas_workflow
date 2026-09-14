@@ -10,6 +10,7 @@ import httpx
 
 from app.config import get_settings
 from app.services import workflow_executor
+from app.services.image_description_cache import ImageDescriptionCache
 from .tvc_providers import get_image_provider, get_video_provider
 
 logger = logging.getLogger(__name__)
@@ -303,6 +304,62 @@ def _to_data_uri(image: str) -> str:
     return f"data:{mime};base64,{image}"
 
 
+async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
+    """调 minimax M3 视觉理解，输出中文图描述（150-300 字）。
+
+    返回 None 表示失败（让调用方 fallback）。
+    """
+    import os
+    api_key = getattr(settings, "MINIMAX_API_KEY", "") or os.environ.get("MINIMAX_API_KEY", "")
+    if not api_key:
+        return None
+    base_url = getattr(settings, "MINIMAX_API_BASE_URL", "https://api.minimax.cn/v1")
+
+    image_uri = _to_data_uri(image)
+    api_params = {
+        "model": "MiniMax-M3",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": (
+                            "用 150-300 字中文描述这张图的核心元素："
+                            "产品/人物/场景/构图/颜色/光线/情绪/风格/质感。"
+                            "输出要可直接用于 TVC 镜头脚本。"
+                        ),
+                    },
+                    {"type": "image_url", "image_url": {"url": image_uri}},
+                ],
+            }
+        ],
+        "temperature": 0.5,
+        "max_tokens": 500,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=api_params,
+            )
+        if resp.status_code != 200:
+            logger.warning(f"M3 描述失败 status={resp.status_code} text={resp.text[:120]}")
+            return None
+        content = (
+            resp.json()
+            .get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+        return content or None
+    except Exception as e:
+        logger.warning(f"M3 描述异常: {e}")
+        return None
+
+
 async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     """minimax 剧本生成 — 有 reference_image 走 M3 多模态，无图走 M2.7 文本。"""
     from .minimax import SCREENPLAY_PROMPT
@@ -344,17 +401,26 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     if style:
         system_prompt += f"\n\n## 画面风格\n{style}"
 
-    # 构造 user content：有图用多模态 content 数组
+    # 构造 user content：有图用多模态 content 数组（图描述优先走缓存，省 token + 提速）
     if use_vision:
+        # 缓存命中：描述注入 user text，image 仍走 M3（描述+图组合最强）
+        cached_desc = await ImageDescriptionCache.get_or_describe(
+            reference_image,
+            model=cfg.get("vision_model", "MiniMax-M3"),
+            describe_fn=lambda img: _describe_with_minimax_m3(img, settings),
+        )
         image_uri = _to_data_uri(reference_image)
+        text_block = (
+            f"创作一个短片剧本。主题：{getattr(req, 'prompt', '')}\n"
+            f"风格：{style}\n"
+            f"镜头数：{getattr(req, 'shot_count', 6)}\n"
+            f"每镜头时长：{getattr(req, 'shot_duration', 5)}秒\n"
+            "请仔细分析参考图中的产品/场景/人物/风格/色调，并据此构思 TVC。"
+        )
+        if cached_desc:
+            text_block += f"\n\n## 参考图描述（缓存命中）\n{cached_desc}"
         user_content = [
-            {"type": "text", "text": (
-                f"创作一个短片剧本。主题：{getattr(req, 'prompt', '')}\n"
-                f"风格：{style}\n"
-                f"镜头数：{getattr(req, 'shot_count', 6)}\n"
-                f"每镜头时长：{getattr(req, 'shot_duration', 5)}秒\n"
-                "请仔细分析参考图中的产品/场景/人物/风格/色调，并据此构思 TVC。"
-            )},
+            {"type": "text", "text": text_block},
             {"type": "image_url", "image_url": {"url": image_uri}},
         ]
     else:

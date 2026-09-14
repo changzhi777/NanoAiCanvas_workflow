@@ -117,3 +117,5 @@ __all__ = [
     "PromotionStatus",
     "MemoryLayer",
 ]
+from app.models.image_description import ImageDescription
+]
