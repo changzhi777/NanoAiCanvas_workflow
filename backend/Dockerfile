@@ -33,6 +33,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 仅拷 app/ 业务代码（不含 tests/）
 COPY --from=test /app/app ./app
+# alembic 迁移配置 + 版本脚本
+COPY --from=test /app/alembic.ini ./alembic.ini
+COPY --from=test /app/alembic ./alembic
 
 EXPOSE 8000
 
