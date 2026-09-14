@@ -42,6 +42,13 @@ DEFAULT_CONFIG = {
         "timeout": 180,
         "max_retries": 3,
         "batch_size": 3,
+        "prompt_enhance": {
+            "include_image_description": True,
+            "include_camera": True,
+            "include_style": True,
+            "prefix_markers": ["cinematic", "high detail"],
+            "suffix_markers": ["sharp focus", "professional composition"],
+        },
     },
     "step5_video": {
         "default_provider": "seedance",

@@ -629,7 +629,7 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
 
     cfg = (config or {}).get("step4_image", {})
     image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2")
-    gen_one = get_image_provider(image_model, settings)
+    gen_one = get_image_provider(image_model, settings, enhance_cfg=cfg.get("prompt_enhance"))
 
     max_retries = 3
 

@@ -11,6 +11,29 @@ from app.config import Settings
 
 # ==================== 图片 Provider ====================
 
+def _enhance_image_prompt(subtask: dict, image_desc: str = None, enhance_cfg: dict = None) -> str:
+    """结构化 prompt 增强：prefix_markers + image_description(cached) + 镜头 + base prompt + 风格 + suffix_markers。"""
+    if not enhance_cfg:
+        return subtask.get("prompt", "")
+    parts = []
+    if enhance_cfg.get("prefix_markers"):
+        parts.append(", ".join(enhance_cfg["prefix_markers"]))
+    if enhance_cfg.get("include_image_description") and image_desc:
+        parts.append(f"参考风格：{image_desc}")
+    if enhance_cfg.get("include_camera"):
+        cam = subtask.get("camera_movement", "")
+        if cam:
+            parts.append(f"运镜：{cam}")
+    parts.append(subtask.get("prompt", ""))
+    if enhance_cfg.get("include_style"):
+        st = subtask.get("style", "")
+        if st:
+            parts.append(f"风格：{st}")
+    if enhance_cfg.get("suffix_markers"):
+        parts.append(", ".join(enhance_cfg["suffix_markers"]))
+    return ", ".join(parts)
+
+
 def _gen_one_jimeng(settings: Settings) -> Callable:
     api_key = settings.JIMENG_API_KEY
     base_url = settings.JIMENG_API_BASE_URL
@@ -137,13 +160,29 @@ def _gen_one_minimax(settings: Settings) -> Callable:
     return _gen
 
 
-def get_image_provider(image_model: str, settings: Settings) -> Callable:
+def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict = None) -> Callable:
+    """image_model: gpt-image-2 / minimax / (default) jimeng"""
     factories = {
         "gpt-image-2": _gen_one_gpt_image_2,
         "minimax": _gen_one_minimax,
     }
     factory = factories.get(image_model, _gen_one_jimeng)
-    return factory(settings)
+    # 闭包：让 provider 拿到 enhance_cfg（避免改 factory 签名）
+    base_factory = factory(settings)
+    if not enhance_cfg:
+        return base_factory
+    async def _gen_enhanced(subtask, prompt):
+        # 尝试用 M3 缓存拉图描述
+        img_desc = None
+        if enhance_cfg.get("include_image_description") and subtask.get("image_url"):
+            from app.services.image_description_cache import ImageDescriptionCache
+            try:
+                img_desc = await ImageDescriptionCache.get_or_describe(subtask["image_url"])
+            except Exception:
+                pass
+        enhanced = _enhance_image_prompt(subtask, image_desc=img_desc, enhance_cfg=enhance_cfg)
+        return await base_factory(subtask, enhanced)
+    return _gen_enhanced
 
 
 # ==================== 视频 Provider ====================
