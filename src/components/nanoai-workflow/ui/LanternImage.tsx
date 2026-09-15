@@ -7,6 +7,7 @@
 import { memo, useCallback, useRef } from 'react';
 import { Camera, Package, X, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from './Theme';
 
 export type LanternStatus = 'empty' | 'uploading' | 'done' | 'failed';
 
@@ -29,6 +30,7 @@ export const LanternImage = memo(function LanternImage({
   className,
 }: LanternImageProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { isDark } = useTheme();
 
   const handleClick = useCallback(() => inputRef.current?.click(), []);
   const handleFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
