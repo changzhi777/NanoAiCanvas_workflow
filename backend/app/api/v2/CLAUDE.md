@@ -17,8 +17,8 @@ V2 API 模块负责：
 - AI 服务代理（GLM、MiniMax）— API Key 安全存储在后端
 - 图片生成任务（多 Provider、多模型路由）
 - 工作流任务执行引擎（TVC 任务）
-- TVC Provider 工厂（3 个图片 Provider + Seedance 视频 Provider）
-- TVC 视频结果轮询（GLM/Seedance/MiniMax Hailuo）
+- TVC Provider 工厂（3 个图片 Provider + 3 视频通道：MiniMax 官方 / 速创 H3 / Seedance 兜底）
+- TVC 视频结果轮询（Seedance / MiniMax 官方 / GLM 遗留）
 - TVC 工作流配置管理（全局配置 + 用户配置 + 配置解析）
 - TVC 项目管理（CRUD + 镜头管理 + 任务结果关联）
 - V2 资产库（浏览/搜索/批量操作）
@@ -116,7 +116,7 @@ TVC 视频制作工作流执行引擎。
 - **积分管理**: `deduct_points()` 预扣积分，`refund_points()` 退还积分
 - **5 步编排**: 脚本生成 → 产品分析 → 分镜图片 → 视频合成 → BGM
 - **批量并行**: 图片/视频生成使用 `asyncio.gather` 并行执行
-- **模型配置**: 脚本使用 MiniMax M2.7，视频默认 MiniMax Hailuo
+- **模型配置**: 脚本 MiniMax M3（多模态）/M2.7（文本），视频默认 minimax-official（MiniMax 官方 Hailuo-02，coding 套餐额度）
 - **依赖**: 调用 `tvc_providers` 获取 Provider，`tvc_polling` 轮询结果
 
 ### tvc_providers.py — TVC Provider 工厂 ★ 新增
@@ -124,17 +124,17 @@ TVC 视频制作工作流执行引擎。
 统一管理 3 个图片 Provider + 3 个视频 Provider。
 
 - **图片 Provider**: 即梦(Jimeng)、GPT-Image-2(速创)、GLM
-- **视频 Provider**: Seedance（唯一视频 Provider，MiniMax/CogVideoX-3 已移除）
+- **视频 Provider**: `get_video_provider()` 三通道路由 — MiniMax 官方（minimax-official/minimax-coding/hailuo → api.minimax.cn，coding 套餐额度，仅 6s/10s）/ MiniMax H3（速创代理 video_minimax_h3，4-15s）/ Seedance 2.0（字节 ARK 官方，兜底）
 - **工厂模式**: `get_image_provider(model)` / `get_video_provider(model)` 返回生成函数
 - **降级**: API Key 为空时返回 placeholder，不中断流程
 
 ### tvc_polling.py — TVC 视频结果轮询
 
-3 个视频 Provider 的异步结果轮询逻辑。
+视频 Provider 的异步结果轮询逻辑。
 
-- `poll_glm_video()` — GLM CogVideoX-3 轮询（async-result 端点）
+- `poll_minimax_video()` — MiniMax 官方轮询（query/video_generation，返回 file_id，被 `_submit_video_minimax_official` 复用）
 - `poll_seedance()` — Seedance 轮询
-- `poll_minimax_hailuo()` — MiniMax Hailuo 轮询
+- `poll_glm_video()` — GLM CogVideoX-3 遗留轮询（async-result 端点，当前无调用方）
 - **通用参数**: max_wait=300s, interval=15s
 - **状态映射**: SUCCESS→返回URL, FAIL/FAILED→抛异常, 超时→抛异常
 

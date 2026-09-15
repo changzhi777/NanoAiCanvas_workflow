@@ -630,7 +630,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <div>
                           <Label className="text-xs mb-1.5 block text-muted-foreground">总时长</Label>
                           <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
-                            {getModelDurationOptions(p.videoModel || 'seedance').map(d => (
+                            {getModelDurationOptions(p.videoModel || 'minimax-official').map(d => (
                               <option key={d} value={d}>{d < 60 ? `${d}s` : `${d / 60}m`}</option>
                             ))}
                           </select>
@@ -782,7 +782,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 const selectCls = cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-white/[0.02] border-white/[0.06] text-slate-300' : 'bg-gray-50/50 border-gray-100 text-gray-700');
                 const providerModels: Record<string, { label: string; value: string }[]> = {
                   minimax: [{ label: 'Hailuo-2.3-Fast', value: 'hailuo-2.3-fast-768P' }, { label: 'Hailuo-2.3', value: 'hailuo-2.3-768P' }],
-                  glm: [{ label: 'CogVideoX-3', value: 'cogvideox-3' }],
                   jimeng: [{ label: 'Jimeng-Video', value: 'jimeng-video' }],
                 };
                 return (
@@ -832,7 +831,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           setP({ videoProvider: prov, videoModel: defaultModel });
                         }} className={selectCls}>
                           <option value="minimax">MiniMax Hailuo（推荐）</option>
-                          <option value="glm">智谱 GLM CogVideoX</option>
                           <option value="jimeng">即梦 Jimeng</option>
                         </select>
                       </div>

@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: TvcConfig = {
   step2_optimize: { model: 'glm-4.5-air', temperature: 0.7, max_tokens: 4096 },
   step3_breakdown: { mode: 'logic' },
   step4_image: { default_provider: 'minimax', timeout: 120, max_retries: 3, batch_size: 3 },
-  step5_video: { default_provider: 'minimax', timeout: 300, max_retries: 3, resolution: '768P', duration: 6 },
+  step5_video: { default_provider: 'minimax-official', timeout: 300, max_retries: 3, resolution: '768P', duration: 6 },
   step5_bgm: { model: 'music-2.6', is_instrumental: true },
 }
 
