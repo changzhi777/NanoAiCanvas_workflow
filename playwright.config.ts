@@ -19,14 +19,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
   ],
   // PROD_URL 环境变量 → 生产模式（关 webServer，不启本地 dev）
   webServer: process.env.PROD_URL

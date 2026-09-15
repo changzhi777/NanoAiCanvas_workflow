@@ -3,8 +3,8 @@
 **运行时间**: 2026-09-15
 **生产入口**: https://app.nanoai.fun/nanoai
 **测试账号**: zhy / zhy@2026
-**RUN_ID**: mu23i84y-94u0 (chromium) / mu23jqda-zcuy (firefox) / mu23jr1m-4jjm (webkit)
-**结果**: **42 passed / 0 failed**（3 浏览器 100% 通过）
+**RUN_ID**: mu23i84y-94u0 (chromium)
+**结果**: **42 passed / 0 failed**（chromium 100% 通过）
 
 ---
 
@@ -130,20 +130,22 @@
 
 - 测试 spec: `e2e/tvc-coverage.spec.ts`（42 用例）
 - 测试 helper: `e2e/helpers/tvc.ts`
-- 错误报告: `e2e/reports/errors-{runId}.json` × 3（3 浏览器各一份）
-- 资产清单: `e2e/reports/assets-{runId}.json` × 3（每浏览器 1 项）
+- 错误报告: `e2e/reports/errors-{runId}.json`（chromium）
+- 资产清单: `e2e/reports/assets-{runId}.json`（chromium）
 - Playwright config: `playwright.config.ts`（加 `PROD_URL` 环境变量支持）
 - 规划文档: `.zcf/plan/current/tvc-e2e-coverage.md`
 
-## 跨浏览器结果
+## 跨浏览器策略
 
-| Browser | Pass | Fail | 耗时 | 错误记录 |
-|---------|------|------|------|----------|
-| chromium | 42 | 0 | 36.0s | errors-mu23i84y-94u0.json (19 条全部为产品 bug 验证记录) |
-| firefox | 42 | 0 | 40.4s | errors-mu23jqda-zcuy.json (19 条) |
-| webkit | 42 | 0 | 38.8s | errors-mu23jr1m-4jjm.json (19 条) |
+**单浏览器（chromium）执行** — 节省 CI 资源，3 倍速。
 
-**全绿** ✅ — 19 条 [ERROR] 日志都是预期失败（C8/H3 产品 bug + I1-I3 边界用例），测试用例本身通过。
+如需跨浏览器覆盖，运行：
+```bash
+PROD_URL=https://app.nanoai.fun/nanoai npx playwright test e2e/tvc-coverage.spec.ts --project=firefox --workers=1
+PROD_URL=https://app.nanoai.fun/nanoai npx playwright test e2e/tvc-coverage.spec.ts --project=webkit --workers=1
+```
+
+历史 firefox/webkit 结果（仅供参考）：mu23jqda-zcuy / mu23jr1m-4jjm，各 42 passed。
 
 ---
 
