@@ -84,13 +84,9 @@ class TestOptimizePrompts:
             "choices": [{"message": {"content": "```json\n{\"shots\": " + json.dumps(mock_shots) + "}\n```"}}]
         }
 
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post.return_value = mock_resp
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
+        # _optimize_prompts 现走 _glm_chat（返回 OpenAI 格式 dict），直接 mock 该依赖
+        with patch("app.api.v2.glm_proxy._glm_chat",
+                   new=AsyncMock(return_value=mock_resp.json.return_value)):
             req = MagicMock()
             req.style = "realistic"
             req.mode = "cinematic"
@@ -102,19 +98,8 @@ class TestOptimizePrompts:
 
     @pytest.mark.asyncio
     async def test_no_json_raises(self):
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "choices": [{"message": {"content": "No JSON here, just text"}}]
-        }
-
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post.return_value = mock_resp
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
+        with patch("app.api.v2.glm_proxy._glm_chat",
+                   new=AsyncMock(return_value={"choices": [{"message": {"content": "No JSON here, just text"}}]})):
             req = MagicMock()
             req.style = "realistic"
             req.mode = "cinematic"

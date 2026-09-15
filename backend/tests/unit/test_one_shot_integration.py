@@ -84,11 +84,11 @@ class TestOptimizePromptsOneShot:
         assert result["shots"][0]["visual_prompt"] == "V"
 
     async def test_one_shot_uses_prev_seed_for_reproducibility(self):
-        """从 state.result.composition_seed 反序列化保持同组合"""
+        """从 state.nodes[step-optimize].result._one_shot.composition_seed 复现同组合"""
         from app.api.v2.tvc_engine import _optimize_prompts
 
-        # mock state
-        mock_state = {"result": {"composition_seed": "fixed_seed_123"}}
+        # mock state（新结构：seed 存于 optimize 节点 result._one_shot）
+        mock_state = {"nodes": [{"id": "step-optimize", "result": {"_one_shot": {"composition_seed": "fixed_seed_123"}}}]}
         captured = {}
         def _fake_gen(**kw):
             captured.update(kw)

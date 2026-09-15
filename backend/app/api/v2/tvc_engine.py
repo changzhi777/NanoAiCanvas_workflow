@@ -136,7 +136,8 @@ async def execute_tvc(task_id: str, req, user_id=None):
         # Step 2: 提示词优化
         await workflow_executor.update_node(task_id, 1, {"status": "running", "progress": 0})
         optimized = await _optimize_prompts(script_result, req, settings, config,
-                                           task_id=task_id, user_id=str(user_id) if user_id else "")
+                                           task_id=task_id, user_id=str(user_id) if user_id else "",
+                                           one_shot_seed=getattr(req, "one_shot_seed", None))
         if not optimized.get("shots"):
             raise Exception("提示词优化返回空结果，无法继续生成分镜头")
         await workflow_executor.update_node(task_id, 1, {
@@ -569,7 +570,7 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
 # ==================== Step 2: 提示词优化 ====================
 
 async def _optimize_prompts(script_result: dict, req, settings, config: dict = None,
-                         task_id: str = "", user_id: str = "") -> dict:
+                         task_id: str = "", user_id: str = "", one_shot_seed: str = None) -> dict:
     raw = script_result.get("raw_content", "")
     cfg = (config or {}).get("step2_optimize", {})
 
@@ -579,13 +580,19 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
         from app.database import async_session_maker
         from app.services.one_shot_prompt import log_action
 
-        prev_seed = None
-        try:
-            state = await workflow_executor.load_task(task_id) if task_id else None
-            if state and isinstance(state.get("result"), dict):
-                prev_seed = state["result"].get("composition_seed")
-        except Exception:
-            pass
+        # seed 优先级：显式 one_shot_seed（"再生成一次"）> 上次任务产物 > None（随机）
+        prev_seed = one_shot_seed
+        if not prev_seed:
+            try:
+                state = await workflow_executor.load_task(task_id) if task_id else None
+                if state:
+                    for node in state.get("nodes", []):
+                        if node.get("id") == "step-optimize":
+                            one = (node.get("result") or {}).get("_one_shot") or {}
+                            prev_seed = one.get("composition_seed")
+                            break
+            except Exception:
+                pass
 
         async with async_session_maker() as db:
             one = await one_shot_generate(

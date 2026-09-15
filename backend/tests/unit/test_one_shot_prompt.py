@@ -170,6 +170,37 @@ class TestVariants:
         assert len(combos) == 3
 
 
+# ==================== seed 可逆复现 ====================
+
+class TestSeedReversibility:
+    async def test_seed_roundtrip_same_combo(self):
+        """generate 产出的 composition_seed 回灌 prev_seed → 同组合（"再生成一次"）"""
+        r1 = await generate(
+            subject_desc="model", object_desc="bottle",
+            task_id="tvc_rt", user_id="00000000-0000-0000-0000-000000000001",
+        )
+        r2 = await generate(
+            subject_desc="model", object_desc="bottle",
+            task_id="tvc_rt2", user_id="00000000-0000-0000-0000-000000000001",
+            prev_seed=r1["composition_seed"],
+        )
+        assert (r1["narrative"], r1["composition"]) == (r2["narrative"], r2["composition"])
+
+    async def test_legacy_seed_deterministic(self):
+        """老格式 seed（不可逆）走 md5 确定性派生：同 seed 同组合"""
+        r1 = await generate(
+            subject_desc="model", object_desc="bottle",
+            task_id="tvc_l1", user_id="00000000-0000-0000-0000-000000000001",
+            prev_seed="seed_abc",
+        )
+        r2 = await generate(
+            subject_desc="model", object_desc="bottle",
+            task_id="tvc_l2", user_id="00000000-0000-0000-0000-000000000001",
+            prev_seed="seed_abc",
+        )
+        assert (r1["narrative"], r1["composition"]) == (r2["narrative"], r2["composition"])
+
+
 # ==================== 埋点 ====================
 
 class TestLog:

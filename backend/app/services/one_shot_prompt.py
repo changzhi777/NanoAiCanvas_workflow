@@ -100,11 +100,24 @@ def _render_template(template: dict, **vars) -> str:
 
 
 def _seed_compose(narrative, composition, task_id: str = "") -> str:
-    """生成可复现 seed（持久化到 result，支持"再生成一次"）"""
-    n_v = narrative.value if hasattr(narrative, "value") else narrative
-    c_v = composition.value if hasattr(composition, "value") else composition
-    raw = f"{n_v}:{c_v}:{task_id}"
-    return hashlib.md5(raw.encode()).hexdigest()[:12]
+    """生成可复现 seed：前 2 位可逆还原组合（narrative/composition 序号），后 8 位 hash 校验"""
+    n_list = list(NarrativeType)
+    c_list = list(CompositionType)
+    n_enum = narrative if isinstance(narrative, NarrativeType) else NarrativeType(narrative)
+    c_enum = composition if isinstance(composition, CompositionType) else CompositionType(composition)
+    digest = hashlib.md5(f"{n_enum.value}:{c_enum.value}:{task_id}".encode()).hexdigest()[:8]
+    return f"{n_list.index(n_enum)}{c_list.index(c_enum)}{digest}"
+
+
+def _seed_restore(prev_seed: str):
+    """从 seed 还原 (narrative, composition)；不可逆格式（老 seed）返回 None"""
+    if len(prev_seed) >= 2 and prev_seed[0].isdigit() and prev_seed[1].isdigit():
+        n_list = list(NarrativeType)
+        c_list = list(CompositionType)
+        ni, ci = int(prev_seed[0]), int(prev_seed[1])
+        if ni < len(n_list) and ci < len(c_list):
+            return n_list[ni], c_list[ci]
+    return None
 
 
 # ==================== 核心 API ====================
@@ -161,10 +174,15 @@ async def generate(
     """
     # 1. 决定 narrative + composition
     if prev_seed:
-        # 从种子反序列化（避免连续重复）
-        h = hashlib.md5(prev_seed.encode()).hexdigest()
-        narrative = narrative or ["display", "plot", "hybrid"][int(h[0], 16) % 3]
-        composition = composition or ["character_object", "front_side", "merged", "clean_bg"][int(h[1], 16) % 4]
+        # 从 seed 可逆还原组合（"再生成一次"同组合）；不可逆格式退化为 md5 确定性派生
+        restored = _seed_restore(prev_seed)
+        if restored:
+            narrative = narrative or restored[0]
+            composition = composition or restored[1]
+        if not narrative or not composition:
+            h = hashlib.md5(prev_seed.encode()).hexdigest()
+            narrative = narrative or list(NarrativeType)[int(h[0], 16) % len(NarrativeType)]
+            composition = composition or list(CompositionType)[int(h[1], 16) % len(CompositionType)]
     elif not narrative or not composition:
         # 随机（避免连续重复）
         all_n = list(NarrativeType)

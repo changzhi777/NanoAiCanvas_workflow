@@ -45,6 +45,8 @@ class SubmitRequest(BaseModel):
     camera_movement: Optional[str] = None
     light_style: Optional[str] = None
     negative_prompts: Optional[list[str]] = None
+    # 一镜到底"再生成一次"：复用上次 composition_seed（可逆还原同组合）
+    one_shot_seed: Optional[str] = None
     force_personal_points: bool = False  # 团队不足时确认用个人积分
 
 
