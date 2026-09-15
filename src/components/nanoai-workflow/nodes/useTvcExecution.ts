@@ -3,7 +3,7 @@
  * 从 TvcScriptNode 抽离分步/一键执行逻辑
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { NodeStatus } from '@/stores/nanoaiWorkflowStore';
 import { tvcApi } from '@/lib/api/tvc-api';
@@ -40,6 +40,10 @@ export function useTvcExecution(
 ) {
   const { toast } = useToast();
   const [isExecuting, setIsExecuting] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+
+  // 卸载时关闭 SSE 连接
+  useEffect(() => () => { esRef.current?.close(); esRef.current = null; }, []);
 
   const executeStep = useCallback(async () => {
     const params = data.params;
@@ -200,6 +204,38 @@ export function useTvcExecution(
         status: NodeStatus.RUNNING,
         result: { ...data.result, taskId: response.task_id, tvcProjectId },
       });
+
+      // SSE 订阅任务进度：实时百分比/ETA + 终态同步（此前缺失 → 节点永卡 RUNNING）
+      esRef.current?.close();
+      esRef.current = tvcApi.streamProgress(
+        response.task_id,
+        (state) => {
+          updateNode(nodeId, {
+            result: { ...data.result, taskId: response.task_id, tvcProjectId, progress: state },
+          });
+          if (state.status === 'completed') {
+            updateNode(nodeId, { status: NodeStatus.SUCCESS });
+            toast.success('🎬 TVC 任务完成');
+            esRef.current?.close();
+            esRef.current = null;
+          } else if (state.status === 'failed') {
+            updateNode(nodeId, {
+              status: NodeStatus.ERROR,
+              error: (state as { error?: string }).error || '任务执行失败',
+            });
+            esRef.current?.close();
+            esRef.current = null;
+          } else if (state.status === 'cancelled') {
+            updateNode(nodeId, { status: NodeStatus.ERROR, error: '任务已终止' });
+            esRef.current?.close();
+            esRef.current = null;
+          }
+        },
+        () => {
+          // SSE 断连（网络抖动等）：保持当前状态，用户可重新触发
+          esRef.current = null;
+        },
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(`任务提交失败: ${message}`);

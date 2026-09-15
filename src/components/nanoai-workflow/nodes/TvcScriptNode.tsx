@@ -50,6 +50,8 @@ export interface TvcScriptData extends WorkflowNodeData {
     analysis?: ProductAnalysis;
     taskId?: string;
     tvcProjectId?: string;
+    /** SSE 实时进度（运行中更新） */
+    progress?: import('@/lib/api/tvc-api').TvcTaskProgress;
   };
 }
 
@@ -340,6 +342,34 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
           )}
         </div>
       </div>
+
+      {/* 运行中：实时进度 + ETA */}
+      {isRunning && (() => {
+        const prog = result?.progress;
+        const pct = prog?.overall_progress ?? 0;
+        const eta = prog?.eta_seconds;
+        const fmt = (s: number) => s >= 3600 ? `${Math.floor(s/3600)}h${Math.floor((s%3600)/60)}m` : `${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,'0')}`;
+        return (
+          <div className={cn('px-4 pb-2 space-y-1.5', isDark ? '' : '')}>
+            <div className={cn('flex items-center justify-between text-[10px] font-mono', isDark ? 'text-slate-400' : 'text-gray-500')}>
+              <span>执行中 {pct}%{prog?.elapsed_seconds != null && ` · 已用 ${fmt(prog.elapsed_seconds)}`}</span>
+              {typeof eta === 'number' && eta > 0 ? (
+                <span className={isDark ? 'text-cyan-400/80' : 'text-cyan-600'}>
+                  剩余 ~{fmt(eta)}{prog?.eta_confidence === 'low' ? ' (粗估)' : ''}
+                </span>
+              ) : (
+                <span className="opacity-60">计算中…</span>
+              )}
+            </div>
+            <div className={cn('h-1.5 rounded-full overflow-hidden', isDark ? 'bg-slate-800' : 'bg-gray-200')}>
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-500"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 底部：运行中显示「终止任务」，空闲显示双模式执行按钮 */}
       {isRunning ? (

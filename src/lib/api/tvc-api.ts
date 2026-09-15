@@ -83,6 +83,11 @@ export interface TvcTaskProgress {
   task_id: string;
   status: 'submitted' | 'running' | 'completed' | 'failed' | 'cancelled';
   overall_progress: number;
+  /** 动态剩余时间（秒）；null = 样本不足 */
+  eta_seconds?: number | null;
+  elapsed_seconds?: number;
+  eta_confidence?: 'low' | 'mid' | 'high';
+  error?: string;
   nodes: {
     id: string;
     label: string;
