@@ -139,6 +139,7 @@ function CacheStatsCard() {
           {cleaning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
           清理缓存
         </button>
+        </div>
       </div>
       {loading && !stats ? (
         <div className="text-sm text-slate-500">加载中…</div>
