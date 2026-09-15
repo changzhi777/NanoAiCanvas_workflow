@@ -51,6 +51,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           quality: 'hd',
           temperature: 1.0,
           maxLength: 8192,
+          videoModel: 'minimax-official',
         },
         inputs: [],
         outputs: [
@@ -77,7 +78,7 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
           characterRefs: [] as any[],
           videoProvider: 'minimax',
           imageModel: 'gpt-image-2',
-          videoModel: 'MiniMax-H3',
+          videoModel: 'minimax-official',
           videoDuration: 5,
           enableBgm: false,
           enableVoiceover: false,

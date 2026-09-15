@@ -746,10 +746,10 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           </div>
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">视频模型</Label>
-                            <select value={p.videoModel || 'seedance'} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
-                              <option value="seedance">Seedance（推荐）</option>
-                              <option value="minimax">MiniMax Hailuo 2.3</option>
-                              <option value="glm">GLM CogVideoX-3</option>
+                            <select value={p.videoModel || 'minimax-official'} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
+                              <option value="minimax-official">MiniMax Hailuo-02（推荐·套餐额度）</option>
+                              <option value="minimax">MiniMax H3（速创·4-15s）</option>
+                              <option value="seedance">Seedance（兜底）</option>
                             </select>
                           </div>
                           <div>
