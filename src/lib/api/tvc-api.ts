@@ -145,6 +145,8 @@ export interface SubmitTaskParams {
   cameraMovement?: string;
   lightStyle?: string;
   negativePrompts?: string[];
+  /** 一镜到底"再生成一次"：复用上次 composition_seed */
+  oneShotSeed?: string;
   forcePersonalPoints?: boolean;
 }
 
@@ -237,6 +239,7 @@ export const tvcApi = {
       camera_movement: params.cameraMovement,
       light_style: params.lightStyle,
       negative_prompts: params.negativePrompts,
+      one_shot_seed: params.oneShotSeed,
       force_personal_points: params.forcePersonalPoints ?? false,
     });
   },

@@ -49,6 +49,8 @@ export interface TvcScriptData extends WorkflowNodeData {
     negativePrompts?: string[];
     /** 一镜到底模式（K3）：产品参考图（与 referenceImage 独立） */
     productImage?: string | null;
+    /** 一镜到底"再生成一次"：复用的 composition_seed */
+    oneShotSeed?: string;
   };
   result?: {
     script?: TvcScript;
@@ -57,6 +59,15 @@ export interface TvcScriptData extends WorkflowNodeData {
     tvcProjectId?: string;
     /** SSE 实时进度（运行中更新） */
     progress?: import('@/lib/api/tvc-api').TvcTaskProgress;
+    /** 完成后产物：视频 URL + 一镜到底 meta */
+    videoUrl?: string;
+    oneShot?: {
+      narrative?: string;
+      composition?: string;
+      composition_seed?: string;
+      duration?: number;
+      template_name?: string;
+    };
   };
 }
 
@@ -359,6 +370,33 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         );
       })()}
 
+      {/* 一镜到底完成：内嵌播放器 + "再生成一次"（复用 composition_seed） */}
+      {!isRunning && result?.videoUrl && params.shotCount === 1 && (() => {
+        const one = result.oneShot;
+        const handleRegenerate = () => {
+          const seed = one?.composition_seed;
+          if (!seed) {
+            toast.error('无可用 seed，无法复现');
+            return;
+          }
+          executeAuto({ oneShotSeed: seed });
+        };
+        return (
+          <div className="px-4 pb-3">
+            <MiniVideoPlayer
+              src={result.videoUrl}
+              meta={{
+                duration: one?.duration,
+                composition: one?.composition,
+                narrative: one?.narrative,
+                composition_seed: one?.composition_seed,
+              }}
+              onRegenerate={handleRegenerate}
+            />
+          </div>
+        );
+      })()}
+
       {/* K1 一镜到底：底部按钮区分（带提示词优化入口） */}
       {isRunning ? (
         <div className={cn(
@@ -398,7 +436,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
             分步执行
           </button>
           <button
-            onClick={executeAuto}
+            onClick={() => executeAuto()}
             disabled={!params.inputText.trim()}
             className={cn(
               'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',

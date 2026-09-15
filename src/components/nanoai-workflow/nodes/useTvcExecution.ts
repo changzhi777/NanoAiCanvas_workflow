@@ -119,7 +119,7 @@ export function useTvcExecution(
     }
   }, [nodeId, data, updateNodeParams, updateNode, toast]);
 
-  const executeAuto = useCallback(async () => {
+  const executeAuto = useCallback(async (overrides?: { oneShotSeed?: string }) => {
     const params = data.params;
     if (!params.inputText.trim()) {
       toast.error('请先输入 TVC 描述');
@@ -163,6 +163,7 @@ export function useTvcExecution(
         cameraMovement: params.cameraMovement,
         lightStyle: params.lightStyle,
         negativePrompts: params.negativePrompts,
+        oneShotSeed: overrides?.oneShotSeed ?? (params as { oneShotSeed?: string }).oneShotSeed,
       };
 
       let response;
@@ -218,6 +219,22 @@ export function useTvcExecution(
             toast.success('🎬 TVC 任务完成');
             esRef.current?.close();
             esRef.current = null;
+            // 拉取产物：视频 URL + 一镜到底 meta（供节点内播放器与"再生成一次"）
+            tvcApi.getTaskStatus(response.task_id).then((detail) => {
+              let videoUrl = '';
+              let oneShotMeta: Record<string, unknown> | undefined;
+              for (const n of detail.nodes || []) {
+                if (n.id === 'step-video') {
+                  videoUrl = (n.subtasks?.[0]?.result?.video_url as string) || '';
+                }
+                if (n.id === 'step-optimize') {
+                  oneShotMeta = (n as { result?: Record<string, unknown> }).result?._one_shot as Record<string, unknown>;
+                }
+              }
+              updateNode(nodeId, {
+                result: { ...data.result, taskId: response.task_id, tvcProjectId, videoUrl, oneShot: oneShotMeta },
+              });
+            }).catch(() => { /* 详情拉取失败不影响完成态 */ });
           } else if (state.status === 'failed') {
             updateNode(nodeId, {
               status: NodeStatus.ERROR,
