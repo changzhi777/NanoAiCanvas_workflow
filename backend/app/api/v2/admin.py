@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from app.database import get_db
 from app.models.api_key import Provider, Model, ModelUsageLog, APIKey, ModelRoute
 from app.models import User
-from app.api.auth import require_admin
+from app.api.auth import get_current_user_optional, require_admin
 from app.services.model_scanner import scan_models_for_key
 
 router = APIRouter(prefix="/api/v2/admin", tags=["admin"])
@@ -787,3 +787,220 @@ async def get_routes_map(db: AsyncSession = Depends(get_db)):
             "api_base_url": api_base_url,
         }
     return mapping
+
+
+# ==================== 一镜到底模板（C4）====================
+
+class OneShotTemplateUpsert(BaseModel):
+    narrative: str  # display/plot/hybrid
+    composition: str  # character_object/front_side/merged/clean_bg
+    name: str
+    prompt_template: str
+    recommended_duration: int = 15
+    motion_chain: str = "human_motion"
+    bpm_hint: Optional[int] = None
+    is_active: bool = True
+
+
+@router.get("/tvc-one-shot-templates")
+async def list_one_shot_templates(
+    narrative: Optional[str] = None,
+    composition: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    current_user: User = Depends(get_current_user_optional),
+):
+    """列出全部一镜到底模板（admin 可选过滤）。无 admin 限制（沿用现有 router 模式）"""
+    from app.models.tvc_one_shot import TvcOneShotTemplate
+    from app.database import async_session_maker
+    from sqlalchemy import select
+
+    async with async_session_maker() as db:
+        stmt = select(TvcOneShotTemplate)
+        if narrative:
+            stmt = stmt.where(TvcOneShotTemplate.narrative == narrative)
+        if composition:
+            stmt = stmt.where(TvcOneShotTemplate.composition == composition)
+        if is_active is not None:
+            stmt = stmt.where(TvcOneShotTemplate.is_active == is_active)
+        stmt = stmt.order_by(TvcOneShotTemplate.narrative, TvcOneShotTemplate.composition)
+        rows = (await db.execute(stmt)).scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "narrative": r.narrative.value,
+            "composition": r.composition.value,
+            "name": r.name,
+            "prompt_template": r.prompt_template,
+            "recommended_duration": r.recommended_duration,
+            "motion_chain": r.motion_chain,
+            "bpm_hint": r.bpm_hint,
+            "is_active": r.is_active,
+            "created_at": r.created_at.isoformat(),
+            "updated_at": r.updated_at.isoformat(),
+        }
+        for r in rows
+    ]
+
+
+@router.post("/tvc-one-shot-templates")
+async def upsert_one_shot_template(
+    req: OneShotTemplateUpsert,
+    current_user: User = Depends(get_current_user_optional),
+):
+    """新建或更新（narrative+composition 唯一约束）一镜到底模板"""
+    from app.models.tvc_one_shot import TvcOneShotTemplate, NarrativeType, CompositionType
+    from app.database import async_session_maker
+    from datetime import datetime
+
+    async with async_session_maker() as db:
+        row = (await db.execute(
+            select(TvcOneShotTemplate).where(
+                TvcOneShotTemplate.narrative == req.narrative,
+                TvcOneShotTemplate.composition == req.composition,
+            )
+        )).scalar_one_or_none()
+
+        if row is None:
+            row = TvcOneShotTemplate(
+                narrative=NarrativeType(req.narrative),
+                composition=CompositionType(req.composition),
+                name=req.name,
+                prompt_template=req.prompt_template,
+                recommended_duration=req.recommended_duration,
+                motion_chain=req.motion_chain,
+                bpm_hint=req.bpm_hint,
+                is_active=req.is_active,
+            )
+            db.add(row)
+        else:
+            row.name = req.name
+            row.prompt_template = req.prompt_template
+            row.recommended_duration = req.recommended_duration
+            row.motion_chain = req.motion_chain
+            row.bpm_hint = req.bpm_hint
+            row.is_active = req.is_active
+            row.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(row)
+        return {"id": str(row.id), "narrative": row.narrative.value, "composition": row.composition.value, "name": row.name}
+
+
+@router.delete("/tvc-one-shot-templates/{template_id}")
+async def delete_one_shot_template(
+    template_id: str,
+    current_user: User = Depends(get_current_user_optional),
+):
+    from app.models.tvc_one_shot import TvcOneShotTemplate
+    from app.database import async_session_maker
+    from uuid import UUID
+
+    async with async_session_maker() as db:
+        row = (await db.execute(
+            select(TvcOneShotTemplate).where(TvcOneShotTemplate.id == UUID(template_id))
+        )).scalar_one_or_none()
+        if not row:
+            raise HTTPException(status_code=404, detail="模板不存在")
+        await db.delete(row)
+        await db.commit()
+    return {"deleted": template_id}
+
+
+@router.post("/tvc-one-shot-templates/seed-defaults")
+async def seed_default_templates(current_user: User = Depends(get_current_user_optional)):
+    """重置 12 行默认模板（覆盖现有）"""
+    from app.models.tvc_one_shot import TvcOneShotTemplate, NarrativeType, CompositionType, DEFAULT_TEMPLATES
+    from app.database import async_session_maker
+    from datetime import datetime
+    from uuid import uuid4
+
+    async with async_session_maker() as db:
+        from sqlalchemy import text
+        await db.execute(text("DELETE FROM tvc_one_shot_templates"))
+        for tpl in DEFAULT_TEMPLATES:
+            db.add(TvcOneShotTemplate(
+                id=uuid4(),
+                narrative=NarrativeType(tpl["narrative"]),
+                composition=CompositionType(tpl["composition"]),
+                name=tpl["name"],
+                prompt_template=tpl["prompt_template"],
+                recommended_duration=tpl["recommended_duration"],
+                motion_chain=tpl["motion_chain"],
+                bpm_hint=tpl["bpm_hint"],
+            ))
+        await db.commit()
+    return {"seeded": len(DEFAULT_TEMPLATES)}
+
+
+@router.get("/tvc-one-shot-logs/stats")
+async def one_shot_log_stats(
+    days: int = 30,
+    current_user: User = Depends(get_current_user_optional),
+):
+    """A/B 埋点统计：按模板 × 动作 计数（最近 N 天）"""
+    from app.models.tvc_one_shot import TvcOneShotLog, TvcOneShotTemplate
+    from app.database import async_session_maker
+    from sqlalchemy import func, select
+    from datetime import datetime, timedelta
+
+    async with async_session_maker() as db:
+        since = datetime.utcnow() - timedelta(days=days)
+        # 按 (template, action) 计数
+        stmt = (
+            select(
+                TvcOneShotTemplate.narrative,
+                TvcOneShotTemplate.composition,
+                TvcOneShotTemplate.name,
+                TvcOneShotLog.action,
+                func.count(TvcOneShotLog.id).label("count"),
+            )
+            .join(TvcOneShotLog, TvcOneShotLog.template_id == TvcOneShotTemplate.id, isouter=True)
+            .where(TvcOneShotLog.created_at >= since)
+            .group_by(
+                TvcOneShotTemplate.narrative,
+                TvcOneShotTemplate.composition,
+                TvcOneShotTemplate.name,
+                TvcOneShotLog.action,
+            )
+        )
+        rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "narrative": r[0].value if r[0] else None,
+            "composition": r[1].value if r[1] else None,
+            "name": r[2],
+            "action": r[3].value if r[3] else None,
+            "count": r[4],
+        }
+        for r in rows
+    ]
+
+
+@router.get("/tvc-one-shot-logs/recent")
+async def one_shot_recent_logs(
+    limit: int = 50,
+    current_user: User = Depends(get_current_user_optional),
+):
+    """最近 A/B 埋点（详细列表）"""
+    from app.models.tvc_one_shot import TvcOneShotLog
+    from app.database import async_session_maker
+    from sqlalchemy import select
+
+    async with async_session_maker() as db:
+        stmt = (
+            select(TvcOneShotLog)
+            .order_by(TvcOneShotLog.created_at.desc())
+            .limit(min(limit, 200))
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+    return [
+        {
+            "id": str(r.id),
+            "task_id": r.task_id,
+            "user_id": str(r.user_id) if r.user_id else None,
+            "narrative": r.narrative.value,
+            "composition": r.composition.value,
+            "action": r.action.value,
+            "created_at": r.created_at.isoformat(),
+        }
+        for r in rows
+    ]
