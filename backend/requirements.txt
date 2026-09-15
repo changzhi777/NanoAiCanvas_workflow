@@ -25,6 +25,9 @@ email-validator==2.1.0
 # Image processing
 Pillow==10.2.0
 
+# Object storage
+cos-python-sdk-v5==1.9.30
+
 # Utils
 python-dotenv==1.0.1
 httpx==0.26.0

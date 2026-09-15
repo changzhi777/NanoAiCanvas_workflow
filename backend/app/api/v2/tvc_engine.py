@@ -902,14 +902,22 @@ async def _save_assets(task_id: str, user_id, req, breakdown: dict):
     if not assets_to_save:
         return
 
+    # 转存：COS 优先 → 本地 asset-uploads 降级（修复速创临时外链 404 问题）
+    from app.services.cos_upload import transfer_with_fallback
+
     async with async_session_maker() as db:
         for item in assets_to_save:
+            url = await transfer_with_fallback(
+                item["url"],
+                key_hint=f"tvc/{task_id}/{item['name']}",
+                asset_type=item["type"],
+            )
             asset = Asset(
                 user_id=user_id,
                 type=item["type"],
                 name=item["name"],
-                url=item["url"],
-                thumbnail_url=item["url"] if item["type"] == "image" else None,
+                url=url,
+                thumbnail_url=url if item["type"] == "image" else None,
                 category=item["category"],
                 meta_data=item["meta"],
             )
