@@ -67,3 +67,6 @@ backend/chat-uploads/
 .playwright-cli/
 .playwright-mcp/
 garden-skills/
+e2e/reports/errors-*.json
+e2e/reports/assets-*.json
+e2e/reports/betel-promo-*.json

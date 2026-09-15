@@ -168,40 +168,67 @@ export async function apiCall(
   }
 }
 
-/** 监听 SSE progress 流，返回 unsubscribe */
-export function watchSseProgress(
+/** 监听 SSE progress 流，返回 unsubscribe
+ * 用 fetch + ReadableStream 实现（Node 端无 EventSource）
+ */
+export async function watchSseProgress(
   taskId: string,
   token: string,
   onUpdate: (state: any) => void,
   timeoutMs = 120_000,
 ): Promise<{ lastState: any; durationMs: number }> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const start = Date.now()
     const url = `${PROD}/api/v2/tvc-tasks/${taskId}/progress?token=${token}`
-    const es = new EventSource(url)
-    let lastState: any = null
+    const controller = new AbortController()
     const timer = setTimeout(() => {
-      es.close()
+      controller.abort()
       reject(new Error(`SSE 超时 ${timeoutMs}ms`))
     }, timeoutMs)
-    es.onmessage = ev => {
-      try {
-        const s = JSON.parse(ev.data)
-        lastState = s
-        onUpdate(s)
-        if (['completed', 'failed', 'cancelled'].includes(s.status)) {
-          clearTimeout(timer)
-          es.close()
-          resolve({ lastState: s, durationMs: Date.now() - start })
+    let lastState: any = null
+    try {
+      const r = await fetch(url, { method: 'GET', signal: controller.signal })
+      if (!r.ok || !r.body) {
+        clearTimeout(timer)
+        reject(new Error(`SSE HTTP ${r.status}`))
+        return
+      }
+      const reader = (r.body as any).getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        // SSE 帧以 \n\n 分割
+        const frames = buf.split('\n\n')
+        buf = frames.pop() ?? ''
+        for (const frame of frames) {
+          const line = frame.split('\n').find(l => l.startsWith('data:'))
+          if (!line) continue
+          const data = line.slice(5).trim()
+          if (!data || data === '[DONE]') continue
+          try {
+            const s = JSON.parse(data)
+            lastState = s
+            onUpdate(s)
+            if (['completed', 'failed', 'cancelled'].includes(s.status)) {
+              clearTimeout(timer)
+              controller.abort()
+              resolve({ lastState: s, durationMs: Date.now() - start })
+              return
+            }
+          } catch {}
         }
-      } catch {}
-    }
-    es.onerror = () => {
+      }
       clearTimeout(timer)
-      es.close()
-      // SSE 断了如果已有 lastState，认为软成功
       if (lastState) resolve({ lastState, durationMs: Date.now() - start })
-      else reject(new Error('SSE 连接失败'))
+      else reject(new Error('SSE 连接关闭且无数据'))
+    } catch (e: any) {
+      clearTimeout(timer)
+      if (lastState) resolve({ lastState, durationMs: Date.now() - start })
+      else if (e.name === 'AbortError') reject(new Error(`SSE 超时 ${timeoutMs}ms`))
+      else reject(e)
     }
   })
 }
