@@ -125,22 +125,18 @@ class TestOptimizePrompts:
 
     @pytest.mark.asyncio
     async def test_api_error_raises(self):
-        mock_resp = MagicMock()
-        mock_resp.status_code = 500
-
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client = AsyncMock()
-            mock_client.post.return_value = mock_resp
-            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-            mock_client.__aexit__ = AsyncMock(return_value=False)
-            mock_client_cls.return_value = mock_client
-
+        # _optimize_prompts 现走 _glm_chat（Anthropic 协议），直接 mock 该依赖
+        from fastapi import HTTPException as _HTTPException
+        with patch(
+            "app.api.v2.glm_proxy._glm_chat",
+            side_effect=_HTTPException(status_code=502, detail="七牛云 GLM 错误（已重试3次）: boom"),
+        ):
             req = MagicMock()
             req.style = "realistic"
             req.mode = "cinematic"
             settings = _mock_settings()
 
-            with pytest.raises(Exception, match="GLM optimize error"):
+            with pytest.raises(Exception, match="GLM"):
                 await _optimize_prompts({"raw_content": "test"}, req, settings)
 
 
