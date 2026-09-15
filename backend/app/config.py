@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     GLM_API_KEY: str = ""
     GLM_API_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
 
+    # 七牛云 AI（GLM 主路：OpenAI 兼容协议，替代官方 Coding Plan 配额）
+    QINIU_API_KEY: str = ""
+    QINIU_API_BASE_URL: str = "https://openai.qiniu.com/v1"
+    QINIU_DEFAULT_MODEL: str = "z-ai/glm-5.3-flash"
+
     # 即梦 (字节AI)
     JIMENG_API_KEY: str = ""
     JIMENG_API_BASE_URL: str = "https://api.jimeng.jike.com/v1"

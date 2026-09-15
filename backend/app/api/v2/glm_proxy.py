@@ -1,15 +1,18 @@
 """
-import logging; logger = logging.getLogger(__name__)
 GLM API 代理路由 - 提示词优化
 前端通过此接口调用 GLM，API Key 安全存储在后端
 支持模型：glm-4.5-air, glm-4-flash, glm-4, glm-4.7-flash
 """
 
+import asyncio
+import logging
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from app.config import get_settings
 from app.api.auth import get_current_user_optional
@@ -196,12 +199,81 @@ def _convert_content(content) -> list:
     return blocks
 
 
+def _to_qiniu_model(model: str, settings) -> str:
+    """项目模型名 → 七牛云模型名。
+
+    - 已含 "/"（z-ai/glm-5.3-flash 等）：直通
+    - 其余（glm-4.5-air / glm-5.1 / glm-5.3-flash ...）：统一映射到主路模型
+    """
+    if "/" in model:
+        return model
+    return settings.QINIU_DEFAULT_MODEL or "z-ai/glm-5.3-flash"
+
+
+async def _qiniu_chat(
+    model: str, messages: list, temperature: float, max_tokens: int, settings
+) -> dict:
+    """七牛云 AI（OpenAI 兼容协议）— GLM 主路。
+
+    thinking 由服务端模型默认行为（返回 reasoning_content），API 无需显式参数。
+    max_tokens 保底 2000（thinking 需余量，否则 content 为空）。
+    5xx/429/网络错误自动重试（Coding 套餐短间隔连续调用会偶发 502 空响应）。
+    """
+    q_model = _to_qiniu_model(model, settings)
+    payload = {
+        "model": q_model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max(max_tokens, 2000),
+    }
+    last_err = "unknown"
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=180) as client:
+                resp = await client.post(
+                    f"{settings.QINIU_API_BASE_URL.rstrip('/')}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.QINIU_API_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                msg = (data.get("choices") or [{}])[0].get("message", {})
+                return {
+                    "choices": [{
+                        "message": {
+                            "content": msg.get("content") or "",
+                            "reasoning_content": msg.get("reasoning_content") or "",
+                        }
+                    }]
+                }
+            last_err = f"{resp.status_code} {resp.text[:200]}"
+            # 非瞬时错误（4xx 除 429）不重试
+            if resp.status_code < 500 and resp.status_code != 429:
+                break
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
+            last_err = f"{type(e).__name__}: {e}"
+        if attempt < 2:
+            await asyncio.sleep(2 * (attempt + 1))  # 2s / 4s 退避
+    raise HTTPException(status_code=502, detail=f"七牛云 GLM 错误（已重试3次）: {last_err}")
+
+
 async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500) -> dict:
-    """GLM Coding 套餐 key 走 Anthropic 兼容端点；入参/返回保持 v4 chat/completions 形状。
+    """GLM 调用统一入口。
+
+    主路：七牛云（OpenAI 兼容协议，配了 QINIU_API_KEY 时启用，绕过官方配额）
+    兜底：智谱官方（Anthropic 兼容端点，未配七牛 key 时的原路径）
 
     返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
-    非 200 时抛 HTTPException(502)（与原 v4 直调语义一致）。
+    非 200 时抛 HTTPException(502)。
     """
+    settings = get_settings()
+    if settings.QINIU_API_KEY:
+        return await _qiniu_chat(model, messages, temperature, max_tokens, settings)
+
+    # ===== 兜底：智谱官方 Anthropic 兼容端点（原实现）=====
     system = "\n".join(m["content"] for m in messages if m["role"] == "system" and isinstance(m["content"], str))
     chat = [{"role": m["role"], "content": _convert_content(m["content"])} for m in messages if m["role"] != "system"]
     payload = {"model": model, "max_tokens": max_tokens, "messages": chat, "temperature": temperature}
@@ -213,7 +285,6 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
         # GLM-5.3-Flash 文档：thinking 模式默认开，max_tokens 需容纳思考
         if max_tokens < 2000:
             payload["max_tokens"] = 2000
-    settings = get_settings()
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(
             ANTHROPIC_GLM_URL,
