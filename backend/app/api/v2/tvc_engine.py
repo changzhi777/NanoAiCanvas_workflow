@@ -588,7 +588,7 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
             pass
 
         async with async_session_maker() as db:
-            one = one_shot_generate(
+            one = await one_shot_generate(
                 subject_desc=raw[:500],
                 object_desc=getattr(req, "style_reference", "") or "",
                 task_id=task_id,
@@ -596,7 +596,7 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                 db=db,
                 prev_seed=prev_seed,
             )
-            log_action(
+            await log_action(
                 db, task_id=task_id, user_id=user_id,
                 narrative=one["narrative"], composition=one["composition"],
                 action="shown",

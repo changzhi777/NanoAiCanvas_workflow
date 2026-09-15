@@ -1,12 +1,22 @@
 """TVC 一镜到底模板 — DB 模型 + A/B 埋点日志"""
+import enum
+import uuid
+from datetime import datetime
+
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Enum as SAEnum, Index
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
-from datetime import datetime
-import uuid
-import enum
 
 from app.database import Base
+
+
+def _values(enum_cls):
+    """SAEnum 用 .value（小写）而非成员名，匹配迁移里的 varchar 列"""
+    return [e.value for e in enum_cls]
+
+
+def _vc(enum_cls):
+    """values_callable 工厂"""
+    return lambda x: _values(enum_cls)
 
 
 class NarrativeType(str, enum.Enum):
@@ -125,8 +135,8 @@ class TvcOneShotTemplate(Base):
     __tablename__ = "tvc_one_shot_templates"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    narrative = Column(SAEnum(NarrativeType, name="tvc_narrative_type"), nullable=False)
-    composition = Column(SAEnum(CompositionType, name="tvc_composition_type"), nullable=False)
+    narrative = Column(SAEnum(NarrativeType, name="tvc_narrative_type", native_enum=False, length=20, values_callable=_vc(NarrativeType)), nullable=False)
+    composition = Column(SAEnum(CompositionType, name="tvc_composition_type", native_enum=False, length=30, values_callable=_vc(CompositionType)), nullable=False)
     name = Column(String(100), nullable=False)
     prompt_template = Column(Text, nullable=False)
     recommended_duration = Column(Integer, default=15, nullable=False)
@@ -149,7 +159,7 @@ class TvcOneShotLog(Base):
     template_id = Column(UUID(as_uuid=True), ForeignKey("tvc_one_shot_templates.id", ondelete="SET NULL"), nullable=True)
     task_id = Column(String(64), nullable=False, index=True)
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    narrative = Column(SAEnum(NarrativeType, name="tvc_narrative_type_log"), nullable=False)
-    composition = Column(SAEnum(CompositionType, name="tvc_composition_type_log"), nullable=False)
-    action = Column(SAEnum(OneShotLogAction, name="tvc_one_shot_action"), nullable=False)
+    narrative = Column(String(30), nullable=False)
+    composition = Column(String(30), nullable=False)
+    action = Column(SAEnum(OneShotLogAction, name="tvc_one_shot_action", native_enum=False, length=20, values_callable=_vc(OneShotLogAction)), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

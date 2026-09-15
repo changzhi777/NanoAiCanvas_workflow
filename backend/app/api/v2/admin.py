@@ -997,9 +997,10 @@ async def one_shot_recent_logs(
             "id": str(r.id),
             "task_id": r.task_id,
             "user_id": str(r.user_id) if r.user_id else None,
-            "narrative": r.narrative.value,
-            "composition": r.composition.value,
-            "action": r.action.value,
+            # log 表 narrative/composition 为 String 列，可能是 str 或枚举成员
+            "narrative": getattr(r.narrative, "value", r.narrative),
+            "composition": getattr(r.composition, "value", r.composition),
+            "action": getattr(r.action, "value", r.action),
             "created_at": r.created_at.isoformat(),
         }
         for r in rows

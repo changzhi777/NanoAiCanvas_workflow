@@ -476,7 +476,7 @@ async def optimize_prompt(
             from app.database import async_session_maker
             from uuid import UUID
             async with async_session_maker() as db:
-                log_action(db, task_id=current_user.id, user_id=current_user.id,
+                await log_action(db, task_id=current_user.id, user_id=current_user.id,
                           narrative="optimize", composition="optimize", action="optimized")
         except Exception:
             pass

@@ -111,8 +111,8 @@ class TestDuration:
 # ==================== 生成核心 ====================
 
 class TestGenerate:
-    def test_returns_full_dict(self):
-        r = generate(
+    async def test_returns_full_dict(self):
+        r = await generate(
             subject_desc="young female model in white dress",
             object_desc="luxury perfume bottle",
             narrative="display",
@@ -128,12 +128,12 @@ class TestGenerate:
         assert "narrative_seed" in r
         assert "bpm_hint" in r
 
-    def test_random_combination(self):
-        r1 = generate(
+    async def test_random_combination(self):
+        r1 = await generate(
             subject_desc="model", object_desc="bottle",
             task_id="tvc_test_a", user_id="00000000-0000-0000-0000-000000000001",
         )
-        r2 = generate(
+        r2 = await generate(
             subject_desc="model", object_desc="bottle",
             task_id="tvc_test_b", user_id="00000000-0000-0000-0000-000000000002",
         )
@@ -141,14 +141,14 @@ class TestGenerate:
         assert isinstance(r1["narrative"], str)
         assert isinstance(r2["composition"], str)
 
-    def test_seed_reproducible(self):
+    async def test_seed_reproducible(self):
         """同 prev_seed 同 narrative/composition 组合"""
-        r1 = generate(
+        r1 = await generate(
             subject_desc="model", object_desc="bottle",
             task_id="tvc_t1", user_id="00000000-0000-0000-0000-000000000001",
             prev_seed="seed_abc",
         )
-        r2 = generate(
+        r2 = await generate(
             subject_desc="model", object_desc="bottle",
             task_id="tvc_t2", user_id="00000000-0000-0000-0000-000000000002",
             prev_seed="seed_abc",
@@ -159,8 +159,8 @@ class TestGenerate:
 # ==================== 多候选 ====================
 
 class TestVariants:
-    def test_3_unique(self):
-        rs = generate_variants(
+    async def test_3_unique(self):
+        rs = await generate_variants(
             subject_desc="model", object_desc="bottle",
             candidate_count=3, task_id="tvc_v", user_id="00000000-0000-0000-0000-000000000003",
         )
@@ -173,11 +173,14 @@ class TestVariants:
 # ==================== 埋点 ====================
 
 class TestLog:
-    def test_log_writes_row(self):
+    async def test_log_writes_row(self):
+        from unittest.mock import AsyncMock
         from app.services.one_shot_prompt import log_action
 
         mock_db = MagicMock()
-        log_action(
+        mock_db.commit = AsyncMock()
+        mock_db.rollback = AsyncMock()
+        await log_action(
             mock_db,
             task_id="tvc_log_test",
             user_id="00000000-0000-0000-0000-000000000099",
@@ -186,4 +189,4 @@ class TestLog:
             action="generated",
         )
         mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
+        mock_db.commit.assert_awaited_once()

@@ -7,6 +7,8 @@ import random
 import re
 from typing import Optional
 
+from sqlalchemy import select
+
 from app.models.tvc_one_shot import (
     DEFAULT_TEMPLATES,
     HUMAN_MOTION_HINTS,
@@ -107,17 +109,19 @@ def _seed_compose(narrative, composition, task_id: str = "") -> str:
 
 # ==================== 核心 API ====================
 
-def get_template(narrative: NarrativeType | str, composition: CompositionType | str, db=None) -> dict:
-    """取模板（优先 DB，否则用默认 12 行种子）"""
+async def get_template(narrative: NarrativeType | str, composition: CompositionType | str, db=None) -> dict:
+    """取模板（优先 DB，否则用默认 12 行种子）。db 须为 AsyncSession"""
     n_val = narrative.value if isinstance(narrative, NarrativeType) else narrative
     c_val = composition.value if isinstance(composition, CompositionType) else composition
     if db is not None:
-        row = db.query(TvcOneShotTemplate).filter_by(
-            narrative=n_val, composition=c_val, is_active=True
-        ).first()
+        row = (await db.execute(
+            select(TvcOneShotTemplate).filter_by(
+                narrative=n_val, composition=c_val, is_active=True
+            )
+        )).scalars().first()
         if row:
             return {
-                "id": row.id,
+                "id": str(row.id),
                 "narrative": row.narrative.value,
                 "composition": row.composition.value,
                 "name": row.name,
@@ -130,7 +134,7 @@ def get_template(narrative: NarrativeType | str, composition: CompositionType | 
     return DEFAULT_TEMPLATES_DICT.get((n_val, c_val))
 
 
-def generate(
+async def generate(
     *,
     subject_desc: str,
     object_desc: str = "",
@@ -172,7 +176,7 @@ def generate(
         composition = CompositionType(composition)
 
     # 2. 取模板
-    template = get_template(narrative, composition, db)
+    template = await get_template(narrative, composition, db)
     n_v = narrative.value if hasattr(narrative, "value") else narrative
     c_v = composition.value if hasattr(composition, "value") else composition
     if not template:
@@ -200,7 +204,7 @@ def generate(
 
     # 6. 埋点（GENERATED）
     if db is not None and user_id:
-        _log(db, template, task_id, user_id, narrative, composition, OneShotLogAction.GENERATED)
+        await _log(db, template, task_id, user_id, narrative, composition, OneShotLogAction.GENERATED)
 
     return {
         "prompt": prompt,
@@ -216,7 +220,7 @@ def generate(
     }
 
 
-def generate_variants(
+async def generate_variants(
     *,
     subject_desc: str,
     object_desc: str = "",
@@ -233,7 +237,7 @@ def generate_variants(
     # 先选 narrative 一次，composition 随机 3 次去重
     base_narrative = narrative
     for _ in range(candidate_count * 2):  # 多试几次找 3 个不重复
-        r = generate(
+        r = await generate(
             subject_desc=subject_desc,
             object_desc=object_desc,
             narrative=base_narrative,
@@ -254,7 +258,7 @@ def generate_variants(
 
 # ==================== 埋点 ====================
 
-def _log(db, template, task_id, user_id, narrative, composition, action):
+async def _log(db, template, task_id, user_id, narrative, composition, action):
     """写埋点日志"""
     from app.models.tvc_one_shot import TvcOneShotLog
     from uuid import UUID
@@ -270,13 +274,13 @@ def _log(db, template, task_id, user_id, narrative, composition, action):
             action=action,
         )
         db.add(log)
-        db.commit()
+        await db.commit()
     except Exception as e:
         logger.warning(f"埋点失败: {e}")
-        db.rollback()
+        await db.rollback()
 
 
-def log_action(db, task_id, user_id, narrative, composition, action):
+async def log_action(db, task_id, user_id, narrative, composition, action):
     """外部调用：单独埋点（无需 template_id 也可写日志，template_id 留空）"""
     from app.models.tvc_one_shot import TvcOneShotLog
     from uuid import UUID
@@ -291,7 +295,7 @@ def log_action(db, task_id, user_id, narrative, composition, action):
             action=action,
         )
         db.add(log)
-        db.commit()
+        await db.commit()
     except Exception as e:
         logger.warning(f"埋点失败: {e}")
-        db.rollback()
+        await db.rollback()
