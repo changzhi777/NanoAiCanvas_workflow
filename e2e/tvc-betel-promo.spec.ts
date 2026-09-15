@@ -24,7 +24,7 @@ const PROD = process.env.PROD_URL || 'https://app.nanoai.fun/nanoai'
 const REPORTS_DIR = path.resolve('e2e/reports')
 const RUN_ID = newRunId()
 
-const PROMPT = '一个关于槟榔的产品展示宣传广告切片15秒'
+const PROMPT = '一款天然矿泉水广告：高山湖泊源头特写，清澈见底，水面倒映蓝天白云，晨光中水滴落下溅起晶莹水花'
 const SHOT_COUNT = 3
 const SHOT_DURATION = 5
 const TOTAL_DURATION = 15
@@ -48,6 +48,8 @@ test.afterAll(async () => {
 })
 
 test('槟榔产品 15s TVC 全链路（提交→SSE→入库）', async () => {
+  test.setTimeout(480_000) // 8 分钟（生图+生视频慢）
+  test.slow()
   // Step 1. 余额预检
   const balanceCheck = await apiCall(zhyCtx, zhyToken, 'balance-check', 'GET',
     '/api/points/balance')
@@ -76,10 +78,11 @@ test('槟榔产品 15s TVC 全链路（提交→SSE→入库）', async () => {
       shot_duration: SHOT_DURATION,
       total_duration: TOTAL_DURATION,
       execution_mode: 'auto',
-      optimize_mode: 'tvc_deep',
+      // 轻量级：tvc_fast 不触发 thinking，避免 GLM 配额波动
+      optimize_mode: 'tvc_fast',
       image_model: 'gpt-image-2',
       video_model: 'minimax-H3',
-      optimize_model: 'glm-5.3-flash',
+      optimize_model: 'glm-4.5-air',
       force_personal_points: true,
       style: 'cinematic',
     })

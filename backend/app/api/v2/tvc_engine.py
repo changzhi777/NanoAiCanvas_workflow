@@ -233,29 +233,18 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     model_map = {"tvc_deep": "glm-5.1", "tvc_fast": "glm-4.5-air", "tvc_vision": "glm-5v-turbo"}
     model = cfg.get("model") or model_map.get(req.optimize_mode, "glm-5.1")
 
-    api_params = {
-        "model": model,
-        "messages": [
+    # 走 _glm_chat helper（Anthropic 协议 + thinking 自动开）
+    from .glm_proxy import _glm_chat
+    data = await _glm_chat(
+        model=model,
+        messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"请生成以下TVC广告的结构化脚本：\n{req.prompt}"},
         ],
-        "temperature": cfg.get("temperature", 1.0 if is_thinking else 0.7),
-        "max_tokens": cfg.get("max_tokens", 8192),
-    }
-    if is_thinking:
-        api_params["thinking"] = {"type": "enabled"}
+        temperature=cfg.get("temperature", 1.0 if is_thinking else 0.7),
+        max_tokens=cfg.get("max_tokens", 8192),
+    )
 
-    async with httpx.AsyncClient(timeout=180) as client:
-        resp = await client.post(
-            f"{settings.GLM_API_BASE_URL}/chat/completions",
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {settings.GLM_API_KEY}"},
-            json=api_params,
-        )
-
-    if resp.status_code != 200:
-        raise Exception(f"GLM API error: {resp.text}")
-
-    data = resp.json()
     msg = data.get("choices", [{}])[0].get("message", {})
     content = msg.get("content", "").strip()
     if not content:
@@ -602,25 +591,18 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
 
 只返回 JSON，不要其他内容。"""
 
-    async with httpx.AsyncClient(timeout=120) as client:
-        resp = await client.post(
-            f"{settings.GLM_API_BASE_URL}/chat/completions",
-            headers={"Authorization": f"Bearer {settings.GLM_API_KEY}", "Content-Type": "application/json"},
-            json={
-                "model": cfg.get("model", "glm-4.5-air"),
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": raw},
-                ],
-                "temperature": cfg.get("temperature", 0.7),
-                "max_tokens": cfg.get("max_tokens", 4096),
-            },
-        )
-
-    if resp.status_code != 200:
-        raise Exception(f"GLM optimize error: {resp.status_code}")
-
-    content = resp.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    # 走 _glm_chat helper（Anthropic 协议 + thinking 自动开）
+    from .glm_proxy import _glm_chat
+    data = await _glm_chat(
+        model=cfg.get("model", "glm-4.5-air"),
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": raw},
+        ],
+        temperature=cfg.get("temperature", 0.7),
+        max_tokens=cfg.get("max_tokens", 4096),
+    )
+    content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 
     # 优先匹配 JSON 对象 {\"character_ref_prompt\": ..., \"shots\": [...]}
     json_match = re.search(r'\{.*\}', content, re.DOTALL)
