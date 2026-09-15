@@ -554,6 +554,133 @@ test.describe('H. 错误路径', () => {
 })
 
 /* ============================================================
+ *  J. GLM Anthropic 协议直连（绕过 /api/glm/optimize 错误协议路由）
+ *
+ *  背景：
+ *  - GLM Coding Plan 把 GLM-5.3-Flash 放在 Anthropic 协议配额池
+ *  - 后端 /api/glm/optimize 走 OpenAI 协议 → 用错池子 → 1310/1113
+ *  - 直连 Anthropic 端点绕过路由，验证 AI 配额 + 模型可用
+ * ============================================================ */
+test.describe('J. GLM Anthropic 协议直连（绕过错误路由）', () => {
+
+  test('J1. GLM-5.3-Flash 直连 Anthropic 端点 — basic chat', async () => {
+    const r = await fetch('https://open.bigmodel.cn/api/anthropic/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': '6572c96d66234e2597c8aa03ba591539.z36JZuWrGZIj7py8',
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'glm-5.3-flash',
+        max_tokens: 60,
+        messages: [{ role: 'user', content: '用一句话描述 TVC 广告镜头语言' }],
+      }),
+    })
+    const status = r.status
+    const body = await r.text()
+    let parsed: any = body
+    try { parsed = JSON.parse(body) } catch {}
+    console.log(`🪄 GLM-5.3-Flash Anthropic 直连: ${status}`)
+    if (status === 200) {
+      const text = parsed?.content?.find((c: any) => c.type === 'text')?.text
+        ?? parsed?.content?.[0]?.text ?? ''
+      console.log(`📝 响应: ${text.slice(0, 120)}`)
+    } else {
+      console.log(`⚠️ 失败: ${body.slice(0, 200)}`)
+      recordError({
+        testName: 'J1', timestamp: new Date().toISOString(),
+        endpoint: 'https://open.bigmodel.cn/api/anthropic/v1/messages',
+        method: 'POST', status,
+        message: parsed?.error?.message ?? body.slice(0, 200),
+      })
+    }
+    expect(status).toBe(200)
+  })
+
+  test('J2. GLM-5.3-Flash TVC 剧本提示词优化（替代 step-optimize）', async () => {
+    // 模拟 step-optimize：把槟榔产品 raw 描述 → 优化成英文 video prompt
+    // GLM-5.3-Flash thinking 默认开，要给足够 max_tokens 容纳思考 + 答案
+    const r = await fetch('https://open.bigmodel.cn/api/anthropic/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': '6572c96d66234e2597c8aa03ba591539.z36JZuWrGZIj7py8',
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'glm-5.3-flash',
+        max_tokens: 2000,
+        thinking: { type: 'enabled' },
+        system: '你是一位专业的 TVC 广告镜头优化师，把用户中文描述优化成英文 Stable Diffusion/Seedance 提示词。要求：cinematic 风格、含镜头运动、光影、构图，输出纯英文一段话，不要任何解释。',
+        messages: [{
+          role: 'user',
+          content: '槟榔产品展示：清晨热带雨林，晨曦穿透茂密树叶，阳光斑驳落在槟榔果实上，特写镜头缓慢推进',
+        }],
+      }),
+    })
+    const status = r.status
+    const body = await r.text()
+    let parsed: any = body
+    try { parsed = JSON.parse(body) } catch {}
+    expect(status).toBe(200)
+    // 取最后一个 text 块（thinking 之外的真答案）
+    const texts = (parsed?.content ?? []).filter((c: any) => c.type === 'text')
+    const text = texts[texts.length - 1]?.text ?? ''
+    console.log(`🎬 优化后提示词: ${text.slice(0, 200)}`)
+    if (text.length <= 20) {
+      console.log(`⚠️ 响应内容块: ${JSON.stringify(parsed?.content?.map((c: any) => c.type))}`)
+    }
+    expect(text.length).toBeGreaterThan(20)
+
+    // 入资产库
+    const id = await saveAssetToLibrary(zhyCtx, zhyToken, {
+      name: `glm53-tvc-prompt-optimize-${RUN_ID}`,
+      type: 'text',
+      meta: {
+        source: 'GLM-5.3-Flash (Anthropic)',
+        raw_prompt: '槟榔产品展示：清晨热带雨林...',
+        optimized_prompt: text,
+        endpoint: 'https://open.bigmodel.cn/api/anthropic/v1/messages',
+        run_id: RUN_ID,
+      },
+    })
+    if (id) assetIds.push({ name: 'glm53-optimize', id, endpoint: 'glm-anthropic-direct' })
+  })
+
+  test('J3. 对比 — 同样 key 走 OpenAI 协议应失败（证明配额池隔离）', async () => {
+    const r = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer 6572c96d66234e2597c8aa03ba591539.z36JZuWrGZIj7py8',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'glm-5.3-flash',
+        messages: [{ role: 'user', content: 'hi' }],
+        max_tokens: 20,
+      }),
+    })
+    const status = r.status
+    const body = await r.text()
+    let parsed: any = body
+    try { parsed = JSON.parse(body) } catch {}
+    console.log(`🔀 OpenAI 协议（同 key 同模型）: ${status}`)
+    console.log(`📦 响应: ${body.slice(0, 200)}`)
+    // 预期：1113 余额不足（OpenAI 协议无 GLM-5.3-Flash 配额）
+    const code = Number(parsed?.error?.code ?? status)
+    expect([1113, 1310, 402, 429]).toContain(code)
+    recordError({
+      testName: 'J3', timestamp: new Date().toISOString(),
+      endpoint: 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+      method: 'POST', status,
+      code: parsed?.error?.code?.toString(),
+      message: parsed?.error?.message ?? body.slice(0, 200),
+    })
+  })
+})
+
+/* ============================================================
  *  I. 边界用例 — Provider / 大参数 / 异常输入
  * ============================================================ */
 test.describe('I. 边界用例', () => {
