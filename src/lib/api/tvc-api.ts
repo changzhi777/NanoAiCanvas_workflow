@@ -300,6 +300,20 @@ export const tvcApi = {
   async resolveConfig(): Promise<Record<string, any>> {
     return client.post('/v2/tvc-config/resolve');
   },
+
+  // === 一镜到底（C3）===
+  /** 提示词二次优化（LLM 润色） */
+  async optimizePrompt(req: { prompt: string; focus?: string }): Promise<{ original: string; optimized: string; diff_ratio: number }> {
+    return client.post('/v2/tvc-tasks/optimize-prompt', req);
+  },
+  /** 视频生成后：BPM 推荐 */
+  async recommendBpm(taskId: string): Promise<{ task_id: string; bpm_hint: number; confidence: string; duration: number }> {
+    return client.post(`/v2/tvc-tasks/${taskId}/recommend-bpm`);
+  },
+  /** 视频 + ambient + BGM 混音 */
+  async mixAudio(taskId: string, req: { ambient_urls: string[]; bgm_url: string; ambient_volume?: number }): Promise<{ url: string }> {
+    return client.post(`/v2/tvc-tasks/${taskId}/mix-audio`, req);
+  },
 };
 
 export default tvcApi;

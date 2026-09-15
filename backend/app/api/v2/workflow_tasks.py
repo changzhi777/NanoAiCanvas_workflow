@@ -336,3 +336,153 @@ async def compose_tvc_video(
         # 向后兼容：url 字段返回主档
         main_url = outputs_url.get(req.resolution) or next(iter(outputs_url.values()), "")
         return {"url": main_url, "outputs": outputs_url, "duration": result.duration}
+
+
+# ==================== 一镜到底辅助端点（C2）====================
+
+class MixAudioRequest(BaseModel):
+    ambient_urls: list[str] = []
+    bgm_url: str
+    ambient_volume: float = 0.3
+
+
+@router.post("/{task_id}/recommend-bpm")
+async def recommend_bpm(task_id: str, current_user: Optional[User] = Depends(get_current_user_optional)):
+    """视频生成后：按时长推算动作密度 → 推荐 BGM BPM。"""
+    from app.services.video_compose import probe_duration
+    state = await workflow_executor.load_task(task_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    video_node = next((n for n in state.get("nodes", []) if n.get("type") == "video"), None)
+    if not video_node:
+        raise HTTPException(status_code=400, detail="视频节点未生成")
+
+    # 取本地视频
+    from app.services.image_downloader import ASSET_UPLOAD_DIR
+    local_path = None
+    for st in video_node.get("subtasks", []):
+        u = (st.get("result") or {}).get("video_url", "")
+        if u.startswith("/asset-uploads/"):
+            local_path = os.path.join(ASSET_UPLOAD_DIR, u.split("/")[-1])
+            break
+
+    duration = 0.0
+    if local_path and os.path.exists(local_path):
+        duration = await asyncio.to_thread(probe_duration, local_path)
+
+    if duration <= 0:
+        bpm, confidence = 100, "low"
+    elif duration < 8:
+        bpm, confidence = 90, "high"
+    elif duration < 13:
+        bpm, confidence = 110, "high"
+    else:
+        bpm, confidence = 80, "mid"
+    return {"task_id": task_id, "bpm_hint": bpm, "confidence": confidence, "duration": duration}
+
+
+@router.post("/{task_id}/mix-audio")
+async def mix_audio(task_id: str, req: MixAudioRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
+    """H3 出片后 ffmpeg mix ambient + BGM → 本地 asset-uploads URL。"""
+    import shutil
+    state = await workflow_executor.load_task(task_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    from app.services.image_downloader import ASSET_UPLOAD_DIR
+    video_url = None
+    for n in state.get("nodes", []):
+        if n.get("type") == "video":
+            for st in n.get("subtasks", []):
+                u = (st.get("result") or {}).get("video_url", "")
+                if u.startswith("/asset-uploads/"):
+                    video_url = u
+                    break
+        if video_url:
+            break
+    if not video_url:
+        raise HTTPException(status_code=400, detail="视频未本地化或不存在")
+    video_path = os.path.join(ASSET_UPLOAD_DIR, video_url.split("/")[-1])
+    if not os.path.exists(video_path):
+        raise HTTPException(status_code=404, detail=f"视频文件不存在: {video_path}")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        async with httpx.AsyncClient(timeout=120) as client:
+            local_ambient = []
+            for i, u in enumerate(req.ambient_urls or []):
+                p = os.path.join(tmpdir, f"amb_{i}.mp3")
+                r = await client.get(u); r.raise_for_status()
+                with open(p, "wb") as f: f.write(r.content)
+                local_ambient.append(p)
+            bgm_path = os.path.join(tmpdir, "bgm.mp3")
+            r = await client.get(req.bgm_url); r.raise_for_status()
+            with open(bgm_path, "wb") as f: f.write(r.content)
+
+        out_path = os.path.join(tmpdir, "mixed.mp4")
+        loop = asyncio.get_running_loop()
+
+        def _mix():
+            inputs = ["-y", "-i", video_path]
+            for ap in local_ambient:
+                inputs += ["-i", ap]
+            inputs += ["-i", bgm_path]
+            amb_filter = "".join(
+                [f"[{i+1}:a]volume={req.ambient_volume}[a{i}];" for i in range(len(local_ambient))]
+            )
+            mix_inputs = "".join([f"[a{i}]" for i in range(len(local_ambient))]) + \
+                f"[{len(local_ambient)+1}:a]amix=inputs={len(local_ambient)+1}:duration=first[aout]"
+            filter_complex = f"{amb_filter}{mix_inputs}"
+            args = inputs + [
+                "-filter_complex", filter_complex,
+                "-map", "0:v", "-map", "[aout]",
+                "-c:v", "copy", "-c:a", "aac", "-shortest",
+                out_path,
+            ]
+            proc = subprocess.run(args, capture_output=True, timeout=180)
+            return proc.returncode, proc.stderr.decode(errors="ignore")[-400:]
+
+        code, err = await loop.run_in_executor(None, _mix)
+        if code != 0:
+            raise HTTPException(status_code=500, detail=f"FFmpeg mix 失败: {err}")
+        out_filename = f"{task_id}_mixed.mp4"
+        shutil.copy2(out_path, os.path.join(ASSET_UPLOAD_DIR, out_filename))
+        return {"url": f"/asset-uploads/{out_filename}"}
+
+
+@router.post("/optimize-prompt")
+async def optimize_prompt(
+    req: dict,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """提示词二次优化（LLM 润色）。body: {prompt: str, focus?: str='cinematic'}"""
+    from app.services.one_shot_prompt import log_action
+    prompt = req.get("prompt", "")
+    if not prompt.strip():
+        raise HTTPException(status_code=400, detail="prompt 必填")
+    focus = req.get("focus", "cinematic commercial photography")
+    system = f"你是 TVC 广告提示词润色专家。基于原 prompt 润色，重点强化 {focus} 元素，输出纯英文单段文本，长度 80-120 词。不要解释。"
+    from .glm_proxy import _glm_chat
+    data = await _glm_chat(
+        model="glm-4.5-air",
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=2000,
+    )
+    optimized = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+    # 埋点
+    if current_user:
+        try:
+            from app.database import async_session_maker
+            from uuid import UUID
+            async with async_session_maker() as db:
+                log_action(db, task_id=current_user.id, user_id=current_user.id,
+                          narrative="optimize", composition="optimize", action="optimized")
+        except Exception:
+            pass
+
+    return {
+        "original": prompt,
+        "optimized": optimized,
+        "diff_ratio": round(len(optimized) / max(len(prompt), 1), 2),
+    }

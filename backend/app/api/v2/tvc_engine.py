@@ -135,7 +135,8 @@ async def execute_tvc(task_id: str, req, user_id=None):
 
         # Step 2: 提示词优化
         await workflow_executor.update_node(task_id, 1, {"status": "running", "progress": 0})
-        optimized = await _optimize_prompts(script_result, req, settings, config)
+        optimized = await _optimize_prompts(script_result, req, settings, config,
+                                           task_id=task_id, user_id=str(user_id) if user_id else "")
         if not optimized.get("shots"):
             raise Exception("提示词优化返回空结果，无法继续生成分镜头")
         await workflow_executor.update_node(task_id, 1, {
@@ -567,9 +568,46 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
 
 # ==================== Step 2: 提示词优化 ====================
 
-async def _optimize_prompts(script_result: dict, req, settings, config: dict = None) -> dict:
+async def _optimize_prompts(script_result: dict, req, settings, config: dict = None,
+                         task_id: str = "", user_id: str = "") -> dict:
     raw = script_result.get("raw_content", "")
     cfg = (config or {}).get("step2_optimize", {})
+
+    # ===== 一镜到底模式：shot_count=1 走单段 15s 长镜头模板 =====
+    if getattr(req, "shot_count", 1) == 1:
+        from app.services.one_shot_prompt import generate as one_shot_generate
+        from app.database import async_session_maker
+        from app.services.one_shot_prompt import log_action
+
+        prev_seed = None
+        try:
+            state = await workflow_executor.load_task(task_id) if task_id else None
+            if state and isinstance(state.get("result"), dict):
+                prev_seed = state["result"].get("composition_seed")
+        except Exception:
+            pass
+
+        async with async_session_maker() as db:
+            one = one_shot_generate(
+                subject_desc=raw[:500],
+                object_desc=getattr(req, "style_reference", "") or "",
+                task_id=task_id,
+                user_id=user_id,
+                db=db,
+                prev_seed=prev_seed,
+            )
+            log_action(
+                db, task_id=task_id, user_id=user_id,
+                narrative=one["narrative"], composition=one["composition"],
+                action="shown",
+            )
+            shots = [{"visual_prompt": one["prompt"], "duration": one["duration"]}]
+            return {
+                "character_ref_prompt": one["prompt"][:200],
+                "scene_ref_prompt": one["prompt"][:200],
+                "shots": shots,
+                "_one_shot": one,
+            }
 
     system_prompt = f"""你是 TVC 广告分镜提示词专家。根据以下 TVC 脚本，生成：
 
@@ -917,3 +955,6 @@ async def _save_assets(task_id: str, user_id, req, breakdown: dict):
             db.add(asset)
         await db.commit()
         logger.info(f"TVC task {task_id}: saved {len(assets_to_save)} assets for user {user_id}")
+
+
+# BPM 推荐与声音混音端点已迁移到 workflow_tasks.py（保持 router 一致性）

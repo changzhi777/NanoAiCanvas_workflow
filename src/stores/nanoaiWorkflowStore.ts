@@ -644,6 +644,8 @@ interface WorkflowState {
   updateNode: (nodeId: string, data: Partial<WorkflowNodeData>) => void;
   updateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   updateNodeParams: (nodeId: string, params: Record<string, any>) => void;
+  /** K8 折叠下游：把节点 style.display 设为 'none'（隐藏但不删） */
+  setNodeHidden: (nodeId: string, hidden: boolean) => void;
 
   // Actions - 连线管理
   addEdge: (edge: WorkflowEdge) => void;
@@ -766,6 +768,17 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
             };
           }
           return n;
+        })
+      })),
+
+      setNodeHidden: (nodeId, hidden) => set((state) => ({
+        nodes: state.nodes.map(n => {
+          if (n.id !== nodeId) return n;
+          const curStyle = (n.style as Record<string, unknown>) || {};
+          return {
+            ...n,
+            style: { ...curStyle, display: hidden ? 'none' : undefined },
+          } as typeof n;
         })
       })),
 

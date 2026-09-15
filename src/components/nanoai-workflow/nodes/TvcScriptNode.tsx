@@ -5,11 +5,11 @@
  * 模式：分步执行(显示下游节点执行按钮) / 一键生成(隐藏下游节点执行按钮)
  */
 
-import { memo, useCallback, useState, useRef, useMemo } from 'react';
+import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   FileText, X, Image as ImageIcon,
-  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight, Square,
+  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight, Square, Eye, EyeOff, Wand2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
@@ -19,6 +19,9 @@ import { tvcApi, type TvcScript, type ProductAnalysis, type TvcCharacter } from 
 import { useIMETextarea } from '@/hooks/useIMETextarea';
 import { useTvcExecution } from './useTvcExecution';
 import { calcTvcParams } from '@/lib/tvc-cascade';
+import { LanternImage } from '../ui/LanternImage';
+import { MiniVideoPlayer } from '../ui/MiniVideoPlayer';
+import { PromptOptimizerDialog } from '../ui/PromptOptimizerDialog';
 
 // ==================== 类型 ====================
 
@@ -44,6 +47,8 @@ export interface TvcScriptData extends WorkflowNodeData {
     cameraMovement?: string;
     lightStyle?: string;
     negativePrompts?: string[];
+    /** 一镜到底模式（K3）：产品参考图（与 referenceImage 独立） */
+    productImage?: string | null;
   };
   result?: {
     script?: TvcScript;
@@ -77,7 +82,6 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [costExpanded, setCostExpanded] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const ime = useIMETextarea(data.params.inputText);
 
   const { isExecuting, executeStep, executeAuto } = useTvcExecution(id, data, updateNodeParams, updateNode);
@@ -100,44 +104,49 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
   const params = data.params;
   const result = data.result;
 
-  // ---- 参考图上传 ----
-  const handleImageUpload = useCallback(async (file: File) => {
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const base64 = reader.result as string;
-      updateNodeParams(id, {
-        referenceImage: base64,
-        optimizeMode: 'tvc_vision',
-      });
+  // ---- 参考图上传（双图位：character + object） ----
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-      setAnalysisLoading(true);
-      try {
-        const { analysis } = await tvcApi.analyzeProductReference({ imageUrl: base64 });
-        updateNode(id, { result: { ...data.result, analysis } });
-        toast.success('产品参考图分析完成');
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        toast.error(`参考图分析失败: ${message}`);
-      } finally {
-        setAnalysisLoading(false);
+  const handleImageUpload = useCallback(async (field: 'referenceImage' | 'productImage', file: File) => {
+    try {
+      const base64 = await fileToBase64(file);
+      const updates: Record<string, unknown> = { [field]: base64 };
+      if (field === 'referenceImage') {
+        updates.optimizeMode = 'tvc_vision';  // 触发现有分析流程
       }
-    };
-    reader.readAsDataURL(file);
+      updateNodeParams(id, updates);
+
+      if (field === 'referenceImage') {
+        setAnalysisLoading(true);
+        try {
+          const { analysis } = await tvcApi.analyzeProductReference({ imageUrl: base64 });
+          updateNode(id, { result: { ...data.result, analysis } });
+          toast.success('参考图分析完成');
+        } catch (err) {
+          toast.error(`参考图分析失败: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+          setAnalysisLoading(false);
+        }
+      }
+    } catch (err) {
+      toast.error(`图片读取失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }, [id, updateNodeParams, updateNode, data.result, toast]);
 
-  const handleRemoveImage = useCallback(() => {
-    updateNodeParams(id, { referenceImage: null });
-    if (params.optimizeMode === 'tvc_vision') {
+  const handleRemoveImage = useCallback((field: 'referenceImage' | 'productImage') => {
+    updateNodeParams(id, { [field]: null });
+    if (field === 'referenceImage' && params.optimizeMode === 'tvc_vision') {
       updateNodeParams(id, { optimizeMode: 'tvc_deep' });
+      updateNode(id, { result: { ...data.result, analysis: undefined } });
     }
-    updateNode(id, { result: { ...data.result, analysis: undefined } });
   }, [id, params.optimizeMode, updateNodeParams, updateNode, data.result]);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleImageUpload(file);
-    e.target.value = '';
-  }, [handleImageUpload]);
 
   // ---- 积分预估 ----
   const costEstimate = useMemo(() => {
@@ -148,8 +157,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
   // ---- 渲染 ----
   const isRunning = data.status === NodeStatus.RUNNING || isExecuting;
   const hasScript = !!result?.script;
-  const hasImage = !!params.referenceImage;
-
+  
   return (
     <div className={cn(
       'w-[320px] rounded-2xl backdrop-blur-xl border overflow-hidden',
@@ -205,42 +213,22 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
           )}
         </div>
 
-        {/* 参考图 + 模型选择 */}
+        {/* 双灯笼图位（character + object）+ 模型选择 */}
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            {hasImage ? (
-              <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-white/10">
-                <img src={params.referenceImage!} alt="ref" className="w-full h-full object-cover" />
-                <button
-                  onClick={handleRemoveImage}
-                  className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-red-500 text-white flex items-center justify-center"
-                >
-                  <X className="w-2 h-2" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className={cn(
-                  'w-9 h-9 rounded-lg flex items-center justify-center',
-                  'border border-dashed transition-colors',
-                  isDark
-                    ? 'border-white/20 hover:border-blue-400 text-white/40 hover:text-blue-400'
-                    : 'border-gray-300 hover:border-blue-400 text-gray-400 hover:text-blue-400',
-                )}
-              >
-                {analysisLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-              </button>
-            )}
-          </div>
-
+          <LanternImage
+            label="请上传人物"
+            value={params.referenceImage ?? null}
+            onChange={(f) => f ? handleImageUpload('referenceImage', f) : handleRemoveImage('referenceImage')}
+            status={analysisLoading ? 'uploading' : (params.referenceImage ? 'done' : 'empty')}
+            variant="character"
+          />
+          <LanternImage
+            label="请上传产品"
+            value={params.productImage ?? null}
+            onChange={(f) => f ? handleImageUpload('productImage', f) : handleRemoveImage('productImage')}
+            status={params.productImage ? 'done' : 'empty'}
+            variant="object"
+          />
           <div className={cn(
             'flex-1 h-9 rounded-lg px-2 text-xs flex items-center border',
             isDark
@@ -371,7 +359,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         );
       })()}
 
-      {/* 底部：运行中显示「终止任务」，空闲显示双模式执行按钮 */}
+      {/* K1 一镜到底：底部按钮区分（带提示词优化入口） */}
       {isRunning ? (
         <div className={cn(
           'flex gap-2 px-4 py-3 border-t',
