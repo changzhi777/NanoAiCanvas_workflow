@@ -123,10 +123,14 @@ export const createTvcVideo01Nodes = (): WorkflowNode[] => {
         label: '③ TVC 视频合成',
         params: {
           transition: 'fade',
+          fadeDuration: 0.5,
           outputFormat: 'mp4',
           resolution: '720p',
+          quality: 'standard',
           enableBgmMix: true,
           bgmVolume: 0.3,
+          bgmFadeIn: 1.0,
+          bgmFadeOut: 1.5,
         },
         inputs: [
           { id: 'input-videos', name: '镜头视频', type: 'array', required: true, description: '逐镜头视频列表' },

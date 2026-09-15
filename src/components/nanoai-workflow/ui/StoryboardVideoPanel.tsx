@@ -36,6 +36,10 @@ export function StoryboardVideoPanel({ nodeId, isDark }: Props) {
     resolution: '720p',
     enableBgmMix: true,
     bgmVolume: 0.3,
+    bgmFadeIn: 1.0,
+    bgmFadeOut: 1.5,
+    fadeDuration: 0.5,
+    quality: 'standard',
     ...(node?.data?.params || {}),
   }
 
@@ -81,7 +85,11 @@ export function StoryboardVideoPanel({ nodeId, isDark }: Props) {
           video_urls: sourceVideos,
           bgm_url: params.enableBgmMix ? sourceBgm : undefined,
           bgm_volume: params.bgmVolume,
+          bgm_fade_in: params.bgmFadeIn,
+          bgm_fade_out: params.bgmFadeOut,
           transition: params.transition,
+          fade_duration: params.fadeDuration,
+          quality: params.quality,
           resolution: params.resolution,
           output_format: params.outputFormat,
         })
@@ -138,26 +146,46 @@ export function StoryboardVideoPanel({ nodeId, isDark }: Props) {
                 <option value="fade">淡入淡出</option>
                 <option value="dissolve">溶解</option>
                 <option value="cut">硬切</option>
-                <option value="wipe">擦除</option>
+                <option value="wiperight">右擦除</option>
+                <option value="slideup">上滑</option>
+                <option value="circleopen">圆形展开</option>
+                <option value="fadeblack">黑场过渡</option>
               </select>
             </div>
+            {params.transition !== 'cut' && (
+              <div>
+                <Label className="text-xs mb-1 block text-muted-foreground">转场时长: {params.fadeDuration}s</Label>
+                <input type="range" min={0.2} max={2} step={0.1} value={params.fadeDuration}
+                  onChange={e => setParams({ fadeDuration: Number(e.target.value) })}
+                  className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs mb-1.5 block text-muted-foreground">分辨率</Label>
                 <select value={params.resolution} onChange={e => setParams({ resolution: e.target.value })} className={selectCls}>
                   <option value="720p">720p</option>
                   <option value="1080p">1080p</option>
-                  <option value="4k">4K</option>
+                  <option value="2k">2K</option>
                   <option value="480p">480p</option>
+                  <option value="all">双档 720p+1080p</option>
                 </select>
               </div>
               <div>
-                <Label className="text-xs mb-1.5 block text-muted-foreground">格式</Label>
-                <select value={params.outputFormat} onChange={e => setParams({ outputFormat: e.target.value })} className={selectCls}>
-                  <option value="mp4">MP4</option>
-                  <option value="webm">WebM</option>
+                <Label className="text-xs mb-1.5 block text-muted-foreground">画质</Label>
+                <select value={params.quality} onChange={e => setParams({ quality: e.target.value })} className={selectCls}>
+                  <option value="standard">标准</option>
+                  <option value="high">高（慢）</option>
+                  <option value="draft">草稿（快）</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <Label className="text-xs mb-1.5 block text-muted-foreground">格式</Label>
+              <select value={params.outputFormat} onChange={e => setParams({ outputFormat: e.target.value })} className={selectCls}>
+                <option value="mp4">MP4</option>
+                <option value="webm">WebM</option>
+              </select>
             </div>
           </div>
 
@@ -168,12 +196,28 @@ export function StoryboardVideoPanel({ nodeId, isDark }: Props) {
               混合背景音乐
             </label>
             {params.enableBgmMix && (
-              <div>
-                <Label className="text-xs mb-1 block text-muted-foreground">BGM 音量: {Math.round(params.bgmVolume * 100)}%</Label>
-                <input type="range" min={0} max={1} step={0.05} value={params.bgmVolume}
-                  onChange={e => setParams({ bgmVolume: Number(e.target.value) })}
-                  className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
-              </div>
+              <>
+                <div>
+                  <Label className="text-xs mb-1 block text-muted-foreground">BGM 音量: {Math.round(params.bgmVolume * 100)}%</Label>
+                  <input type="range" min={0} max={1} step={0.05} value={params.bgmVolume}
+                    onChange={e => setParams({ bgmVolume: Number(e.target.value) })}
+                    className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs mb-1 block text-muted-foreground">淡入: {params.bgmFadeIn}s</Label>
+                    <input type="range" min={0} max={3} step={0.5} value={params.bgmFadeIn}
+                      onChange={e => setParams({ bgmFadeIn: Number(e.target.value) })}
+                      className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block text-muted-foreground">淡出: {params.bgmFadeOut}s</Label>
+                    <input type="range" min={0} max={3} step={0.5} value={params.bgmFadeOut}
+                      onChange={e => setParams({ bgmFadeOut: Number(e.target.value) })}
+                      className="w-full h-1 rounded-lg appearance-none cursor-pointer accent-primary" />
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>

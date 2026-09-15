@@ -113,10 +113,15 @@ export async function submitComposeTask(params: {
   video_urls: string[]
   bgm_url?: string
   bgm_volume?: number
+  bgm_fade_in?: number
+  bgm_fade_out?: number
   transition?: string
+  fade_duration?: number
+  quality?: string
   resolution?: string
   output_format?: string
-}): Promise<{ url: string; duration: number }> {
+  subtitles?: { text: string; start: number; end: number }[]
+}): Promise<{ url: string; outputs?: Record<string, string>; duration: number }> {
   return client.post('/v2/tvc-tasks/compose', params)
 }
 

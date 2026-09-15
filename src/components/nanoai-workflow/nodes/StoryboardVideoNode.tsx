@@ -25,6 +25,10 @@ export interface StoryboardVideoNodeData extends WorkflowNodeData {
     resolution: string
     enableBgmMix: boolean
     bgmVolume: number
+    bgmFadeIn?: number     // BGM 淡入秒数（默认 1.0）
+    bgmFadeOut?: number    // BGM 淡出秒数（默认 1.5）
+    fadeDuration?: number  // 转场时长秒（默认 0.5）
+    quality?: string       // high / standard / draft
   }
   result?: {
     composedUrl?: string
@@ -72,11 +76,15 @@ export const StoryboardVideoNode = ({ id, data }: NodeProps<StoryboardVideoNodeD
     updateNode(id, { status: NodeStatus.RUNNING, error: undefined })
 
     try {
-      const response = await client.post<{ url: string; duration: number }>('/v2/tvc-tasks/compose', {
+      const response = await client.post<{ url: string; outputs?: Record<string, string>; duration: number }>('/v2/tvc-tasks/compose', {
         video_urls: sourceVideos,
         bgm_url: data.params.enableBgmMix ? sourceBgm : undefined,
         bgm_volume: data.params.bgmVolume,
+        bgm_fade_in: data.params.bgmFadeIn ?? 1.0,
+        bgm_fade_out: data.params.bgmFadeOut ?? 1.5,
         transition: data.params.transition,
+        fade_duration: data.params.fadeDuration ?? 0.5,
+        quality: data.params.quality ?? 'standard',
         resolution: data.params.resolution,
         output_format: data.params.outputFormat,
       })
