@@ -302,9 +302,9 @@ def _submit_video_minimax(
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{base_url}/api/async/video_minimax_h3?key={api_key}",
+                f"{base_url}/api/async/video_minimax_h3",
                 json=body,
-                headers={"Content-Type": "application/json"},
+                headers={"Authorization": api_key, "Content-Type": "application/json"},
             )
         if resp.status_code != 200:
             raise Exception(f"MiniMax H3 submit error: {resp.status_code} {resp.text}")
