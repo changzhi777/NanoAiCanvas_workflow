@@ -4,7 +4,7 @@ TVC 图片/视频 Provider 工厂
 """
 import httpx
 import asyncio
-from typing import Callable
+from typing import Callable, Optional
 
 from app.config import Settings
 
@@ -247,52 +247,82 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
 
 # ==================== 视频 Provider ====================
 
+async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait: int = 600) -> str:
+    """轮询速创异步任务（与生图同构：GET detail，status=2 成功）→ 返回视频 URL。"""
+    interval = 10
+    elapsed = 0
+    async with httpx.AsyncClient(timeout=30) as client:
+        while elapsed < max_wait:
+            await asyncio.sleep(interval)
+            elapsed += interval
+            resp = await client.get(f"{base_url}/api/async/detail?key={api_key}&id={task_id}")
+            if resp.status_code != 200:
+                continue
+            data = resp.json().get("data", {})
+            status = data.get("status", 0)
+            if status == 2:
+                result_data = data.get("result", {})
+                url = ""
+                if isinstance(result_data, str):
+                    url = result_data
+                elif isinstance(result_data, list) and result_data:
+                    item = result_data[0]
+                    url = item if isinstance(item, str) else item.get("url", "")
+                elif isinstance(result_data, dict):
+                    url = result_data.get("url", "")
+                if not url:
+                    raise Exception(f"视频生成成功但无 URL: {data}")
+                return url
+            if status not in (0, 1):
+                raise Exception(f"视频生成失败 status={status} msg={data.get('message', '')}")
+    raise Exception(f"视频生成超时 {max_wait}s (task: {task_id})")
+
+
 def _submit_video_minimax(
     settings: Settings, resolution: str = "768P", model: str = "MiniMax-H3"
 ) -> Callable:
-    """调 minimax H3 / H3-Max 视频生成（content 用 first_frame role 接分镜图）。"""
-    from .tvc_polling import poll_minimax_video
-
-    api_key = settings.MINIMAX_API_KEY
-    base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
+    """调速创代理的 MiniMax H3 视频生成（首帧图驱动，计费走速创账户）。"""
+    api_key = settings.WUYINKEJI_API_KEY
+    base_url = settings.WUYINKEJI_API_BASE_URL.rstrip("/")
 
     async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
         if not api_key or not first_url:
-            raise Exception(f"缺少 MINIMAX_API_KEY 或首帧图片 (shot {shot_num})")
+            raise Exception(f"缺少 WUYINKEJI_API_KEY 或首帧图片 (shot {shot_num})")
 
         text_prompt = prompt or f"TVC镜头{shot_num}，{duration}秒，流畅过渡，电影级画质"
-        content = [
-            {"type": "text", "text": text_prompt},
-            {"type": "image_url", "image_url": {"url": first_url}, "role": "first_frame"},
-        ]
-        if last_url:
-            content.append({"type": "image_url", "image_url": {"url": last_url}, "role": "last_frame"})
-
         body = {
-            "model": model,
-            "content": content,
-            "resolution": resolution,
-            "duration": max(4, min(15, duration)),
+            "prompt": text_prompt,
+            "first_frame": first_url,
+            "resolution": resolution if resolution in ("768P", "2K") else "768P",
+            "duration": str(max(4, min(15, duration))),
             "ratio": "16:9",
         }
+        if last_url:
+            body["last_frame"] = last_url
+
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{base_url}/v2/video_generation",
+                f"{base_url}/api/async/video_minimax_h3?key={api_key}",
                 json=body,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                headers={"Content-Type": "application/json"},
             )
         if resp.status_code != 200:
-            raise Exception(f"MiniMax video submit error: {resp.status_code} {resp.text}")
-        task_id = resp.json().get("task_id", "")
+            raise Exception(f"MiniMax H3 submit error: {resp.status_code} {resp.text}")
+        result = resp.json()
+        if result.get("code") != 200:
+            raise Exception(f"MiniMax H3 submit failed: {result.get('msg', 'unknown')}")
+        task_id = result.get("data", {}).get("id", "")
         if not task_id:
-            raise Exception(f"No task_id in MiniMax response: {resp.text}")
-        video_url = await poll_minimax_video(api_key, base_url, task_id)
+            raise Exception(f"No task id in MiniMax H3 response: {result}")
+
+        video_url = await _poll_wuyin_video(api_key, base_url, task_id)
         return {"video_url": video_url, "provider_task_id": task_id}
 
     return _run
 
 
 def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Callable:
+    """Seedance 走字节 ARK 官方 API（速创无 Seedance，勿混淆）。"""
     from .tvc_polling import poll_seedance
 
     ark_key = settings.ARK_API_KEY
@@ -338,7 +368,7 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
 
 
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
-    """minimax 主路（videoModel 以 MiniMax 开头）/ Seedance 兜底"""
-    if video_model and video_model.startswith("MiniMax"):
+    """minimax 主路（videoModel 含 minimax，不区分大小写）/ Seedance 兜底，均走速创代理"""
+    if video_model and "minimax" in video_model.lower():
         return _submit_video_minimax(settings, resolution=resolution, model=video_model), "MiniMax H3"
     return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"
