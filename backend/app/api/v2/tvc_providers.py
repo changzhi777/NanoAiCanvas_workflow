@@ -321,6 +321,68 @@ def _submit_video_minimax(
     return _run
 
 
+def _submit_video_minimax_official(
+    settings: Settings, resolution: str = "768P", model: str = "MiniMax-Hailuo-02"
+) -> Callable:
+    """MiniMax 官方 API（coding 套餐视频额度计费）。仅支持 6s/10s，时长自动向下取档。"""
+    from .tvc_polling import poll_minimax_video
+
+    api_key = settings.MINIMAX_API_KEY
+    base_url = settings.MINIMAX_API_BASE_URL.rstrip("/")
+
+    async def _run(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
+        if not api_key or not first_url:
+            raise Exception(f"缺少 MINIMAX_API_KEY 或首帧图片 (shot {shot_num})")
+
+        # 官方仅支持 6s/10s：需求时长自适应取档（>6s 一律 10s）
+        eff_duration = 6 if duration <= 6 else 10
+        # 官方分辨率枚举：768P / 1080P
+        eff_resolution = "1080P" if str(resolution).lower() in ("1080p", "1080") else "768P"
+        text_prompt = prompt or f"TVC镜头{shot_num}，流畅过渡，电影级画质"
+        body = {
+            "model": model,
+            "prompt": text_prompt,
+            "first_frame_image": first_url,
+            "duration": eff_duration,
+            "resolution": eff_resolution,
+            "prompt_optimizer": False,
+        }
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{base_url}/video_generation",
+                json=body,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            )
+        if resp.status_code != 200:
+            raise Exception(f"MiniMax official submit error: {resp.status_code} {resp.text}")
+        result = resp.json()
+        if result.get("base_resp", {}).get("status_code", 0) != 0:
+            raise Exception(f"MiniMax official submit failed: {result.get('base_resp', {}).get('status_msg')}")
+        task_id = result.get("task_id", "")
+        if not task_id:
+            raise Exception(f"No task_id in MiniMax official response: {result}")
+
+        file_id = await poll_minimax_video(api_key, base_url, task_id)
+
+        # file_id → 下载 URL
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(
+                f"{base_url}/files/retrieve",
+                params={"file_id": file_id, "purpose": "video_generation"},
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        if resp.status_code != 200:
+            raise Exception(f"MiniMax files/retrieve error: {resp.status_code} {resp.text}")
+        download_url = resp.json().get("file", {}).get("download_url", "")
+        if not download_url:
+            raise Exception(f"No download_url for file_id {file_id}")
+
+        return {"video_url": download_url, "provider_task_id": str(task_id), "duration": eff_duration}
+
+    return _run
+
+
 def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Callable:
     """Seedance 走字节 ARK 官方 API（速创无 Seedance，勿混淆）。"""
     from .tvc_polling import poll_seedance
@@ -368,7 +430,10 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
 
 
 def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
-    """minimax 主路（videoModel 含 minimax，不区分大小写）/ Seedance 兜底，均走速创代理"""
-    if video_model and "minimax" in video_model.lower():
+    """minimax-official/coding 主路（coding 套餐额度）/ minimax 速创 H3 / Seedance 兜底"""
+    vm = (video_model or "").lower()
+    if "minimax-official" in vm or "minimax-coding" in vm or "hailuo" in vm:
+        return _submit_video_minimax_official(settings, resolution=resolution), "MiniMax Official"
+    if "minimax" in vm:
         return _submit_video_minimax(settings, resolution=resolution, model=video_model), "MiniMax H3"
     return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"
