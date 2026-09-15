@@ -6,10 +6,13 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
+  reporter: process.env.CI
+    ? [['html'], ['json', { outputFile: 'test-results/results.json' }]]
+    : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.PROD_URL || 'http://localhost:3000',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
   },
   projects: [
     {
@@ -25,9 +28,12 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
   ],
-  webServer: {
-    command: 'pnpm dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
+  // PROD_URL 环境变量 → 生产模式（关 webServer，不启本地 dev）
+  webServer: process.env.PROD_URL
+    ? undefined
+    : {
+        command: 'pnpm dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+      },
 })
