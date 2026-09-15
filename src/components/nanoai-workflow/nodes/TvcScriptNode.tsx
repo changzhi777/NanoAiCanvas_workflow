@@ -35,6 +35,7 @@ export interface TvcScriptData extends WorkflowNodeData {
     shotCount?: number;
     shotDuration?: number;
     totalDuration?: number;
+    oneShot?: boolean;      // 一镜到底：单段长镜头（shotCount=1）
     imageModel?: string;
     videoModel?: string;
     scriptModel?: string;

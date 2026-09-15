@@ -25,9 +25,10 @@ const REPORTS_DIR = path.resolve('e2e/reports')
 const RUN_ID = newRunId()
 
 const PROMPT = '一款天然矿泉水广告：高山湖泊源头特写，清澈见底，水面倒映蓝天白云，晨光中水滴落下溅起晶莹水花'
-const SHOT_COUNT = 3
-const SHOT_DURATION = 5
-const TOTAL_DURATION = 15
+// 可参数化：SHOT_COUNT=1 SHOT_DURATION=15 → 一镜到底 15s 单段
+const SHOT_COUNT = Number(process.env.SHOT_COUNT || '3')
+const SHOT_DURATION = Number(process.env.SHOT_DURATION || '5')
+const TOTAL_DURATION = Number(process.env.TOTAL_DURATION || '15')
 
 let zhyToken = ''
 let zhyCtx: any

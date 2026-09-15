@@ -10,6 +10,7 @@
 // 视频模型时长限制
 export const MODEL_DURATION_LIMITS: Record<string, number[]> = {
   'jimeng-video-01': [4, 5, 8, 10, 15],       // Seedance 2.0
+  'minimax-H3': [5, 10, 15],                    // MiniMax H3（速创代理，4-15s 任意整数）
   'hailuo-2.3-fast-768P': [6],                  // MiniMax fast
   'hailuo-2.3-768P': [6, 10],                   // MiniMax
   'cogvideox-3': [5, 10],                       // CogVideoX-3
@@ -18,7 +19,8 @@ export const MODEL_DURATION_LIMITS: Record<string, number[]> = {
 // 短 ID → 标准 model ID 映射（属性面板用短 ID，API 用标准 ID）
 const MODEL_ALIASES: Record<string, string> = {
   seedance: 'jimeng-video-01',
-  minimax: 'hailuo-2.3-768P',
+  minimax: 'minimax-H3',
+  'minimax-h3': 'minimax-H3',
   glm: 'cogvideox-3',
 }
 

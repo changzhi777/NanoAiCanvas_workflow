@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Edit2, Trash2, Save, X, Sparkles, RotateCcw, Loader2, Download, ShieldCheck, Copy, Clock, Calendar, FileImage } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Edit2, Trash2, Save, X, Sparkles, RotateCcw, Loader2, Download, ShieldCheck, Copy, Clock, Calendar, FileImage, Film } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -578,6 +578,36 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                 return (
                   <div className={cn('space-y-4 p-4 rounded-lg', isDark ? 'bg-slate-800/50' : 'bg-gray-50')}>
                     <h3 className={cn('text-sm font-semibold', isDark ? 'text-slate-200' : 'text-gray-700')}>TVC 参数配置</h3>
+
+                    {/* 一镜到底：单段长镜头（shotCount=1，总时长 ≤15s） */}
+                    {(() => {
+                      const isOneShot = p.shotCount === 1
+                      const oneShotDur = Math.min(Number(p.totalDuration) || 15, 15)
+                      return (
+                        <div className="space-y-1.5">
+                          <button
+                            onClick={() => setP(isOneShot
+                              ? { shotCount: undefined, shotDuration: undefined, oneShot: false }
+                              : { shotCount: 1, shotDuration: oneShotDur, totalDuration: oneShotDur, oneShot: true }
+                            )}
+                            className={cn(
+                              'w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all border',
+                              isOneShot
+                                ? 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                                : isDark
+                                  ? 'bg-white/[0.03] text-slate-300 border-white/10 hover:bg-white/[0.07]'
+                                  : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-150'
+                            )}
+                          >
+                            <Film className="w-3.5 h-3.5" />
+                            {isOneShot ? `一镜到底 · 单段 ${p.shotDuration || 15}s（点击关闭）` : '一镜到底（单段长镜头）'}
+                          </button>
+                          <p className={cn('text-[10px] leading-relaxed', isDark ? 'text-slate-500' : 'text-gray-400')}>
+                            整片一个连续镜头，无分镜切换与转场。H3 单段最长 15s，适合氛围感/一镜叙事
+                          </p>
+                        </div>
+                      )
+                    })()}
 
                     {/* 基础配置 */}
                     <div className="space-y-3">
