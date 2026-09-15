@@ -222,14 +222,20 @@ export function useTvcExecution(
             // 拉取产物：视频 URL + 一镜到底 meta（供节点内播放器与"再生成一次"）
             tvcApi.getTaskStatus(response.task_id).then((detail) => {
               let videoUrl = '';
+              let videoDur: number | undefined;
               let oneShotMeta: Record<string, unknown> | undefined;
               for (const n of detail.nodes || []) {
                 if (n.id === 'step-video') {
                   videoUrl = (n.subtasks?.[0]?.result?.video_url as string) || '';
+                  // provider 实际生成时长（官方 6/10s 降档后）优先于模板需求时长
+                  videoDur = n.subtasks?.[0]?.result?.duration as number | undefined;
                 }
                 if (n.id === 'step-optimize') {
                   oneShotMeta = (n as { result?: Record<string, unknown> }).result?._one_shot as Record<string, unknown>;
                 }
+              }
+              if (oneShotMeta && videoDur) {
+                oneShotMeta.duration = videoDur;
               }
               updateNode(nodeId, {
                 result: { ...data.result, taskId: response.task_id, tvcProjectId, videoUrl, oneShot: oneShotMeta },
