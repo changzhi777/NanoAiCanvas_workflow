@@ -9,7 +9,7 @@ import { memo, useCallback, useState, useRef, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   FileText, X, Image as ImageIcon,
-  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight,
+  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight, Square,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
@@ -79,6 +79,21 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
   const ime = useIMETextarea(data.params.inputText);
 
   const { isExecuting, executeStep, executeAuto } = useTvcExecution(id, data, updateNodeParams, updateNode);
+
+  // ---- 终止任务 ----
+  const handleCancelTask = useCallback(async () => {
+    if (!window.confirm('确认终止当前 TVC 任务？已扣积分不予退还。')) return;
+    const taskId = (data.result as { taskId?: string } | undefined)?.taskId;
+    try {
+      if (taskId) {
+        await tvcApi.cancelTask(taskId);
+      }
+      updateNode(id, { status: NodeStatus.ERROR, error: '任务已手动终止' });
+      toast.success('任务已终止');
+    } catch (err) {
+      toast.error(`终止失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [id, data.result, updateNode, toast]);
 
   const params = data.params;
   const result = data.result;
@@ -326,41 +341,60 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         </div>
       </div>
 
-      {/* 底部双模式按钮 */}
-      <div className={cn(
-        'flex gap-2 px-4 py-3 border-t',
-        isDark ? 'border-white/5 bg-slate-900/50' : 'border-gray-100 bg-gray-50/50',
-      )}>
-        <button
-          onClick={executeStep}
-          disabled={isRunning || !params.inputText.trim()}
-          className={cn(
-            'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
-            'text-xs font-medium transition-all',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            isDark
-              ? 'bg-slate-700/80 hover:bg-slate-600 text-slate-200'
-              : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200',
-          )}
-        >
-          {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-          分步执行
-        </button>
-        <button
-          onClick={executeAuto}
-          disabled={isRunning || !params.inputText.trim()}
-          className={cn(
-            'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
-            'text-xs font-medium transition-all',
-            'disabled:opacity-40 disabled:cursor-not-allowed',
-            'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400',
-            'text-white shadow-lg shadow-blue-500/25',
-          )}
-        >
-          {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-          一键生成
-        </button>
-      </div>
+      {/* 底部：运行中显示「终止任务」，空闲显示双模式执行按钮 */}
+      {isRunning ? (
+        <div className={cn(
+          'flex gap-2 px-4 py-3 border-t',
+          isDark ? 'border-white/5 bg-slate-900/50' : 'border-gray-100 bg-gray-50/50',
+        )}>
+          <button
+            onClick={handleCancelTask}
+            className={cn(
+              'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
+              'text-xs font-medium transition-all',
+              'bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/30',
+            )}
+          >
+            <Square className="w-3.5 h-3.5" />
+            终止任务
+          </button>
+        </div>
+      ) : (
+        <div className={cn(
+          'flex gap-2 px-4 py-3 border-t',
+          isDark ? 'border-white/5 bg-slate-900/50' : 'border-gray-100 bg-gray-50/50',
+        )}>
+          <button
+            onClick={executeStep}
+            disabled={!params.inputText.trim()}
+            className={cn(
+              'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
+              'text-xs font-medium transition-all',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+              isDark
+                ? 'bg-slate-700/80 hover:bg-slate-600 text-slate-200'
+                : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-200',
+            )}
+          >
+            <Play className="w-3.5 h-3.5" />
+            分步执行
+          </button>
+          <button
+            onClick={executeAuto}
+            disabled={!params.inputText.trim()}
+            className={cn(
+              'flex-1 h-9 rounded-xl flex items-center justify-center gap-1.5',
+              'text-xs font-medium transition-all',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+              'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400',
+              'text-white shadow-lg shadow-blue-500/25',
+            )}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            一键生成
+          </button>
+        </div>
+      )}
 
       {/* 输出端口 */}
       <Handle

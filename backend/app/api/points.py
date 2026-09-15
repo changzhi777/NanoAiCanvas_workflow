@@ -628,31 +628,15 @@ async def estimate_tvc_cost(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """TVC 任务积分预估"""
-    from app.services.points_service import check_balance, node_type_to_model_type, resolve_price
+    """TVC 任务积分预估（公式与 tvc_engine.deduct_points 统一，单一真相源）"""
+    from app.services.points_service import calc_tvc_cost
 
-    # 文本（脚本+优化+拆分）×1
-    text_model = node_type_to_model_type("script_generator")
-    text_price = await resolve_price(db, text_model)
-
-    # 图片（起始帧+结束帧）× shot_count × 2
-    image_model = node_type_to_model_type("storyboard_generator")
-    image_price = await resolve_price(db, image_model)
-
-    # 视频 × shot_count
-    video_model = node_type_to_model_type("storyboard_video")
-    video_price = await resolve_price(db, video_model)
-
-    # BGM × 1
-    bgm_model = node_type_to_model_type("background_music")
-    bgm_price = await resolve_price(db, bgm_model) if req.include_bgm else 0
-
-    text_total = text_price * 3  # 脚本+优化+拆分
-    image_total = image_price * req.shot_count * 2
-    video_total = video_price * req.shot_count
-    bgm_total = bgm_price
-
-    total = text_total + image_total + video_total + bgm_total
+    cost = await calc_tvc_cost(db, req.shot_count, include_bgm=req.include_bgm)
+    text_total, image_total = cost["text"], cost["image"]
+    video_total, bgm_total = cost["video"], cost["bgm"]
+    total = cost["total"]
+    text_price, image_price = cost["prices"]["text"], cost["prices"]["image"]
+    video_price, bgm_price = cost["prices"]["video"], cost["prices"]["bgm"]
 
     account = await get_or_create_user_account(db, current_user.id)
 
@@ -670,6 +654,6 @@ async def estimate_tvc_cost(
             "video_per": video_price,
             "bgm_per": bgm_price,
             "shot_count": req.shot_count,
-            "image_count": req.shot_count * 2,
+            "image_count": 2,  # 主参考图 + 场景设计图（固定，与生成环节一致）
         },
     }

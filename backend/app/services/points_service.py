@@ -67,6 +67,32 @@ def node_type_to_model_type(node_type: str) -> str:
     return mapping.get(node_type, "text")
 
 
+async def calc_tvc_cost(db: AsyncSession, shot_count: int, include_bgm: bool = True) -> dict:
+    """TVC 任务计费统一公式（estimate 与 deduct 共用，单一真相源）。
+
+    total = text×3 + image×2（固定主参考图+场景图）+ video×shot_count + bgm×1
+    一镜到底（shot_count=1）自然兼容。
+    """
+    text_price = await resolve_price(db, node_type_to_model_type("script_generator"))
+    image_price = await resolve_price(db, node_type_to_model_type("storyboard_generator"))
+    video_price = await resolve_price(db, node_type_to_model_type("storyboard_video"))
+    bgm_price = await resolve_price(db, node_type_to_model_type("background_music")) if include_bgm else 0
+
+    text_total = text_price * 3    # 脚本 + 优化 + 拆分（三次 LLM）
+    image_total = image_price * 2  # 主参考图 + 场景设计图（固定 2 张，与生图环节一致）
+    video_total = video_price * shot_count  # 每分镜一段视频
+    bgm_total = bgm_price
+
+    return {
+        "text": text_total,
+        "image": image_total,
+        "video": video_total,
+        "bgm": bgm_total,
+        "total": text_total + image_total + video_total + bgm_total,
+        "prices": {"text": text_price, "image": image_price, "video": video_price, "bgm": bgm_price},
+    }
+
+
 async def check_balance(db: AsyncSession, user_id: UUID, model_type: str, amount: Optional[int] = None) -> dict:
     account = await get_or_create_account(db, user_id)
     required = amount if amount else await resolve_price(db, model_type)

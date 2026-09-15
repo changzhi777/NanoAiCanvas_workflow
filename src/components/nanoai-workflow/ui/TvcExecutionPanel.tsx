@@ -41,6 +41,25 @@ export interface TvcExecutionState {
   status: 'submitted' | 'running' | 'completed' | 'failed' | 'cancelled';
   overall_progress: number;
   nodes: NodeProgressInfo[];
+  /** 动态剩余时间（秒），后端 _compute_eta 计算，null = 样本不足 */
+  eta_seconds?: number | null;
+  /** 已耗时（秒） */
+  elapsed_seconds?: number;
+  /** ETA 可信度：low（<25% 权重）/ mid / high（>60%） */
+  eta_confidence?: 'low' | 'mid' | 'high';
+}
+
+/** 秒 → "1:23" / "1h 2m" */
+function fmtDuration(sec: number): string {
+  const s = Math.max(0, Math.round(sec));
+  if (s >= 3600) {
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return `${h}h ${m}m`;
+  }
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  return `${m}:${String(rest).padStart(2, '0')}`;
 }
 
 interface TvcExecutionPanelProps {
@@ -234,6 +253,21 @@ export const TvcExecutionPanel = memo(({ state, onDuplicate, onCancel }: TvcExec
             transition={{ duration: 0.5, ease: 'easeOut' }}
           />
         </div>
+
+        {/* 已用时间 · 动态剩余时间（ETA） */}
+        {isRunning && state.elapsed_seconds != null && (
+          <div className={cn('flex items-center justify-between text-[10px] font-mono', isDark ? 'text-slate-400' : 'text-gray-500')}>
+            <span>已用 {fmtDuration(state.elapsed_seconds)}</span>
+            {state.eta_seconds != null && state.eta_seconds > 0 ? (
+              <span className={isDark ? 'text-cyan-400/80' : 'text-cyan-600'}>
+                预计剩余 ~{fmtDuration(state.eta_seconds)}
+                {state.eta_confidence === 'low' && ' (粗估)'}
+              </span>
+            ) : (
+              <span className="opacity-60">计算剩余时间中…</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 节点列表 */}

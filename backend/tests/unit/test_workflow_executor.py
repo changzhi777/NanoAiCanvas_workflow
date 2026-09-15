@@ -177,3 +177,80 @@ class TestCompleteTask:
 
             # Should not crash
             await complete_task("nonexistent")
+
+
+# ==================== ETA 计算 ====================
+
+class TestComputeEta:
+    """_compute_eta：分步权重线性外推 + EMA 平滑"""
+
+    def _state(self, elapsed, nodes, **kw):
+        import time as _t
+        base = {
+            "status": "running",
+            "started_at": _t.time() - elapsed,
+            "nodes": nodes,
+        }
+        base.update(kw)
+        return base
+
+    def _node(self, ntype, status, progress=100):
+        return {"id": f"step-{ntype}", "type": ntype, "status": status, "progress": progress}
+
+    def test_no_started_at(self):
+        from app.services.workflow_executor import _compute_eta
+        r = _compute_eta({"nodes": []})
+        assert r["eta_seconds"] is None
+
+    def test_too_early_returns_none(self):
+        from app.services.workflow_executor import _compute_eta
+        r = _compute_eta(self._state(5, [self._node("script", "running", 10)]))
+        assert r["eta_seconds"] is None
+        assert r["eta_confidence"] == "low"
+
+    def test_after_script_done(self):
+        from app.services.workflow_executor import _compute_eta
+        # script(0.15) 完成，elapsed=20 → eta = 20 × 0.85/0.15 ≈ 113
+        r = _compute_eta(self._state(20, [self._node("script", "success")]))
+        assert r["eta_seconds"] is not None
+        assert 100 <= r["eta_seconds"] <= 130
+
+    def test_ema_smoothing(self):
+        from app.services.workflow_executor import _compute_eta
+        # prev=200，新算值≈113 → 0.7×200 + 0.3×113 ≈ 174
+        r = _compute_eta(self._state(20, [self._node("script", "success")], eta_seconds=200))
+        assert 165 <= r["eta_seconds"] <= 185
+
+    def test_completed_terminal(self):
+        from app.services.workflow_executor import _compute_eta
+        r = _compute_eta(self._state(60, [self._node("script", "success")], status="completed"))
+        assert r["eta_seconds"] == 0
+        assert r["eta_confidence"] == "high"
+
+    def test_confidence_grading(self):
+        from app.services.workflow_executor import _compute_eta
+        r1 = _compute_eta(self._state(20, [self._node("script", "success")]))
+        assert r1["eta_confidence"] == "low"
+        r2 = _compute_eta(self._state(60, [
+            self._node("script", "success"),
+            self._node("optimize", "success"),
+            self._node("breakdown", "success"),
+        ]))
+        assert r2["eta_confidence"] == "mid"
+        r3 = _compute_eta(self._state(300, [
+            self._node("script", "success"),
+            self._node("optimize", "success"),
+            self._node("breakdown", "success"),
+            self._node("images", "success"),
+        ]))
+        assert r3["eta_confidence"] == "high"
+
+    def test_clamp_bounds(self):
+        from app.services.workflow_executor import _compute_eta
+        r = _compute_eta(self._state(10000, [self._node("script", "success")]))
+        assert r["eta_seconds"] <= 3600
+
+    def test_running_half_weight(self):
+        from app.services.workflow_executor import _compute_eta
+        r = _compute_eta(self._state(30, [self._node("script", "running", 100)]))
+        assert r["eta_seconds"] is None

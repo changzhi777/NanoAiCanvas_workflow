@@ -61,20 +61,13 @@ async def _resolve_tvc_config(user_id=None, req=None) -> dict:
 # ==================== 积分管理 ====================
 
 async def deduct_points(user_id, req, force_personal: bool = False) -> int:
-    """预扣积分（团队优先），返回扣除金额"""
-    from app.services.points_service import node_type_to_model_type, resolve_price, deduct_team_first
+    """预扣积分（团队优先），返回扣除金额（公式与 /tvc-estimate 统一）"""
+    from app.services.points_service import calc_tvc_cost, deduct_team_first
     from app.database import async_session_maker
 
     async with async_session_maker() as db:
-        text_price = await resolve_price(db, node_type_to_model_type("script_generator"))
-        image_price = await resolve_price(db, node_type_to_model_type("storyboard_generator"))
-        video_price = await resolve_price(db, node_type_to_model_type("storyboard_video"))
-        bgm_price = await resolve_price(db, node_type_to_model_type("background_music"))
-
-        text_cost = text_price * 3
-        image_cost = image_price * 2  # 主参考图 + 场景设计图
-        video_cost = video_price * req.shot_count
-        total = text_cost + image_cost + video_cost + bgm_price
+        cost = await calc_tvc_cost(db, req.shot_count)
+        total = cost["total"]
 
         result = await deduct_team_first(
             db, user_id, total,

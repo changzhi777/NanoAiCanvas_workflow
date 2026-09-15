@@ -162,3 +162,61 @@ class TestDeductTeamFirst:
         result = await deduct_team_first(mock_db, uuid4(), 0)
         assert result["source"] == "free"
         assert result["amount"] == 0
+
+
+# ==================== calc_tvc_cost（统一计费公式） ====================
+
+class TestCalcTvcCost:
+    """TVC 计费公式：text×3 + image×2（固定）+ video×shot_count + bgm×1
+
+    这是 estimate 与 deduct 的共同真相源 —— image 固定 2 张是关键回归点
+    （旧 estimate 误用 shot_count×2）。
+    """
+
+    PRICES = {"text": 10, "image": 5, "video": 20, "audio": 3}  # audio = bgm
+
+    def _mock_price(self):
+        async def _side_effect(db, model_type):
+            return TestCalcTvcCost.PRICES.get(model_type, 0)
+        return AsyncMock(side_effect=_side_effect)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("shot_count", [1, 3, 6])
+    async def test_formula(self, shot_count):
+        from app.services.points_service import calc_tvc_cost
+
+        with patch("app.services.points_service.resolve_price", new=self._mock_price()):
+            cost = await calc_tvc_cost(AsyncMock(), shot_count, include_bgm=True)
+
+        assert cost["text"] == 30                  # 10 × 3
+        assert cost["image"] == 10                 # 5 × 2（固定！不随 shot_count 变）
+        assert cost["video"] == 20 * shot_count
+        assert cost["bgm"] == 3
+        assert cost["total"] == 30 + 10 + 20 * shot_count + 3
+
+    @pytest.mark.asyncio
+    async def test_image_fixed_across_shot_counts(self):
+        """回归：image 不随 shot_count 缩放（旧 bug 是 ×shot_count×2）"""
+        from app.services.points_service import calc_tvc_cost
+
+        with patch("app.services.points_service.resolve_price", new=self._mock_price()):
+            c1 = await calc_tvc_cost(AsyncMock(), 1)
+            c6 = await calc_tvc_cost(AsyncMock(), 6)
+        assert c1["image"] == c6["image"] == 10
+
+    @pytest.mark.asyncio
+    async def test_include_bgm_false(self):
+        from app.services.points_service import calc_tvc_cost
+
+        with patch("app.services.points_service.resolve_price", new=self._mock_price()):
+            cost = await calc_tvc_cost(AsyncMock(), 3, include_bgm=False)
+        assert cost["bgm"] == 0
+        assert cost["total"] == 30 + 10 + 60
+
+    @pytest.mark.asyncio
+    async def test_prices_exposed(self):
+        from app.services.points_service import calc_tvc_cost
+
+        with patch("app.services.points_service.resolve_price", new=self._mock_price()):
+            cost = await calc_tvc_cost(AsyncMock(), 3)
+        assert cost["prices"] == {"text": 10, "image": 5, "video": 20, "bgm": 3}
