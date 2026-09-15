@@ -33,7 +33,7 @@ class SubmitRequest(BaseModel):
     optimize_mode: str = "tvc_deep"
     execution_mode: str = "auto"
     image_model: str = "gpt-image-2"
-    video_model: str = "seedance"
+    video_model: Optional[str] = None  # None → 读全局配置 step5_video.default_provider
     style_reference: Optional[str] = None
     reference_image: Optional[str] = None
     # 用户级模型覆盖（来自属性面板）
