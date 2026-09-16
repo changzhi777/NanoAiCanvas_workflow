@@ -51,7 +51,7 @@ export const AUTH_ERROR_MESSAGES: Record<AuthErrorType | 'unknown' | 'rate_limit
   },
 };
 
-const EMAIL_DOMAINS = ['caohua.com', 'nanoai.fun', 'qq.com'];
+const EMAIL_DOMAINS = ['nanoai.fun', 'caohua.com', 'qq.com'];
 
 const STATUS_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
   pending: {
