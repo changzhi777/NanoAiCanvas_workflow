@@ -35,14 +35,26 @@ class Settings(BaseSettings):
     WUYINKEJI_API_KEY: str = ""
     WUYINKEJI_API_BASE_URL: str = "https://api.wuyinkeji.com"
 
-    # GLM (智谱AI)
+    # GLM (智谱AI) — 主路
     GLM_API_KEY: str = ""
     GLM_API_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
+    # 智谱 Anthropic 兼容端点（GLM Coding Plan 主路）
+    ANTHROPIC_GLM_URL: str = "https://open.bigmodel.cn/api/anthropic/v1/messages"
+    # DeepSeek Anthropic 兼容端点（兜底）
+    ANTHROPIC_DEEPSEEK_URL: str = "https://api.deepseek.com/anthropic/v1/messages"
+    GLM_DEFAULT_MODEL: str = "glm-5.3"
+    GLM_FAST_MODEL: str = "glm-5.3-flash"
 
-    # 七牛云 AI（GLM 主路：OpenAI 兼容协议，替代官方 Coding Plan 配额）
+    # 七牛云 AI（已废弃，2026-09-30 改用 GLM 主路 + DeepSeek 兜底，保留为兼容性占位）
     QINIU_API_KEY: str = ""
     QINIU_API_BASE_URL: str = "https://openai.qiniu.com/v1"
     QINIU_DEFAULT_MODEL: str = "z-ai/glm-5.3-flash"
+
+    # DeepSeek（OpenAI 兼容协议）— 兜底
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_API_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_DEFAULT_MODEL: str = "deepseek-v4-pro"
+    DEEPSEEK_FAST_MODEL: str = "deepseek-flash"
 
     # 即梦 (字节AI)
     JIMENG_API_KEY: str = ""

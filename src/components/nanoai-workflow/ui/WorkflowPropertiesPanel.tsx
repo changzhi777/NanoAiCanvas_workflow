@@ -349,9 +349,11 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">优化模型</Label>
-                        <select value={p.model || 'glm-4.5-air'} onChange={e => setP({ model: e.target.value })} className={selectCls}>
-                          <option value="glm-4.5-air">GLM-4.5-Air（快速）</option>
-                          <option value="glm-4.7-flash">GLM-4.7-Flash（快速）</option>
+                        <select value={p.model || 'glm-5.3-flash'} onChange={e => setP({ model: e.target.value })} className={selectCls}>
+                          <option value="glm-5.3-flash">GLM-5.3-Flash（推荐·快速）</option>
+                          <option value="glm-5.3">GLM-5.3（深度）</option>
+                          <option value="deepseek-flash">DeepSeek-Flash（兜底·快速）</option>
+                          <option value="deepseek-v4-pro">DeepSeek-V4-Pro（兜底·深度）</option>
                         </select>
                       </div>
                     </div>
@@ -723,17 +725,18 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <div className="space-y-3 mt-3">
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">剧本生成</Label>
-                            <select value={p.scriptModel || 'glm-5.1'} onChange={e => setP({ scriptModel: e.target.value })} className={selectCls}>
-                              <option value="glm-5.1">GLM-5.1（推荐）</option>
-                              <option value="glm-4.5-air">GLM-4.5-air（快速）</option>
-                              <option value="MiniMax-M2.7">MiniMax-M2.7</option>
+                            <select value={p.scriptModel || 'glm-5.3'} onChange={e => setP({ scriptModel: e.target.value })} className={selectCls}>
+                              <option value="glm-5.3">GLM-5.3（推荐）</option>
+                              <option value="glm-5.3-flash">GLM-5.3-Flash（快速）</option>
+                              <option value="deepseek-v4-pro">DeepSeek-V4-Pro（兜底）</option>
                             </select>
                           </div>
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">提示词优化</Label>
-                            <select value={p.optimizeModel || 'glm-4.5-air'} onChange={e => setP({ optimizeModel: e.target.value })} className={selectCls}>
-                              <option value="glm-4.5-air">GLM-4.5-air（推荐）</option>
-                              <option value="glm-5.1">GLM-5.1</option>
+                            <select value={p.optimizeModel || 'glm-5.3-flash'} onChange={e => setP({ optimizeModel: e.target.value })} className={selectCls}>
+                              <option value="glm-5.3-flash">GLM-5.3-Flash（推荐）</option>
+                              <option value="glm-5.3">GLM-5.3（深度）</option>
+                              <option value="deepseek-flash">DeepSeek-Flash（兜底）</option>
                             </select>
                           </div>
                           <div>

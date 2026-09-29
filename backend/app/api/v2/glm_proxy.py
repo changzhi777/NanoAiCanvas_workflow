@@ -210,108 +210,94 @@ def _to_qiniu_model(model: str, settings) -> str:
     return settings.QINIU_DEFAULT_MODEL or "z-ai/glm-5.3-flash"
 
 
-async def _qiniu_chat(
-    model: str, messages: list, temperature: float, max_tokens: int, settings
+# === 七牛云（QINIU）已废弃 2026-09-30 ===
+# 旧实现 _qiniu_chat + _to_qiniu_model 残留供历史参考，不再被 _glm_chat 调用。
+# 后续阶段清理时连同 config.py QINIU 字段一起移除（chat_completions 实现留档）。
+
+async def _anthropic_compat_chat(
+    api_url: str, api_key: str, model: str, messages: list,
+    temperature: float, max_tokens: int, label: str = "anthropic",
 ) -> dict:
-    """七牛云 AI（OpenAI 兼容协议）— GLM 主路。
+    """通用 Anthropic 兼容协议客户端。
 
-    thinking 由服务端模型默认行为（返回 reasoning_content），API 无需显式参数。
-    max_tokens 保底 2000（thinking 需余量，否则 content 为空）。
-    5xx/429/网络错误自动重试（Coding 套餐短间隔连续调用会偶发 502 空响应）。
-    """
-    q_model = _to_qiniu_model(model, settings)
-    payload = {
-        "model": q_model,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max(max_tokens, 2000),
-    }
-    last_err = "unknown"
-    for attempt in range(3):
-        try:
-            async with httpx.AsyncClient(timeout=180) as client:
-                resp = await client.post(
-                    f"{settings.QINIU_API_BASE_URL.rstrip('/')}/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.QINIU_API_KEY}",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-            if resp.status_code == 200:
-                data = resp.json()
-                msg = (data.get("choices") or [{}])[0].get("message", {})
-                return {
-                    "choices": [{
-                        "message": {
-                            "content": msg.get("content") or "",
-                            "reasoning_content": msg.get("reasoning_content") or "",
-                        }
-                    }]
-                }
-            last_err = f"{resp.status_code} {resp.text[:200]}"
-            # 非瞬时错误（4xx 除 429）不重试
-            if resp.status_code < 500 and resp.status_code != 429:
-                break
-        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
-            last_err = f"{type(e).__name__}: {e}"
-        if attempt < 2:
-            await asyncio.sleep(2 * (attempt + 1))  # 2s / 4s 退避
-    raise HTTPException(status_code=502, detail=f"七牛云 GLM 错误（已重试3次）: {last_err}")
-
-
-async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500) -> dict:
-    """GLM 调用统一入口。
-
-    主路：七牛云（OpenAI 兼容协议，配了 QINIU_API_KEY 时启用，绕过官方配额）
-    兜底：智谱官方（Anthropic 兼容端点，未配七牛 key 时走；七牛失败时也自动回退）
-
+    GLM（智谱）和 DeepSeek 都支持 anthropic-compatible API（POST {base}/v1/messages，
+    x-api-key header，anthropic-version: 2023-06-01）。
     返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
-    七牛 + Anthropic 都失败时抛 HTTPException(502)。
+    与 OpenAI 风格输出归一化，便于上游 _glm_chat / TVC 引擎处理。
     """
-    settings = get_settings()
-    if settings.QINIU_API_KEY:
-        try:
-            return await _qiniu_chat(model, messages, temperature, max_tokens, settings)
-        except HTTPException as e:
-            # 七牛失败（key 吊销、配额耗尽等）→ 自动回退到 Anthropic 兜底
-            if e.status_code != 502:
-                raise
-            logger.warning(f"QINIU GLM 失败，回退到 Anthropic 兜底: {str(e.detail)[:120]}")
-            # 注意：QINIU key 在 env 仍存在但平台已吊销时也会走这里
-
-    # ===== 兜底：智谱官方 Anthropic 兼容端点（原实现）=====
     system = "\n".join(m["content"] for m in messages if m["role"] == "system" and isinstance(m["content"], str))
     chat = [{"role": m["role"], "content": _convert_content(m["content"])} for m in messages if m["role"] != "system"]
     payload = {"model": model, "max_tokens": max_tokens, "messages": chat, "temperature": temperature}
     if system:
         payload["system"] = system
-    # GLM-5 系列必须显式开 thinking（Anthropic 协议要求）
+    # GLM-5 系列必须显式开 thinking（Anthropic 协议要求）；DeepSeek-V4 默认即开
     if model.startswith("glm-5"):
         payload["thinking"] = {"type": "enabled"}
-        # GLM-5.3-Flash 文档：thinking 模式默认开，max_tokens 需容纳思考
         if max_tokens < 2000:
             payload["max_tokens"] = 2000
-    async with httpx.AsyncClient(timeout=120) as client:
-        resp = await client.post(
-            ANTHROPIC_GLM_URL,
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": settings.GLM_API_KEY,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
+    last_err = "unknown"
+    for attempt in range(3):
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    api_url,
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                    json=payload,
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                text, thinking = "", ""
+                for block in data.get("content", []):
+                    if block.get("type") == "text":
+                        text += block.get("text", "")
+                    elif block.get("type") == "thinking":
+                        thinking += block.get("thinking", "")
+                return {"choices": [{"message": {"content": text, "reasoning_content": thinking}}]}
+            last_err = f"{resp.status_code} {resp.text[:200]}"
+            if resp.status_code < 500 and resp.status_code != 429:
+                break
+        except (httpx.TimeoutException, httpx.ConnectError, httpx.ReadError) as e:
+            last_err = f"{type(e).__name__}: {e}"
+        if attempt < 2:
+            await asyncio.sleep(2 * (attempt + 1))
+    raise HTTPException(status_code=502, detail=f"{label} 错误（已重试3次）: {last_err}")
+
+
+async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500) -> dict:
+    """GLM 调用统一入口（2026-09-30 重构）。
+
+    主路：智谱 GLM（Anthropic 兼容端点，配了 GLM_API_KEY 时启用）
+    兜底：DeepSeek（Anthropic 兼容端点，配了 DEEPSEEK_API_KEY 时启用）
+
+    返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
+    主路 + 兜底都失败时抛 HTTPException(502)。
+    """
+    settings = get_settings()
+
+    # ===== 主路：智谱 GLM Anthropic 兼容 =====
+    if settings.GLM_API_KEY:
+        try:
+            return await _anthropic_compat_chat(
+                settings.ANTHROPIC_GLM_URL, settings.GLM_API_KEY,
+                model, messages, temperature, max_tokens, label="GLM",
+            )
+        except HTTPException as e:
+            if e.status_code != 502:
+                raise
+            logger.warning(f"智谱 GLM 失败，回退到 DeepSeek: {str(e.detail)[:120]}")
+
+    # ===== 兜底：DeepSeek Anthropic 兼容 =====
+    if settings.DEEPSEEK_API_KEY:
+        return await _anthropic_compat_chat(
+            settings.ANTHROPIC_DEEPSEEK_URL, settings.DEEPSEEK_API_KEY,
+            model, messages, temperature, max_tokens, label="DeepSeek",
         )
-    if resp.status_code != 200:
-        raise HTTPException(status_code=502, detail=f"GLM API 错误: {resp.text}")
-    data = resp.json()
-    text, thinking = "", ""
-    for block in data.get("content", []):
-        if block.get("type") == "text":
-            text += block.get("text", "")
-        elif block.get("type") == "thinking":
-            thinking += block.get("thinking", "")
-    return {"choices": [{"message": {"content": text, "reasoning_content": thinking}}]}
+
+    raise HTTPException(status_code=502, detail="GLM 主路与 DeepSeek 兜底都未配置")
 
 
 class OptimizeRequest(BaseModel):

@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v2/tvc-config", tags=["tvc-config"])
 
 DEFAULT_CONFIG = {
     "step1_script": {
-        "model": "glm-5.1",
+        "model": "glm-5.3",
         "fallback_model": "glm-4.5-air",
         "temperature": 1.0,
         "max_tokens": 8192,

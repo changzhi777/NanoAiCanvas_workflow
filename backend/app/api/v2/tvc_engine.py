@@ -225,8 +225,8 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     if is_thinking:
         system_prompt += "\n\n重要：请将最终 JSON 结果放在 <output> 标签中"
 
-    model_map = {"tvc_deep": "glm-5.1", "tvc_fast": "glm-4.5-air", "tvc_vision": "glm-5v-turbo"}
-    model = cfg.get("model") or model_map.get(req.optimize_mode, "glm-5.1")
+    model_map = {"tvc_deep": "glm-5.3", "tvc_fast": "glm-5.3-flash", "tvc_vision": "glm-5v-turbo"}
+    model = cfg.get("model") or model_map.get(req.optimize_mode, "glm-5.3")
 
     # 走 _glm_chat helper（Anthropic 协议 + thinking 自动开）
     from .glm_proxy import _glm_chat
