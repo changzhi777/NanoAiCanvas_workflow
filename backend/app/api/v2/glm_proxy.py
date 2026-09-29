@@ -264,14 +264,21 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
     """GLM 调用统一入口。
 
     主路：七牛云（OpenAI 兼容协议，配了 QINIU_API_KEY 时启用，绕过官方配额）
-    兜底：智谱官方（Anthropic 兼容端点，未配七牛 key 时的原路径）
+    兜底：智谱官方（Anthropic 兼容端点，未配七牛 key 时走；七牛失败时也自动回退）
 
     返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
-    非 200 时抛 HTTPException(502)。
+    七牛 + Anthropic 都失败时抛 HTTPException(502)。
     """
     settings = get_settings()
     if settings.QINIU_API_KEY:
-        return await _qiniu_chat(model, messages, temperature, max_tokens, settings)
+        try:
+            return await _qiniu_chat(model, messages, temperature, max_tokens, settings)
+        except HTTPException as e:
+            # 七牛失败（key 吊销、配额耗尽等）→ 自动回退到 Anthropic 兜底
+            if e.status_code != 502:
+                raise
+            logger.warning(f"QINIU GLM 失败，回退到 Anthropic 兜底: {str(e.detail)[:120]}")
+            # 注意：QINIU key 在 env 仍存在但平台已吊销时也会走这里
 
     # ===== 兜底：智谱官方 Anthropic 兼容端点（原实现）=====
     system = "\n".join(m["content"] for m in messages if m["role"] == "system" and isinstance(m["content"], str))
@@ -1178,27 +1185,18 @@ async def video_agent_chat(
     has_bgm = bool(req.context.get("bgmUrl"))
     bgm_info = " + BGM" if has_bgm else ""
 
-    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.format(clip_count=clip_count, bgm_info=bgm_info)
+    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.replace("{clip_count}", str(clip_count)).replace("{bgm_info}", bgm_info)
 
     messages = [{"role": "system", "content": system_msg}] + req.messages
 
-    api_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.GLM_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": "glm-4.5-air",
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 512,
-    }
-
+    # 走 _glm_chat（QINIU 主路 + Anthropic 兼容兜底）——Coding 套餐在 v4 端点永远 1113
     try:
-        async with httpx.AsyncClient(timeout=30) as http:
-            resp = await http.post(api_url, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
+        data = await _glm_chat(
+            model="glm-4.5-air",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=512,
+        )
 
         content = data["choices"][0]["message"]["content"]
 
@@ -1236,64 +1234,41 @@ async def video_agent_stream(
     has_bgm = bool(req.context.get("bgmUrl"))
     bgm_info = " + BGM" if has_bgm else ""
 
-    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.format(clip_count=clip_count, bgm_info=bgm_info)
+    system_msg = VIDEO_AGENT_SYSTEM_PROMPT.replace("{clip_count}", str(clip_count)).replace("{bgm_info}", bgm_info)
     messages = [{"role": "system", "content": system_msg}] + req.messages
-
-    api_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.GLM_API_KEY}",
-        "Content-Type": "application/json",
-    }
-    payload = {
-        "model": "glm-4.5-air",
-        "messages": messages,
-        "temperature": 0.7,
-        "max_tokens": 512,
-        "stream": True,
-    }
 
     async def event_stream():
         try:
-            async with httpx.AsyncClient(timeout=60) as http:
-                async with http.stream("POST", api_url, headers=headers, json=payload) as resp:
-                    resp.raise_for_status()
+            # 走 _glm_chat（QINIU 主路 + Anthropic 兜底）——v4 端点在 Coding 套餐永远 1113。
+            # 回复仅 512 token，改为一次性结果单块下发（前端按事件解析，兼容整段文本）
+            data = await _glm_chat(
+                model="glm-4.5-air",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=512,
+            )
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-                    buffer = ""
-                    async for line in resp.aiter_lines():
-                        if not line.startswith("data:"):
-                            continue
-                        data = line[5:].strip()
-                        if data == "[DONE]":
-                            break
+            if content:
+                yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
 
-                        try:
-                            chunk = json.loads(data)
-                            delta = chunk.get("choices", [{}])[0].get("delta", {})
-                            content = delta.get("content", "")
-                            if content:
-                                buffer += content
-                                yield f"data: {json.dumps({'type': 'text', 'content': content})}\n\n"
-                        except json.JSONDecodeError:
-                            continue
+            # 解析完整 JSON 指令
+            repaired = _repair_json(content)
+            parsed = _find_balanced(repaired, "{", "}")
+            if parsed:
+                try:
+                    result = json.loads(parsed)
+                    command = result.get("command")
+                    yield f"data: {json.dumps({'type': 'done', 'message': result.get('message', ''), 'command': command})}\n\n"
+                except json.JSONDecodeError:
+                    yield f"data: {json.dumps({'type': 'done', 'message': content, 'command': None})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'done', 'message': content, 'command': None})}\n\n"
 
-                    # 流结束后解析完整 JSON
-                    repaired = _repair_json(buffer)
-                    parsed = _find_balanced(repaired, "{", "}")
-                    if parsed:
-                        try:
-                            result = json.loads(parsed)
-                            command = result.get("command")
-                            yield f"data: {json.dumps({'type': 'done', 'message': result.get('message', ''), 'command': command})}\n\n"
-                        except json.JSONDecodeError:
-                            yield f"data: {json.dumps({'type': 'done', 'message': buffer, 'command': None})}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'type': 'done', 'message': buffer, 'command': None})}\n\n"
+            yield "data: [DONE]\n\n"
 
-                    yield "data: [DONE]\n\n"
-
-        except httpx.TimeoutException:
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Agent 响应超时'})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            detail = "Agent 响应超时" if isinstance(e, httpx.TimeoutException) else str(e)
+            yield f"data: {json.dumps({'type': 'error', 'message': detail})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
