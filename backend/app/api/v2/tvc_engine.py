@@ -160,15 +160,15 @@ async def execute_tvc(task_id: str, req, user_id=None):
         # 优先级：用户显式 > cfg step5_video default_provider > minimax
         cfg5 = (config or {}).get("step5_video", {})
         user_pick = getattr(req, "video_model", None)
-        primary_video_model = user_pick or cfg5.get("default_provider") or "MiniMax-H3"
+        primary_video_model = user_pick or cfg5.get("default_provider") or "minimax-official"
         try:
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=primary_video_model)
         except Exception as e:
             # 兜底：选与主路不同的 provider（避免重复失败）
-            fallback = "seedance" if not primary_video_model.startswith("MiniMax") else "MiniMax-H3"
+            fallback = "seedance" if "minimax" not in primary_video_model.lower() else "MiniMax-H3"
             if fallback == primary_video_model:
-                # 用户显式选的就是 seedance，第二次仍失败 → 用 minimax 兜底
-                fallback = "MiniMax-H3"
+                # 主路已是兜底选项，第二次失败用 seedance
+                fallback = "seedance"
             logger.warning(f"primary video ({primary_video_model}) failed, fallback to {fallback}: {e}")
             await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=fallback)

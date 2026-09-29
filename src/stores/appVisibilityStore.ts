@@ -218,7 +218,6 @@ export const WORKFLOW_NODE_META: VisibilityItemMeta[] = [
   { id: 'jimeng_image', name: '即梦图片', description: '即梦AI图片生成', category: '即梦' },
   { id: 'jimeng_video', name: '即梦视频', description: '即梦AI视频生成', category: '即梦' },
   { id: 'glm_text', name: '智谱文本', description: '智谱GLM文本生成', category: '智谱GLM' },
-  { id: 'glm_video', name: '智谱视频', description: '智谱GLM视频生成', category: '智谱GLM' },
   { id: 'glm_tts', name: '智谱TTS', description: '智谱GLM语音合成', category: '智谱GLM' },
   { id: 'glm_multimodal', name: '智谱多模态', description: '智谱GLM多模态理解', category: '智谱GLM' },
   { id: 'qwen_text', name: '通义文本', description: '通义千问文本生成', category: '通义千问' },
