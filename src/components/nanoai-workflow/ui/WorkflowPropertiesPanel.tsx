@@ -25,7 +25,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Record<string, any>>({});
-  const [modelsOpen, setModelsOpen] = useState(false);
+  const [modelsOpen, setModelsOpen] = useState(true);
 
   const notifyPanelState = useCallback((open: boolean) => {
     window.dispatchEvent(new CustomEvent('properties-panel-toggle', { detail: { open } }));

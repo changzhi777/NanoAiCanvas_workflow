@@ -51,7 +51,7 @@ DEFAULT_CONFIG = {
         },
     },
     "step5_video": {
-        "default_provider": "seedance",
+        "default_provider": "minimax-official",
         "timeout": 300,
         "max_retries": 3,
         "resolution": "768P",
