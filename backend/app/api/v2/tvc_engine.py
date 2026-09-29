@@ -938,6 +938,28 @@ async def _save_assets(task_id: str, user_id, req, breakdown: dict):
                 "meta": {"source": "tvc_workflow", "task_id": task_id, "asset_role": "bgm"},
             })
 
+    # 收集剧本（text 资产：url 用 text:// 占位，不经 COS 转存）
+    script_node = nodes[0]
+    script_result = script_node.get("result", {}) or {}
+    parsed_script = script_result.get("parsed_script")
+    if parsed_script:
+        script_text = parsed_script if isinstance(parsed_script, str) else json.dumps(
+            parsed_script, ensure_ascii=False
+        )
+        assets_to_save.append({
+            "type": "text",
+            "name": f"TVC_脚本_{task_id}",
+            "url": f"text://{task_id}/script",
+            "category": "tvc-script",
+            "meta": {
+                "source": "tvc_workflow",
+                "task_id": task_id,
+                "asset_role": "script",
+                "script": parsed_script,
+            },
+            "skip_transfer": True,
+        })
+
     if not assets_to_save:
         return
 
@@ -946,11 +968,15 @@ async def _save_assets(task_id: str, user_id, req, breakdown: dict):
 
     async with async_session_maker() as db:
         for item in assets_to_save:
-            url = await transfer_with_fallback(
-                item["url"],
-                key_hint=f"tvc/{task_id}/{item['name']}",
-                asset_type=item["type"],
-            )
+            if item.get("skip_transfer"):
+                # text 资产：url 是 text:// 占位，内容在 meta.script，不经 COS
+                url = item["url"]
+            else:
+                url = await transfer_with_fallback(
+                    item["url"],
+                    key_hint=f"tvc/{task_id}/{item['name']}",
+                    asset_type=item["type"],
+                )
             asset = Asset(
                 user_id=user_id,
                 type=item["type"],
