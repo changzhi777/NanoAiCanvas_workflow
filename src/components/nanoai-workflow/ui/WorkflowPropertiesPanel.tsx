@@ -416,7 +416,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 
               {/* 故事板分镜V2版 专属配置 */}
               {selectedNode.type === 'storyboard_v2' && (() => {
-                const p = { inputText: '', shotCount: 6, style: 'realistic', quality: 'hd', temperature: 0.7, model: 'glm-4.5-air', ...(editData.params || {}) };
+                const p = { inputText: '', shotCount: 6, style: 'realistic', quality: 'hd', temperature: 0.7, model: 'glm-5.3-flash', ...(editData.params || {}) };
                 const setP = (update: Record<string, any>) => {
                   const newParams = { ...p, ...update };
                   handleInputChange('params', newParams);
@@ -456,8 +456,8 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">模型</Label>
                         <select value={p.model} onChange={e => setP({ model: e.target.value })} className={selectCls}>
-                          <option value="glm-4.5-air">GLM-4.5-Air</option>
-                          <option value="glm-4.7-flash">GLM-4.7-Flash</option>
+                          <option value="glm-5.3-flash">GLM-5.3-Flash</option>
+                          <option value="glm-5.3">GLM-5.3</option>
                         </select>
                       </div>
                     </div>
