@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     # DeepSeek（OpenAI 兼容协议）— 兜底
     DEEPSEEK_API_KEY: str = ""
     DEEPSEEK_API_BASE_URL: str = "https://api.deepseek.com/v1"
-    DEEPSEEK_DEFAULT_MODEL: str = "deepseek-v4-pro"
+    DEEPSEEK_DEFAULT_MODEL: str = "deepseek-flash"
     DEEPSEEK_FAST_MODEL: str = "deepseek-flash"
 
     # 即梦 (字节AI)

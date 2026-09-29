@@ -292,9 +292,11 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
 
     # ===== 兜底：DeepSeek Anthropic 兼容 =====
     if settings.DEEPSEEK_API_KEY:
+        # 兜底统一用 DEEPSEEK_DEFAULT_MODEL（deepseek-flash，实测 2s 级），
+        # 不透传 GLM 请求名——DeepSeek 端不识别 glm-*，未知名会落到服务端默认重模型
         return await _anthropic_compat_chat(
             settings.ANTHROPIC_DEEPSEEK_URL, settings.DEEPSEEK_API_KEY,
-            model, messages, temperature, max_tokens, label="DeepSeek",
+            settings.DEEPSEEK_DEFAULT_MODEL, messages, temperature, max_tokens, label="DeepSeek",
         )
 
     raise HTTPException(status_code=502, detail="GLM 主路与 DeepSeek 兜底都未配置")
