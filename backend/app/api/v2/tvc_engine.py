@@ -767,6 +767,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
                 "message": f"提交{provider_name}视频任务",
             })
             result = await submit_fn(shot_num, first_url, last_url, req.shot_duration, prompt=visual_prompt)
+            result["provider"] = provider_name  # 实际通道（MiniMax Official / MiniMax H3 / Seedance）
             await workflow_executor.update_subtask(task_id, node_idx, st["id"], {
                 "status": "success", "progress": 100, "result": result,
             })
