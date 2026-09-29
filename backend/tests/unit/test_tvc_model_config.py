@@ -26,9 +26,9 @@ def settings():
 
 
 class TestDefaultConfig:
-    def test_step5_video_default_is_minimax_official(self):
-        """全局默认视频通道 = 官方套餐（生产意图）"""
-        assert DEFAULT_CONFIG["step5_video"]["default_provider"] == "minimax-official"
+    def test_step5_video_default_is_minimax_h3(self):
+        """全局默认视频通道 = MiniMax H3（速创按量，4-15s 全时长）"""
+        assert DEFAULT_CONFIG["step5_video"]["default_provider"] == "MiniMax-H3"
 
     def test_step1_model_is_glm_53(self):
         """剧本生成主模型 = glm-5.3（2026-09-30 升级）"""
@@ -38,9 +38,9 @@ class TestDefaultConfig:
         """fallback 不再指向已废弃的 abab6.5s-chat"""
         assert DEFAULT_CONFIG["step1_script"]["fallback_model"] != "abab6.5s-chat"
 
-    def test_step4_image_default_is_gpt_image_2(self):
-        """图片 provider 默认 = gpt-image-2（与前端 admin page 对齐）"""
-        assert DEFAULT_CONFIG["step4_image"]["default_provider"] == "gpt-image-2"
+    def test_step4_image_default_is_flare(self):
+        """图片 provider 默认 = gpt-image-2.5-flare（2026-09-30 升级）"""
+        assert DEFAULT_CONFIG["step4_image"]["default_provider"] == "gpt-image-2.5-flare"
 
 
 class TestVideoProviderRouting:

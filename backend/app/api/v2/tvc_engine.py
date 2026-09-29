@@ -160,7 +160,7 @@ async def execute_tvc(task_id: str, req, user_id=None):
         # 优先级：用户显式 > cfg step5_video default_provider > minimax
         cfg5 = (config or {}).get("step5_video", {})
         user_pick = getattr(req, "video_model", None)
-        primary_video_model = user_pick or cfg5.get("default_provider") or "minimax-official"
+        primary_video_model = user_pick or cfg5.get("default_provider") or "MiniMax-H3"
         try:
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=primary_video_model)
         except Exception as e:
@@ -688,7 +688,7 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
     subtasks = node.get("subtasks", [])
 
     cfg = (config or {}).get("step4_image", {})
-    image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2")
+    image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2.5-flare")
     gen_one = get_image_provider(image_model, settings, enhance_cfg=cfg.get("prompt_enhance"))
 
     max_retries = 3

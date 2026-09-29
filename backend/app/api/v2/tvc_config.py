@@ -38,7 +38,7 @@ DEFAULT_CONFIG = {
         "mode": "logic",
     },
     "step4_image": {
-        "default_provider": "gpt-image-2",
+        "default_provider": "gpt-image-2.5-flare",
         "timeout": 180,
         "max_retries": 3,
         "batch_size": 3,
@@ -51,7 +51,7 @@ DEFAULT_CONFIG = {
         },
     },
     "step5_video": {
-        "default_provider": "minimax-official",
+        "default_provider": "MiniMax-H3",
         "timeout": 300,
         "max_retries": 3,
         "resolution": "768P",

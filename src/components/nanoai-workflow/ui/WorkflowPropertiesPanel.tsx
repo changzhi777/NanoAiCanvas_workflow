@@ -632,7 +632,7 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <div>
                           <Label className="text-xs mb-1.5 block text-muted-foreground">总时长</Label>
                           <select value={p.totalDuration || 30} onChange={e => setP({ totalDuration: Number(e.target.value) })} className={selectCls}>
-                            {getModelDurationOptions(p.videoModel || 'minimax-official').map(d => (
+                            {getModelDurationOptions(p.videoModel || 'MiniMax-H3').map(d => (
                               <option key={d} value={d}>{d < 60 ? `${d}s` : `${d / 60}m`}</option>
                             ))}
                           </select>
@@ -741,16 +741,18 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                           </div>
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">生图模型</Label>
-                            <select value={p.imageModel || 'gpt-image-2'} onChange={e => setP({ imageModel: e.target.value })} className={selectCls}>
-                              <option value="gpt-image-2">GPT-Image-2（推荐）</option>
+                            <select value={p.imageModel || 'gpt-image-2.5-flare'} onChange={e => setP({ imageModel: e.target.value })} className={selectCls}>
+                              <option value="gpt-image-2.5-flare">GPT-Image-2.5-Flare（推荐）</option>
+                              <option value="gpt-image-2">GPT-Image-2</option>
                               <option value="minimax">MiniMax Image</option>
                               <option value="jimeng">即梦</option>
                             </select>
                           </div>
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">视频模型</Label>
-                            <select value={p.videoModel || 'minimax-official'} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
-                              <option value="minimax-official">MiniMax Hailuo-02（推荐·套餐额度）</option>
+                            <select value={p.videoModel || 'MiniMax-H3'} onChange={e => setP({ videoModel: e.target.value })} className={selectCls}>
+                              <option value="MiniMax-H3">MiniMax H3（推荐·按量 4-15s）</option>
+                              <option value="minimax-official">MiniMax Hailuo-02（套餐·6/10s）</option>
                               <option value="minimax">MiniMax H3（速创·4-15s）</option>
                               <option value="seedance">Seedance（兜底）</option>
                             </select>
