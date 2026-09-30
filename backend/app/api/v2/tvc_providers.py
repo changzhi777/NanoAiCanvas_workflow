@@ -95,7 +95,7 @@ def _gen_one_gpt_image_2(settings: Settings) -> Callable:
             if not task_uid:
                 raise Exception("No task id in GPT-Image-2 response")
 
-        max_wait = 180
+        max_wait = 600  # 抬高轮询超时：MiniMax H3 后端排队时易超时 180s（旧值）
         interval = 5
         elapsed = 0
         async with httpx.AsyncClient(timeout=30) as client:
@@ -331,7 +331,7 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
 
 # ==================== 视频 Provider ====================
 
-async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait: int = 600) -> str:
+async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait: int = 1200) -> str:
     """轮询速创异步任务（与生图同构：GET detail，status=2 成功）→ 返回视频 URL。"""
     interval = 10
     elapsed = 0
