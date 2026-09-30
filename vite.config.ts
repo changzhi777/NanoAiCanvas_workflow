@@ -33,6 +33,13 @@ export default defineConfig({
     open: true,
     proxy: {
       // base-prefixed proxy rules (browser requests /nanoai/api/...)
+      // COS 香港桶视频流转发（dev 调试：代理出口对该桶不稳定，走本机转发）
+      '/nanoai/cos-video/': {
+        target: 'https://nanoai-tvc-hk-1418512491.cos.ap-hongkong.myqcloud.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/nanoai\/cos-video\//, '/tvc/'),
+        secure: true,
+      },
       '/nanoai/api/wuyinkeji': {
         target: 'https://api.wuyinkeji.com',
         changeOrigin: true,
