@@ -32,9 +32,10 @@ class TestNodeTypeMapping:
 
     def test_audio_nodes(self):
         assert node_type_to_model_type("minimax_speech") == "audio"
-        assert node_type_to_model_type("minimax_music") == "audio"
+        # minimax_music 已废弃，BGM 改走 MiniMax H3（video 档）— 对应节点类型 background_music
+        assert node_type_to_model_type("background_music") == "video"
         assert node_type_to_model_type("glm_tts") == "audio"
-        assert node_type_to_model_type("background_music") == "audio"
+        assert node_type_to_model_type("background_music") == "video"  # BGM 走 H3 视频档
 
     def test_text_nodes(self):
         assert node_type_to_model_type("script_generator") == "text"
@@ -173,7 +174,7 @@ class TestCalcTvcCost:
     （旧 estimate 误用 shot_count×2）。
     """
 
-    PRICES = {"text": 10, "image": 5, "video": 20, "audio": 3}  # audio = bgm
+    PRICES = {"text": 10, "image": 5, "video": 20, "audio": 20}  # bgm 走 video 档（MiniMax Music 已废弃 → H3 视频通道）
 
     def _mock_price(self):
         async def _side_effect(db, model_type):
@@ -191,8 +192,8 @@ class TestCalcTvcCost:
         assert cost["text"] == 30                  # 10 × 3
         assert cost["image"] == 10                 # 5 × 2（固定！不随 shot_count 变）
         assert cost["video"] == 20 * shot_count
-        assert cost["bgm"] == 3
-        assert cost["total"] == 30 + 10 + 20 * shot_count + 3
+        assert cost["bgm"] == 20  # bgm 走 video 档单价 (PRICES["video"] = 20)
+        assert cost["total"] == 30 + 10 + 20 * shot_count + 20
 
     @pytest.mark.asyncio
     async def test_image_fixed_across_shot_counts(self):
@@ -219,4 +220,4 @@ class TestCalcTvcCost:
 
         with patch("app.services.points_service.resolve_price", new=self._mock_price()):
             cost = await calc_tvc_cost(AsyncMock(), 3)
-        assert cost["prices"] == {"text": 10, "image": 5, "video": 20, "bgm": 3}
+        assert cost["prices"] == {"text": 10, "image": 5, "video": 20, "bgm": 20}

@@ -788,7 +788,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     bgm_subtask = next((st for st in subtasks if st["id"] == "bgm"), None)
     bgm_task = None
     if bgm_subtask:
-        bgm_task = asyncio.create_task(_generate_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
+        bgm_task = asyncio.create_task(_generate_h3_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
     submit_fn, provider_name = get_video_provider(video_model or "seedance", settings, resolution=video_resolution)
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
@@ -853,52 +853,82 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     await workflow_executor.update_node(task_id, node_idx, {"status": "success", "progress": 100})
 
 
-async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, settings, config: dict = None):
-    api_key = settings.MINIMAX_API_KEY
-    base_url = settings.MINIMAX_API_BASE_URL
+async def _generate_h3_bgm(task_id: str, node_idx: int, subtask: dict, req, settings, config: dict = None):
+    """BGM 用 MiniMax H3 视频通道生成带音频的氛围镜头（替代废弃的 MiniMax Music）。
+
+    复用 _submit_video_minimax（速创 MiniMax H3）—— 与 step5_video 同通道，积分自动一致。
+    prompt 三层来源：step5_bgm.prompt > req.bgm_prompt > req.prompt 推断
+    duration 默认 5s（range 4-15）"""
     bgm_cfg = (config or {}).get("step5_bgm", {})
+    base_duration = bgm_cfg.get("duration", 5)
+    bgm_duration = max(4, min(15, int(base_duration)))  # H3 范围 4-15s
+
+    # prompt 三层优先级
+    custom_prompt = bgm_cfg.get("prompt") or getattr(req, "bgm_prompt", None) or ""
+    if custom_prompt:
+        bgm_prompt = f"TVC广告氛围镜头，{req.mode}风格，{bgm_duration}秒，{custom_prompt}。无对话，无人物特写"
+    else:
+        # 兜底：从 req.prompt 推断场景情绪
+        bgm_prompt = (
+            f"TVC广告氛围镜头，{req.mode}风格，{req.total_duration}秒，"
+            f"配合创意\"{req.prompt[:120]}\"。无对话，无人物特写"
+        )
 
     await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
-        "status": "running", "progress": 30, "message": "MiniMax Music 生成中",
+        "status": "running", "progress": 10, "message": f"MiniMax H3 生成 BGM 氛围镜头中 ({bgm_duration}s)",
     })
 
-    if not api_key:
-        await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
-            "status": "error", "progress": 0, "error": "MINIMAX_API_KEY not configured",
-        })
-        return
-
     try:
-        body = {
-            "model": bgm_cfg.get("model", "music-2.6"),
-            "prompt": f"TVC广告背景音乐，{req.mode}风格，{req.total_duration}秒，无歌词",
-            "is_instrumental": bgm_cfg.get("is_instrumental", True),
-            "output_format": "url",
-        }
+        # 复用 H3 视频通道（与主视频同速创 MiniMax H3）
+        submit_fn, provider_name = get_video_provider(
+            "minimax-h3", settings, resolution="768P"
+        )
 
-        async with httpx.AsyncClient(timeout=180) as client:
-            resp = await client.post(
-                f"{base_url}/music_generation",
-                json=body,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            )
-
-        if resp.status_code != 200:
-            raise Exception(f"MiniMax Music error: {resp.status_code} {resp.text}")
-
-        data = resp.json()
-        audio_url = ""
-        d = data.get("data", {})
-        if isinstance(d, dict):
-            audio_url = d.get("audio_url", "") or d.get("audio", "") or d.get("url", "")
-        if not audio_url:
-            audio_url = data.get("audio_url", "")
-
-        if not audio_url:
-            raise Exception(f"No audio_url in MiniMax response: {resp.text}")
+        # 找场景图作为首帧（已有 character-ref/scene-ref 的实际 URL），
+        # 无则用公开占位图兜底（_submit_video_minimax 强制 first_url 非空）
+        first_frame_url = "https://placehold.co/600x400/png"  # safe fallback: 任何 TVC 流程都可达
+        for node in (state if "state" in dir() else []):
+            pass
+        # 简化：查 Redis state 取 step4 的 scene-ref URL
+        try:
+            persisted = await workflow_executor.load_task(task_id)
+            for node in (persisted.get("nodes") or []):
+                if node.get("id") == "step-images":
+                    for st in node.get("subtasks") or []:
+                        if st.get("id") == "scene-ref":
+                            r = st.get("result") or {}
+                            u = r.get("image_url", "")
+                            if u and not u.startswith("placeholder_"):
+                                first_frame_url = u
+                                break
+        except Exception:
+            pass
 
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
-            "status": "success", "progress": 100, "result": {"audio_url": audio_url},
+            "status": "running", "progress": 30, "message": "提交 H3 任务",
+        })
+
+        result = await submit_fn(
+            shot_num=0,  # BGM 用 0 占位（不影响主视频编号）
+            first_url=first_frame_url,
+            last_url="",
+            duration=bgm_duration,
+            prompt=bgm_prompt,
+        )
+
+        video_url = result.get("video_url", "")
+        if not video_url:
+            raise Exception(f"H3 BGM returned no video_url: {result}")
+
+        await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
+            "status": "success", "progress": 100,
+            "result": {
+                "video_url": video_url,
+                "audio_url": video_url,  # 双标记兼容前端 audio 播放器
+                "provider_task_id": result.get("provider_task_id"),
+                "provider": provider_name,
+                "duration": bgm_duration,
+            },
         })
     except asyncio.CancelledError:
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
@@ -906,7 +936,7 @@ async def _generate_bgm(task_id: str, node_idx: int, subtask: dict, req, setting
         })
         raise
     except Exception as e:
-        error_msg = str(e) or repr(e) or "Unknown BGM error"
+        error_msg = str(e) or repr(e) or "Unknown H3 BGM error"
         await workflow_executor.update_subtask(task_id, node_idx, subtask["id"], {
             "status": "error", "progress": 0, "error": error_msg,
         })
@@ -962,18 +992,18 @@ async def _save_assets(task_id: str, user_id, req, breakdown: dict):
                 "meta": {"source": "tvc_workflow", "task_id": task_id, "shot_num": int(shot_num)},
             })
 
-    # 收集 BGM
+    # 收集 BGM（H3 视频通道产出视频+音频双轨 → 资产 type=video 兼容前端 audio/video 播放器）
     bgm_subtask = next((st for st in video_subtasks if st["id"] == "bgm"), None)
     if bgm_subtask:
         result = bgm_subtask.get("result", {})
-        url = result.get("audio_url", "")
+        url = result.get("video_url") or result.get("audio_url", "")
         if url:
             assets_to_save.append({
-                "type": "audio",
+                "type": "video",  # MiniMax Music 已废弃；BGM 现走 H3 视频档，type=video 语义更准
                 "name": f"TVC_BGM_{task_id}",
                 "url": url,
                 "category": "tvc",
-                "meta": {"source": "tvc_workflow", "task_id": task_id, "asset_role": "bgm"},
+                "meta": {"source": "tvc_workflow", "task_id": task_id, "asset_role": "bgm", "provider": result.get("provider", "MiniMax H3")},
             })
 
     # 收集剧本（text 资产：url 用 text:// 占位，不经 COS 转存）

@@ -58,8 +58,9 @@ DEFAULT_CONFIG = {
         "duration": 6,
     },
     "step5_bgm": {
-        "model": "music-2.6",
-        "is_instrumental": True,
+        "provider": "minimax-h3",          # 视频通道（与 step5_video 同源）
+        "duration": 5,                     # 4-15s
+        "prompt": "",                      # 用户自定义 BGM 风格 prompt（空则用 req 推断）
     },
 }
 

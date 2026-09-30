@@ -266,13 +266,18 @@ function StepCard({ step, label, config, onChange }: {
       {step === 'step5_bgm' && (
         <>
           <div>
-            <label className={labelCls}>BGM Prompt 模板</label>
-            <input value={config.prompt_template || ''} onChange={e => onChange(step, { prompt_template: e.target.value })} placeholder="TVC广告背景音乐，{mode}风格..." className={inputCls} />
+            <label className={labelCls}>BGM Provider</label>
+            <input value={config.provider || 'minimax-h3'} onChange={e => onChange(step, { provider: e.target.value })} placeholder="minimax-h3" className={inputCls} />
           </div>
-          <label className="flex items-center gap-2 text-xs text-slate-300">
-            <input type="checkbox" checked={config.is_instrumental ?? true} onChange={e => onChange(step, { is_instrumental: e.target.checked })} className="rounded" />
-            纯器乐（无歌词）
-          </label>
+          <div>
+            <label className={labelCls}>BGM 时长（秒，4-15）</label>
+            <input type="number" min={4} max={15} value={config.duration ?? 5} onChange={e => onChange(step, { duration: Number(e.target.value) })} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>BGM Prompt（风格/场景描述）</label>
+            <textarea value={config.prompt || ''} onChange={e => onChange(step, { prompt: e.target.value })} rows={3}
+              placeholder="例：清晨通勤节奏、舒缓钢琴、暖色氛围镜头。空则自动从广告创意推断" className={inputCls} />
+          </div>
         </>
       )}
     </div>

@@ -189,14 +189,14 @@ export function TvcProjectDetail({ projectId, onBack, className }: TvcProjectDet
         </div>
       )}
 
-      {/* BGM */}
+      {/* BGM (MiniMax H3 视频通道产出 — 带音频的氛围镜头) */}
       {project.bgm_url && (
         <div className="p-3 rounded-lg bg-white/[0.02] border border-white/5">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
             <Music className="w-3 h-3" />
             <span>背景音乐</span>
           </div>
-          <audio src={project.bgm_url} controls className="w-full h-8" />
+          <video src={project.bgm_url} controls muted className="w-full h-8 bg-black/40" />
         </div>
       )}
     </div>

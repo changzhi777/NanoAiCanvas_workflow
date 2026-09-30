@@ -55,8 +55,8 @@ def node_type_to_model_type(node_type: str) -> str:
         "minimax_video": "video", "glm_video": "video",
         "storyboard_video": "video",
         "tvc": "video",
-        "minimax_speech": "audio", "minimax_music": "audio", "glm_tts": "audio",
-        "background_music": "audio",
+        "minimax_speech": "audio", "glm_tts": "audio",
+        "background_music": "video",  # MiniMax Music API 已废弃；BGM 改走 MiniMax H3 视频通道（按 video 档计费）
         "script_generator": "text", "dialogue_generator": "text",
         "minimax_text": "text", "glm_text": "text", "glm_multimodal": "text",
         "qwen_text": "text", "qwen_coding": "text", "kimi_text": "text",
