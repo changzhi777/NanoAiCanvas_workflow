@@ -595,14 +595,52 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                 pass
 
         async with async_session_maker() as db:
+            # ===== 提示词审查层 1：干净的产品描述 =====
+            # 从结构化剧本提取（logline + 角色描述），不用 raw——raw 前段是 JSON 开头，
+            # 直接截取会把 JSON 片段混进视觉 prompt（污染生图，出无关图）
+            parsed_script = script_result.get("parsed_script")
+            clean_desc = ""
+            if isinstance(parsed_script, dict):
+                parts = [str(parsed_script.get("logline") or "")]
+                for c in (parsed_script.get("characters") or [])[:3]:
+                    d = (c.get("description") or "").strip()
+                    if d:
+                        parts.append(d)
+                clean_desc = " ".join(p for p in parts if p)[:500]
+            subject_desc = clean_desc or raw[:500]
+
             one = await one_shot_generate(
-                subject_desc=raw[:500],
+                subject_desc=subject_desc,
                 object_desc=getattr(req, "style_reference", "") or "",
                 task_id=task_id,
                 user_id=user_id,
                 db=db,
                 prev_seed=prev_seed,
             )
+
+            # ===== 提示词审查层 2：JSON/剧本内容泄漏检测 =====
+            vp = one.get("prompt", "")
+            polluted = any(t in vp for t in ("{", "}", '"tvc_title"', "<output>", "characters"))
+            if polluted:
+                user_prompt = (getattr(req, "prompt", "") or "")[:400]
+                logger.warning(f"one-shot prompt polluted (JSON leak), regen with user anchor: {user_prompt[:80]}")
+                one = await one_shot_generate(
+                    subject_desc=user_prompt or subject_desc,
+                    object_desc=getattr(req, "style_reference", "") or "",
+                    task_id=task_id,
+                    user_id=user_id,
+                    db=db,
+                    prev_seed=prev_seed,
+                )
+                vp = one.get("prompt", "")
+
+            # ===== 提示词审查层 3：广告主题锚点 =====
+            # 视觉 prompt 末尾追加用户创意锚点（取 req.prompt 前 80 字），
+            # 确保生图/视频模型始终关联广告主题（产品词/品牌词/风格词）
+            anchor = (getattr(req, "prompt", "") or "")[:80].strip()
+            if anchor and anchor not in vp:
+                one["prompt"] = f"{vp} Ad theme anchor: {anchor}"
+
             await log_action(
                 db, task_id=task_id, user_id=user_id,
                 narrative=one["narrative"], composition=one["composition"],
