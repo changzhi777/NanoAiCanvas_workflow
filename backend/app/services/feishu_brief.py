@@ -184,11 +184,26 @@ def parse_brief(rows: list[dict]) -> dict:
     return {"items": out}
 
 
+_NON_PRODUCT_TAIL = ("信息", "链接", "海报", "机制", "日期", "要求", "说明", "卖点", "活动")
+
+
+def _looks_like_product(line: str) -> bool:
+    """首行像产品名：非空且不以泛词（信息/链接/海报…）结尾。"""
+    line = line.strip()
+    return bool(line) and not line.endswith(_NON_PRODUCT_TAIL)
+
+
 def extract_product_and_price(product_info: str) -> dict:
-    """从「主要推广对象…」自由文本提取产品名与价格信息（规则启发）。"""
+    """从「主要推广对象…」自由文本提取产品名与价格信息（规则启发）。
+
+    模式优先级：
+    1. 主推产品/产品全称/推广对象 冒号后（最强信号）
+    2. 首行清洗序号前缀（1、/①/一、）——但泛词结尾行（…信息/…链接）跳过
+    3. 「N元+产品名」——价格后紧跟的产品名（广告文案惯例，如"39.9元十翅一桶"）
+    """
     text = (product_info or "").strip()
     price_info = ""
-    m = re.search(r"([0-9.]+\s*元[^，。\n;；]*|[0-9.]+\s*元/[^，。\n;；]*)", text)
+    m = re.search(r"([0-9.]+\s*元[^，。\n;；]*)", text)
     if m:
         price_info = m.group(1).strip()
     # 产品名：主推产品/产品全称 冒号后第一段（到空白/标点止）
@@ -196,9 +211,17 @@ def extract_product_and_price(product_info: str) -> dict:
     m = re.search(r"(?:主推产品|产品全称|推广对象)[:：]\s*([^\n，。;；\s]{2,30})", text)
     if m:
         name = m.group(1).strip()
+    # 模式2：首行清洗序号，泛词结尾行不是产品名
     if not name and text:
-        # 兜底：第一行前 30 字
-        name = text.splitlines()[0][:30].strip()
+        first = text.splitlines()[0].strip()
+        first = re.sub(r"^[0-9①-⑳一二两三四五六七八九十]+\s*[、.．:：）)]\s*", "", first)
+        if _looks_like_product(first):
+            name = first[:30].strip()
+    # 模式3：价格后紧跟的产品名
+    if not name:
+        m = re.search(r"[0-9.]+\s*元\s*([^\n，。;；\s\d]{2,20})", text)
+        if m:
+            name = m.group(1).strip()
     return {"product_name": name, "price_info": price_info}
 
 

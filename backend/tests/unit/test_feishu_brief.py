@@ -78,6 +78,18 @@ class TestExtractProductPrice:
         assert out["product_name"] == "金枕榴莲椰耶蛋挞"
         assert "13.5元" in out["price_info"]
 
+    def test_price_then_name_pattern(self):
+        """三体 Brief 实测格式：无「主推产品：」前缀，「39.9元十翅一桶」→ 价格后产品名"""
+        out = extract_product_and_price("1、三体联名信息 \n2、39.9元十翅一桶\n3、薄脆金沙翅首次加入")
+        assert out["product_name"] == "十翅一桶"
+        assert "39.9元" in out["price_info"]
+
+    def test_fallback_strips_enum_prefix(self):
+        """无价格线索时兜底首行并清洗序号前缀"""
+        out = extract_product_and_price("1、墨西哥风情爆芝牛肉五方\n2、29.9元三件套")
+        assert out["product_name"] == "墨西哥风情爆芝牛肉五方"
+        assert not out["product_name"].startswith("1、")
+
     def test_fallback_first_line(self):
         out = extract_product_and_price("随便写点东西\n第二行")
         assert out["product_name"] == "随便写点东西"
