@@ -146,7 +146,8 @@ _SCRIPT_REVIEW_PROMPT = """你是广告片验收审查员。对照客户 Brief �
 ## 输出要求
 只输出 JSON 数组（不要 markdown 代码块），每项：
 [{{"key": "...", "pass": true/false, "conflict": "失败原因一句话", "actual": "实际看到什么", "advice": "修改建议一句话"}}]
-pass 无法判定时用 null。key 必须与标准项 key 一致，逐项输出。"""
+pass 无法判定时用 null。key 必须与标准项 key 一致，逐项输出。
+注意：所有字符串值内部禁止使用英文双引号，引用文案请用『』。"""
 
 
 async def llm_content_review(criteria: list[dict], parsed_script: dict,
@@ -183,7 +184,8 @@ _VISUAL_REVIEW_PROMPT = """你是广告片验收审查员。这是同一支 TVC 
 
 输出 JSON 数组（不要 markdown），每项：
 [{{"key": "...", "pass": true/false/null, "conflict": "...", "actual": "...", "advice": "..."}}]
-key 逐项对应，无法判定 pass=null。"""
+key 逐项对应，无法判定 pass=null。
+注意：所有字符串值内部禁止使用英文双引号，引用文案请用『』。"""
 
 
 def _build_m3_image_block(image_b64: str) -> dict:
@@ -241,13 +243,19 @@ async def m3_visual_review(frames_b64: list[str], criteria: list[dict],
 # ==================== 公共 ====================
 
 def _parse_llm_json(raw: str, llm_items: list[dict]) -> list[dict]:
-    """解析 LLM JSON 数组，容错 markdown 包裹/尾逗号。解析失败抛 ValueError。"""
+    """解析 LLM JSON 数组，容错 markdown 包裹/尾逗号/引号杂质。解析失败抛 ValueError。"""
     text = raw.strip()
     text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.S)
     start, end = text.find("["), text.rfind("]")
     if start < 0 or end <= start:
         raise ValueError(f"LLM 输出无 JSON 数组: {raw[:120]}")
-    arr = json.loads(text[start:end + 1])
+    candidate = text[start:end + 1]
+    try:
+        arr = json.loads(candidate)
+    except json.JSONDecodeError:
+        # 二次机会：glm_proxy 多层修复（尾逗号/注释/控制符/引号杂质）
+        from app.api.v2.glm_proxy import _repair_json
+        arr = json.loads(_repair_json(candidate))
     by_key = {c["key"]: c for c in llm_items}
     out = []
     for it in arr:
