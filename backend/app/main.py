@@ -23,6 +23,7 @@ from app.api.v2 import tvc_config as v2_tvc_config
 from app.api.v2 import library as v2_library
 from app.api.v2 import tvc_projects as v2_tvc_projects
 from app.api.v2 import tvc_acceptance as v2_tvc_acceptance
+from app.api.v2 import showcase as v2_showcase
 from app.api.v2 import agent as v2_agent
 from app.services.skills_worker import WorkerManager
 from app.services.health_checker import run_health_check, mark_stale_keys
@@ -118,6 +119,7 @@ app.include_router(v2_tvc_config.router)
 app.include_router(v2_library.router)
 app.include_router(v2_tvc_projects.router)
 app.include_router(v2_tvc_acceptance.router)
+app.include_router(v2_showcase.router)
 app.include_router(v2_agent.router)
 
 
