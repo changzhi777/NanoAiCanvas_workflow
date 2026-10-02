@@ -320,6 +320,18 @@ async def execute_redo(task_id: str, from_step: str, req, user_id=None,
 
         config = await _resolve_tvc_config(user_id, req)
 
+        # 验收模板驱动参数（与主链一致——redo 生图/视频也要竖屏；2026-10-03 横屏回归实证）
+        if acceptance_template_id:
+            try:
+                from .tvc_acceptance import load_template
+                from app.database import async_session_maker
+                async with async_session_maker() as _db:
+                    _tpl = await load_template(acceptance_template_id, _db)
+                if _tpl and _tpl.get("aspect_ratio") == "9:16":
+                    config["_aspect_ratio"] = "9:16"
+            except Exception as tpl_err:
+                logger.warning(f"redo template load failed: {tpl_err}")
+
         # 部分计费：images → image 档；video → video+BGM 档
         from app.services.points_service import calc_tvc_cost, deduct_team_first
         from app.database import async_session_maker
