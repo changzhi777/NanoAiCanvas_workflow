@@ -7,6 +7,7 @@ import { sceneWorkflowTemplate } from '@/components/nanoai-workflow/templates/sc
 import { quickStoryboardTemplate } from '@/components/nanoai-workflow/templates/quickStoryboard';
 import { textToImageWorkflowTemplate } from '@/components/nanoai-workflow/templates/textToImageWorkflow';
 import { tvcVideo01Template } from '@/components/nanoai-workflow/templates/tvcVideo01';
+import { kfcTvcTemplate } from '@/components/nanoai-workflow/templates/kfcTvcOneshot';
 import { skillsWorkflowTemplates } from '@/components/nanoai-workflow/templates/skills';
 import { smartAutoLayout, calculateLayoutScore } from '@/lib/smartLayout';
 import { generateNanoaiImageWithPolling } from '@/lib/api/suchuang-api';
@@ -412,6 +413,18 @@ const BUILT_IN_TEMPLATES: WorkflowTemplate[] = [
     updatedAt: new Date().toISOString(),
     nodes: tvcVideo01Template.nodes,
     edges: tvcVideo01Template.edges,
+  },
+  // ==================== KFC TVC 一镜到底（验收闸专用） ====================
+  {
+    id: kfcTvcTemplate.id,
+    name: kfcTvcTemplate.name,
+    description: kfcTvcTemplate.description,
+    category: kfcTvcTemplate.category,
+    tags: kfcTvcTemplate.tags,
+    createdAt: kfcTvcTemplate.createdAt,
+    updatedAt: kfcTvcTemplate.updatedAt,
+    nodes: kfcTvcTemplate.nodes,
+    edges: kfcTvcTemplate.edges,
   },
   // 18 个 Skills 工作流模板
   ...skillsWorkflowTemplates,
