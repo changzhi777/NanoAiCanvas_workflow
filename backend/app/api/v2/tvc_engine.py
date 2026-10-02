@@ -264,7 +264,12 @@ async def _run_final_gate_bg(task_id: str, template: dict, script_items: list | 
         for node in state.get("nodes", []):
             if node.get("id") == "step-video":
                 for st in node.get("subtasks") or []:
-                    video_url = ((st.get("result") or {}).get("video_url")) or video_url
+                    # 排除 BGM 片（5s 氛围镜头）——只审主视频
+                    if st.get("id") == "bgm":
+                        continue
+                    u = ((st.get("result") or {}).get("video_url")) or ""
+                    if u:
+                        video_url = u
             if node.get("id") == "step-script":
                 parsed_script = (node.get("result") or {}).get("parsed_script") or {}
         if not video_url:
