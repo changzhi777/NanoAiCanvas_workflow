@@ -226,6 +226,8 @@ async def generate(
 
     return {
         "prompt": prompt,
+        "subject_desc": subject_desc,   # 主体静态描述（参考图 prompt 构造用，防运动模板截断丢主体）
+        "object_desc": object_desc,
         "template_id": template.get("id"),
         "template_name": template.get("name"),
         "narrative": n_v,

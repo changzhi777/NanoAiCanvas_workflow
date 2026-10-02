@@ -838,9 +838,19 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                 action="shown",
             )
             shots = [{"visual_prompt": one["prompt"], "duration": one["duration"]}]
+            # 参考图 prompt = 主体静态描述 + anchor（不能用运动 prompt 截断——
+            # 模板动作文案("The subject sits in a void...")无主体细节且 [:200] 会截掉尾部 anchor，
+            # 生图模型收到纯运动描述 → 参考图跑题（Bug#7 同源，2026-10-02 法风烧饼单复发实证）
+            ref_parts = [
+                "Commercial advertising reference image, high detail.",
+                str(one.get("subject_desc") or "").strip(),
+                str(one.get("object_desc") or "").strip(),
+                f"Ad theme anchor: {anchor}" if anchor else "",
+            ]
+            ref_prompt = " ".join(p for p in ref_parts if p).strip() or one["prompt"][:400]
             return {
-                "character_ref_prompt": one["prompt"][:200],
-                "scene_ref_prompt": one["prompt"][:200],
+                "character_ref_prompt": ref_prompt[:800],
+                "scene_ref_prompt": ref_prompt[:800],
                 "shots": shots,
                 "_one_shot": one,
             }
