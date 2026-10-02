@@ -45,8 +45,8 @@ def compute_score(items: list[dict]) -> tuple[int, list[str]]:
 
 
 def extract_conflicts_top(items: list[dict], limit: int = 3) -> list[dict]:
-    """取前 N 个失败项作为主要冲突点（veto 优先，按权重降序）。"""
-    failed = [it for it in items if not it.get("pass") and it.get("category") != "archive"]
+    """取前 N 个失败项作为主要冲突点（veto 优先，按权重降序）。仅 pass=False，待判(None)不算冲突。"""
+    failed = [it for it in items if it.get("pass") is False and it.get("category") != "archive"]
     failed.sort(key=lambda it: (not it.get("veto"), -it.get("weight", 0)))
     return [
         {"key": it["key"], "label": it.get("label", it["key"]),
@@ -213,7 +213,11 @@ async def m3_visual_review(frames_b64: list[str], criteria: list[dict],
     if ref_images:
         content.append({"type": "text", "text": "（参照图：产品 KV / IP 设定）"})
         for r in ref_images[:2]:
-            content.append(_build_m3_image_block(r))
+            # URL 走 url-source，裸 base64 / data URI 走 base64-source（URL 塞 base64 会 400）
+            if r.startswith("http://") or r.startswith("https://"):
+                content.append({"type": "image", "source": {"type": "url", "url": r}})
+            else:
+                content.append(_build_m3_image_block(r))
     content.append({"type": "text", "text": _VISUAL_REVIEW_PROMPT.format(
         n=len(frames_b64),
         ref_part="（最后附参照图）" if ref_images else "",
