@@ -217,6 +217,7 @@ def _to_qiniu_model(model: str, settings) -> str:
 async def _anthropic_compat_chat(
     api_url: str, api_key: str, model: str, messages: list,
     temperature: float, max_tokens: int, label: str = "anthropic",
+    thinking: bool = True,
 ) -> dict:
     """通用 Anthropic 兼容协议客户端。
 
@@ -230,9 +231,9 @@ async def _anthropic_compat_chat(
     payload = {"model": model, "max_tokens": max_tokens, "messages": chat, "temperature": temperature}
     if system:
         payload["system"] = system
-    # GLM-5 系列必须显式开 thinking（Anthropic 协议要求）；DeepSeek-V4 默认即开
+    # GLM-5 系列默认显式开 thinking（Anthropic 协议要求）；审查等场景可关；DeepSeek-V4 默认即开
     if model.startswith("glm-5"):
-        payload["thinking"] = {"type": "enabled"}
+        payload["thinking"] = {"type": "enabled" if thinking else "disabled"}
         if max_tokens < 2000:
             payload["max_tokens"] = 2000
     last_err = "unknown"
@@ -267,11 +268,13 @@ async def _anthropic_compat_chat(
     raise HTTPException(status_code=502, detail=f"{label} 错误（已重试3次）: {last_err}")
 
 
-async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500) -> dict:
+async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_tokens: int = 500,
+                    thinking: bool = True) -> dict:
     """GLM 调用统一入口（2026-09-30 重构）。
 
     主路：智谱 GLM（Anthropic 兼容端点，配了 GLM_API_KEY 时启用）
     兜底：DeepSeek（Anthropic 兼容端点，配了 DEEPSEEK_API_KEY 时启用）
+    thinking: GLM-5 系列 reasoning 开关（审查等结构化输出场景关掉省 token）
 
     返回 {"choices": [{"message": {"content": str, "reasoning_content": str}}]}，
     主路 + 兜底都失败时抛 HTTPException(502)。
@@ -283,7 +286,7 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
         try:
             result = await _anthropic_compat_chat(
                 settings.ANTHROPIC_GLM_URL, settings.GLM_API_KEY,
-                model, messages, temperature, max_tokens, label="GLM",
+                model, messages, temperature, max_tokens, label="GLM", thinking=thinking,
             )
             result["_meta"] = {"provider": "glm", "model": model}
             return result

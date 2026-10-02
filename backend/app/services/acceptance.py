@@ -167,7 +167,8 @@ async def llm_content_review(criteria: list[dict], parsed_script: dict,
         REVIEW_TEXT_MODEL,
         [{"role": "user", "content": _SCRIPT_REVIEW_PROMPT.format(
             criteria_block=criteria_block, brief_block=brief_block, script_json=script_json)}],
-        temperature=1.0, max_tokens=16000,  # GLM-5.3 thinking 计入 max_tokens——2000 会被 reasoning 吃光致 content 空
+        temperature=1.0, max_tokens=4000,
+        thinking=False,  # 用户指令：glm-5.3 审查不开 thinking（结构化输出无需 reasoning，省时省 token）
     )
     raw = resp["choices"][0]["message"]["content"]
     return _parse_llm_json(raw, llm_items)
