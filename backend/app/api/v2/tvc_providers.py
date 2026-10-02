@@ -132,12 +132,14 @@ def _gen_one_gpt_image_2(settings: Settings) -> Callable:
     return _gen
 
 
-def _gen_one_gpt_image_25_flare(settings: Settings) -> Callable:
+def _gen_one_gpt_image_25_flare(settings: Settings, aspect_ratio: str = "1280*720",
+                                product_ref_url: str = None) -> Callable:
     """GPT-Image-2.5-flare（速创异步接口，2026-09-30 升级）。
 
     POST /api/async/image_gpt_2.5_flare（JSON body）→ data.id
     轮询 /api/async/detail（status==2 成功，与 image_gpt 同款）。
-    TVC 生图固定 16:9（1280*720），quality=medium。
+    aspect_ratio: "1280*720"(16:9 默认) / "720*1280"(9:16 竖屏，验收模板驱动)。
+    product_ref_url: 产品 KV 参照图（character-ref 生成时注入 urls，防产品走样）。
     """
     api_key = settings.WUYINKEJI_API_KEY
     base_url = settings.WUYINKEJI_API_BASE_URL.rstrip("/")
@@ -147,17 +149,17 @@ def _gen_one_gpt_image_25_flare(settings: Settings) -> Callable:
             await asyncio.sleep(1.5)
             return {"image_url": f"placeholder_{subtask['id']}.png"}
 
-        # TVC 首帧/参考图统一 16:9
-        aspect_ratio = "1280*720"
         payload = {
             "prompt": prompt,
             "aspectRatio": aspect_ratio,
             "quality": "medium",
         }
-        # 参考图（角色/场景参考 URL）透传
+        # 参考图（角色/场景参考 URL）透传；产品图仅注入 character-ref
         ref_url = subtask.get("ref_url") or subtask.get("reference_url")
         if ref_url:
             payload["urls"] = ref_url
+        elif product_ref_url and subtask.get("id") == "character-ref":
+            payload["urls"] = product_ref_url
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
@@ -256,8 +258,13 @@ def _gen_one_minimax(settings: Settings) -> Callable:
     return _gen
 
 
-def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict = None) -> Callable:
-    """image_model: gpt-image-2.5-flare / gpt-image-2 / minimax / (default) jimeng"""
+def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict = None,
+                       aspect_ratio: str = None, product_ref_url: str = None) -> Callable:
+    """image_model: gpt-image-2.5-flare / gpt-image-2 / minimax / (default) jimeng
+
+    aspect_ratio: "1280*720"(默认) / "720*1280"（验收模板 9:16 驱动竖屏）
+    product_ref_url: 产品 KV 参照图（注入 character-ref 生图，防产品走样）
+    """
     factories = {
         "gpt-image-2.5-flare": _gen_one_gpt_image_25_flare,
         "gpt-image-2": _gen_one_gpt_image_2,
@@ -265,7 +272,11 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
     }
     factory = factories.get(image_model, _gen_one_jimeng)
     # 闭包：让 provider 拿到 enhance_cfg（避免改 factory 签名）
-    base_factory = factory(settings)
+    if image_model == "gpt-image-2.5-flare":
+        base_factory = factory(settings, aspect_ratio=aspect_ratio or "1280*720",
+                               product_ref_url=product_ref_url)
+    else:
+        base_factory = factory(settings)
     if not enhance_cfg:
         return base_factory
     from app.services.image_description_cache import ImageDescriptionCache  # 提到模块级逻辑外
@@ -363,9 +374,12 @@ async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait:
 
 
 def _submit_video_minimax(
-    settings: Settings, resolution: str = "768P", model: str = "MiniMax-H3"
+    settings: Settings, resolution: str = "768P", model: str = "MiniMax-H3", ratio: str = "16:9"
 ) -> Callable:
-    """调速创代理的 MiniMax H3 视频生成（首帧图驱动，计费走速创账户）。"""
+    """调速创代理的 MiniMax H3 视频生成（首帧图驱动，计费走速创账户）。
+
+    ratio: "16:9"(默认) / "9:16"（竖屏，验收模板驱动——实测输出 768x1376）
+    """
     api_key = settings.WUYINKEJI_API_KEY
     base_url = settings.WUYINKEJI_API_BASE_URL.rstrip("/")
 
@@ -379,7 +393,7 @@ def _submit_video_minimax(
             "first_frame": first_url,
             "resolution": resolution if resolution in ("768P", "2K") else "768P",
             "duration": str(max(4, min(15, duration))),
-            "ratio": "16:9",
+            "ratio": ratio,
         }
         if last_url:
             body["last_frame"] = last_url
@@ -513,11 +527,15 @@ def _submit_video_seedance(settings: Settings, resolution: str = "720p") -> Call
     return _run
 
 
-def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p") -> tuple[Callable, str]:
-    """minimax-official/coding 主路（coding 套餐额度）/ minimax 速创 H3 / Seedance 兜底"""
+def get_video_provider(video_model: str, settings: Settings, resolution: str = "720p",
+                       ratio: str = "16:9") -> tuple[Callable, str]:
+    """minimax-official/coding 主路（coding 套餐额度）/ minimax 速创 H3 / Seedance 兜底
+
+    ratio: "16:9"(默认) / "9:16"（竖屏，验收模板驱动；官方通道暂不支持竖屏保持 16:9）
+    """
     vm = (video_model or "").lower()
     if "minimax-official" in vm or "minimax-coding" in vm or "hailuo" in vm:
         return _submit_video_minimax_official(settings, resolution=resolution), "MiniMax Official"
     if "minimax" in vm:
-        return _submit_video_minimax(settings, resolution=resolution, model=video_model), "MiniMax H3"
+        return _submit_video_minimax(settings, resolution=resolution, model=video_model, ratio=ratio), "MiniMax H3"
     return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"

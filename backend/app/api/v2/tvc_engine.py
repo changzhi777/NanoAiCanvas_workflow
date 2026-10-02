@@ -66,7 +66,8 @@ async def deduct_points(user_id, req, force_personal: bool = False) -> int:
     from app.database import async_session_maker
 
     async with async_session_maker() as db:
-        cost = await calc_tvc_cost(db, req.shot_count)
+        cost = await calc_tvc_cost(db, req.shot_count,
+                                   include_acceptance=bool(getattr(req, "acceptance_template_id", None)))
         total = cost["total"]
 
         result = await deduct_team_first(
@@ -106,6 +107,23 @@ async def execute_tvc(task_id: str, req, user_id=None):
         # 解析配置：请求 > 用户 > 全局 > 硬编码
         config = await _resolve_tvc_config(user_id, req)
 
+        # 验收模板加载（旁挂审查闸，失败不阻塞主链）
+        acceptance_tpl = None
+        if getattr(req, "acceptance_template_id", None):
+            try:
+                from .tvc_acceptance import load_template
+                from app.database import async_session_maker
+                async with async_session_maker() as _db:
+                    acceptance_tpl = await load_template(req.acceptance_template_id, _db)
+                if not acceptance_tpl:
+                    logger.warning(f"acceptance template {req.acceptance_template_id} not found, gates skipped")
+            except Exception as tpl_err:
+                logger.warning(f"acceptance template load failed: {tpl_err}")
+
+        # 验收模板驱动的生成参数：竖屏比例 + 计费档
+        if acceptance_tpl and acceptance_tpl.get("aspect_ratio") == "9:16":
+            config["_aspect_ratio"] = "9:16"
+
         # 积分预扣
         if user_id:
             deducted = await deduct_points(user_id, req, force_personal=req.force_personal_points)
@@ -144,6 +162,25 @@ async def execute_tvc(task_id: str, req, user_id=None):
             "status": "success", "progress": 100, "result": optimized,
         })
 
+        # Step 2.5: 剧本验收闸（旁挂——审查失败只标记 unverified，不阻塞）
+        script_report_items = None
+        if acceptance_tpl:
+            try:
+                from app.services.acceptance import run_script_gate
+                from .tvc_acceptance import save_report
+                from app.database import async_session_maker
+                gate_report = await run_script_gate(
+                    task_id, script_result.get("parsed_script") or {}, acceptance_tpl)
+                async with async_session_maker() as _db:
+                    await save_report(task_id, "script", gate_report, acceptance_tpl, _db)
+                script_report_items = gate_report.get("items") or []
+                await workflow_executor.append_review_node(
+                    task_id, "step-review-script", "剧本验收审查", gate_report)
+                if gate_report.get("status") == "unverified":
+                    await _refund_acceptance(user_id)
+            except Exception as gate_err:
+                logger.warning(f"script gate skipped: {gate_err}")
+
         # Step 3: 分镜头脚本
         await workflow_executor.update_node(task_id, 2, {"status": "running", "progress": 0})
         breakdown = _breakdown_shots(optimized, req.shot_count, req.shot_duration)
@@ -179,6 +216,11 @@ async def execute_tvc(task_id: str, req, user_id=None):
 
         await workflow_executor.complete_task(task_id, "completed")
 
+        # Step 7: 成片验收闸（异步补审——不阻塞 completed 状态）
+        if acceptance_tpl:
+            asyncio.create_task(_run_final_gate_bg(
+                task_id, acceptance_tpl, script_report_items, user_id=user_id))
+
     except Exception as e:
         # 失败退款
         if deducted > 0 and user_id:
@@ -188,6 +230,150 @@ async def execute_tvc(task_id: str, req, user_id=None):
             except Exception as refund_err:
                 logger.error(f"TVC refund failed for task {task_id}: {refund_err}")
         await workflow_executor.fail_task(task_id, str(e))
+
+
+async def _refund_acceptance(user_id):
+    """审查 unverified（服务不可用）时退还 acceptance 档积分。"""
+    if not user_id:
+        return
+    try:
+        from app.services.points_service import resolve_price
+        from app.database import async_session_maker
+        async with async_session_maker() as db:
+            price = await resolve_price(db, "acceptance_review")
+        if price > 0:
+            await refund_points(user_id, int(price))
+            logger.info(f"acceptance unverified, refunded {price} points to {user_id}")
+    except Exception as e:
+        logger.warning(f"acceptance refund failed: {e}")
+
+
+async def _run_final_gate_bg(task_id: str, template: dict, script_items: list | None,
+                             user_id=None):
+    """成片闸后台任务：从 state 取视频 URL → 抽帧 M3 审查 → 报告落库 + 追加 review 节点。"""
+    from app.services.acceptance import run_final_gate
+    from .tvc_acceptance import save_report
+    from app.database import async_session_maker
+
+    try:
+        state = await workflow_executor.load_task(task_id)
+        if not state:
+            return
+        video_url = ""
+        parsed_script = {}
+        for node in state.get("nodes", []):
+            if node.get("id") == "step-video":
+                for st in node.get("subtasks") or []:
+                    video_url = ((st.get("result") or {}).get("video_url")) or video_url
+            if node.get("id") == "step-script":
+                parsed_script = (node.get("result") or {}).get("parsed_script") or {}
+        if not video_url:
+            logger.warning(f"final gate skipped: no video_url task={task_id}")
+            return
+
+        ref_images = []
+        for node in state.get("nodes", []):
+            if node.get("id") == "step-images":
+                for st in node.get("subtasks") or []:
+                    u = (st.get("result") or {}).get("image_url")
+                    if u:
+                        ref_images.append(u)
+
+        report = await run_final_gate(
+            task_id, video_url, parsed_script, template,
+            ref_images=ref_images[:2], script_items=script_items)
+        async with async_session_maker() as _db:
+            await save_report(task_id, "final", report, template, _db)
+        await workflow_executor.append_review_node(
+            task_id, "step-review-final", "成片验收审查", report)
+        if report.get("status") == "unverified":
+            await _refund_acceptance(user_id)
+        logger.info(f"final gate done task={task_id} status={report.get('status')} score={report.get('score')}")
+    except Exception as e:
+        logger.warning(f"final gate bg error task={task_id}: {e}")
+
+
+async def execute_redo(task_id: str, from_step: str, req, user_id=None,
+                       acceptance_template_id: str | None = None):
+    """单步重做（验收闸不达标后）：只重跑生图或视频(+BGM)，正常计费。
+
+    from_step: images（重跑 step4 生图）/ video（重跑 step5 视频+BGM）
+    前置：任务已完成、state 里有请求快照与 breakdown。
+    """
+    settings = get_settings()
+    deducted = 0
+    node_idx = 3 if from_step == "images" else 4
+
+    try:
+        state = await workflow_executor.load_task(task_id)
+        if not state:
+            raise Exception("任务不存在")
+        breakdown_node = next((n for n in state.get("nodes", []) if n.get("id") == "step-breakdown"), None)
+        breakdown = (breakdown_node or {}).get("result") or {}
+        if not breakdown.get("shots"):
+            raise Exception("无分镜数据，无法单步重做")
+
+        config = await _resolve_tvc_config(user_id, req)
+
+        # 部分计费：images → image 档；video → video+BGM 档
+        from app.services.points_service import calc_tvc_cost, deduct_team_first
+        from app.database import async_session_maker
+        async with async_session_maker() as db:
+            cost = await calc_tvc_cost(db, req.shot_count)
+            part = cost["image"] if from_step == "images" else (cost["video"] + cost["bgm"])
+            if user_id:
+                await deduct_team_first(db, user_id, part,
+                                        description=f"TVC 单步重做-{from_step}",
+                                        force_personal=getattr(req, "force_personal_points", False))
+        deducted = part if user_id else 0
+
+        # 重置目标节点
+        await workflow_executor.update_node(task_id, node_idx, {"status": "running", "progress": 0, "error": None})
+        state = await workflow_executor.load_task(task_id)
+        state["status"] = "running"
+        await workflow_executor._save(task_id, state)
+        await workflow_executor._publish(task_id, state)
+
+        if from_step == "images":
+            await _generate_images_parallel(task_id, node_idx, breakdown, req, settings, config)
+        else:
+            cfg5 = (config or {}).get("step5_video", {})
+            primary = getattr(req, "video_model", None) or cfg5.get("default_provider") or "MiniMax-H3"
+            try:
+                await _generate_videos(task_id, node_idx, breakdown, req, settings, config, video_model=primary)
+            except Exception as e:
+                fallback = "seedance" if "minimax" not in primary.lower() else "MiniMax-H3"
+                logger.warning(f"redo video primary ({primary}) failed, fallback {fallback}: {e}")
+                await workflow_executor.update_node(task_id, node_idx, {"status": "running", "progress": 0})
+                await _generate_videos(task_id, node_idx, breakdown, req, settings, config, video_model=fallback)
+
+        # 刷新下游资产（视频重做后产物变化）
+        if user_id and from_step == "video":
+            try:
+                await _save_assets(task_id, user_id, req, breakdown)
+            except Exception as asset_err:
+                logger.warning(f"redo asset save failed: {asset_err}")
+
+        await workflow_executor.complete_task(task_id, "completed")
+
+        # 重跑成片闸
+        if acceptance_template_id:
+            try:
+                from .tvc_acceptance import load_template
+                async with async_session_maker() as _db:
+                    tpl = await load_template(acceptance_template_id, _db)
+                if tpl:
+                    asyncio.create_task(_run_final_gate_bg(task_id, tpl, None, user_id=user_id))
+            except Exception as gate_err:
+                logger.warning(f"redo final gate skipped: {gate_err}")
+
+    except Exception as e:
+        if deducted > 0 and user_id:
+            try:
+                await refund_points(user_id, deducted)
+            except Exception as refund_err:
+                logger.error(f"redo refund failed task={task_id}: {refund_err}")
+        await workflow_executor.fail_task(task_id, f"重做失败: {e}")
 
 
 # ==================== Step 1: 剧本生成 ====================
@@ -727,7 +913,12 @@ async def _generate_images_parallel(task_id: str, node_idx: int, breakdown: dict
 
     cfg = (config or {}).get("step4_image", {})
     image_model = getattr(req, "image_model", None) or cfg.get("default_provider", "gpt-image-2.5-flare")
-    gen_one = get_image_provider(image_model, settings, enhance_cfg=cfg.get("prompt_enhance"))
+    # 竖屏 + 产品参照图（验收模板驱动；P0#1 productImage 修复）
+    aspect = (config or {}).get("_aspect_ratio") or "1280*720"
+    aspect = "720*1280" if aspect == "9:16" else "1280*720"
+    product_ref = getattr(req, "product_image", None) or None
+    gen_one = get_image_provider(image_model, settings, enhance_cfg=cfg.get("prompt_enhance"),
+                                 aspect_ratio=aspect, product_ref_url=product_ref)
 
     max_retries = 3
 
@@ -790,7 +981,9 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     if bgm_subtask:
         bgm_task = asyncio.create_task(_generate_h3_bgm(task_id, node_idx, bgm_subtask, req, settings, config))
 
-    submit_fn, provider_name = get_video_provider(video_model or "seedance", settings, resolution=video_resolution)
+    submit_fn, provider_name = get_video_provider(
+        video_model or "seedance", settings, resolution=video_resolution,
+        ratio="9:16" if (config or {}).get("_aspect_ratio") == "9:16" else "16:9")
     video_subtasks = [st for st in subtasks if st["id"] != "bgm"]
 
     async def _process_video(i: int, st: dict):
@@ -879,9 +1072,10 @@ async def _generate_h3_bgm(task_id: str, node_idx: int, subtask: dict, req, sett
     })
 
     try:
-        # 复用 H3 视频通道（与主视频同速创 MiniMax H3）
+        # 复用 H3 视频通道（与主视频同速创 MiniMax H3；比例跟随主片）
         submit_fn, provider_name = get_video_provider(
-            "minimax-h3", settings, resolution="768P"
+            "minimax-h3", settings, resolution="768P",
+            ratio="9:16" if (config or {}).get("_aspect_ratio") == "9:16" else "16:9"
         )
 
         # 找场景图作为首帧（已有 character-ref/scene-ref 的实际 URL），

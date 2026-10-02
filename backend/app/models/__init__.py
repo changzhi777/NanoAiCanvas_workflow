@@ -26,6 +26,7 @@ from app.models.folder import Folder
 from app.models.app_visibility import AppVisibilityItem, VisibilityAuditLog
 from app.models.tvc_config import TvcWorkflowConfig
 from app.models.tvc_project import TvcProject, TvcProjectShot, TvcProjectStatus, TvcShotStatus
+from app.models.tvc_acceptance import TvcAcceptanceTemplate, TvcAcceptanceReport
 from app.models.api_key import (
     ApiKeyConfig,
     BackendKeyMapping,
@@ -99,6 +100,8 @@ __all__ = [
     "VisibilityAuditLog",
     "TvcWorkflowConfig",
     "TvcProject",
+    "TvcAcceptanceTemplate",
+    "TvcAcceptanceReport",
     "TvcProjectShot",
     "TvcProjectStatus",
     "TvcShotStatus",

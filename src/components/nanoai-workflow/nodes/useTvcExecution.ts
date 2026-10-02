@@ -22,7 +22,7 @@ export function getTvcModelConfig(mode: string): TvcModelConfig {
   const allLabels = GLM_CONFIG.TVC_MODEL_LABELS as Record<string, any>;
   const entry = allLabels[mode];
   if (!entry) {
-    return { label: '深度分析优化', model: 'glm-5.1', provider: 'glm', thinking: true };
+    return { label: '深度分析优化', model: 'glm-5.3', provider: 'glm', thinking: true };
   }
   return {
     label: entry.label as string,
@@ -156,6 +156,8 @@ export function useTvcExecution(
         imageModel: params.imageModel,
         videoModel: params.videoModel,
         styleReference,
+        referenceImage: params.referenceImage || undefined,   // 原图走 M3 视觉剧本（P0#2 修复）
+        productImage: params.productImage || undefined,       // 产品图注入生图参照（P0#1 修复）
         scriptModel: params.scriptModel,
         optimizeModel: params.optimizeModel,
         bgmModel: params.bgmModel,
@@ -164,6 +166,7 @@ export function useTvcExecution(
         lightStyle: params.lightStyle,
         negativePrompts: params.negativePrompts,
         oneShotSeed: overrides?.oneShotSeed ?? (params as { oneShotSeed?: string }).oneShotSeed,
+        acceptanceTemplateId: params.acceptanceTemplateId || undefined,  // 验收审查闸
       };
 
       let response;
@@ -208,6 +211,29 @@ export function useTvcExecution(
 
       // SSE 订阅任务进度：实时百分比/ETA + 终态同步（此前缺失 → 节点永卡 RUNNING）
       esRef.current?.close();
+      let pollTimer: ReturnType<typeof setInterval> | null = null;
+      const startFallbackPolling = () => {
+        // SSE 断连降级：30s 轮询至终态（防节点永卡 RUNNING 诱导重复扣费）
+        if (pollTimer) return;
+        pollTimer = setInterval(async () => {
+          try {
+            const detail = await tvcApi.getTaskStatus(response.task_id);
+            if (['completed', 'failed', 'cancelled'].includes(detail.status)) {
+              if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+              if (detail.status === 'completed') {
+                updateNode(nodeId, { status: NodeStatus.SUCCESS });
+                toast.success('🎬 TVC 任务完成');
+              } else {
+                updateNode(nodeId, {
+                  status: NodeStatus.ERROR,
+                  error: detail.status === 'cancelled' ? '任务已终止' : '任务执行失败',
+                });
+              }
+            }
+          } catch { /* 网络抖动，下轮再试 */ }
+        }, 30000);
+      };
+
       esRef.current = tvcApi.streamProgress(
         response.task_id,
         (state) => {
@@ -219,6 +245,7 @@ export function useTvcExecution(
             toast.success('🎬 TVC 任务完成');
             esRef.current?.close();
             esRef.current = null;
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
             // 拉取产物：视频 URL + 一镜到底 meta（供节点内播放器与"再生成一次"）
             tvcApi.getTaskStatus(response.task_id).then((detail) => {
               let videoUrl = '';
@@ -248,15 +275,18 @@ export function useTvcExecution(
             });
             esRef.current?.close();
             esRef.current = null;
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
           } else if (state.status === 'cancelled') {
             updateNode(nodeId, { status: NodeStatus.ERROR, error: '任务已终止' });
             esRef.current?.close();
             esRef.current = null;
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
           }
         },
         () => {
-          // SSE 断连（网络抖动等）：保持当前状态，用户可重新触发
+          // SSE 断连（网络抖动等）：降级为轮询直到终态
           esRef.current = null;
+          startFallbackPolling();
         },
       );
     } catch (err) {

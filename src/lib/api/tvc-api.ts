@@ -138,6 +138,8 @@ export interface SubmitTaskParams {
   videoModel?: string;
   styleReference?: string;
   referenceImage?: string;
+  /** 一镜到底产品图（注入 character-ref 生图防产品走样） */
+  productImage?: string;
   scriptModel?: string;
   optimizeModel?: string;
   bgmModel?: string;
@@ -148,6 +150,8 @@ export interface SubmitTaskParams {
   /** 一镜到底"再生成一次"：复用上次 composition_seed */
   oneShotSeed?: string;
   forcePersonalPoints?: boolean;
+  /** 验收标准审查闸：关联客户验收模板 */
+  acceptanceTemplateId?: string;
 }
 
 export interface EstimatePointsParams {
@@ -194,13 +198,13 @@ export const tvcApi = {
   },
 
   /**
-   * 分析产品参考图（GLM-5V-Turbo）
+   * 分析产品参考图（后端路由模型；智谱视觉端点已下线，模型由后端裁决——前端不再指定）
    */
   async analyzeProductReference(params: AnalyzeProductParams): Promise<{ analysis: ProductAnalysis }> {
     return client.post('/glm/product-reference', {
       image_url: params.imageUrl,
       intent: params.intent ?? 'tvc',
-      model: params.model ?? 'glm-5v-turbo',
+      ...(params.model ? { model: params.model } : {}),
     });
   },
 
@@ -232,6 +236,7 @@ export const tvcApi = {
       video_model: params.videoModel,
       style_reference: params.styleReference,
       reference_image: params.referenceImage,
+      product_image: params.productImage,
       script_model: params.scriptModel,
       optimize_model: params.optimizeModel,
       bgm_model: params.bgmModel,
@@ -241,6 +246,7 @@ export const tvcApi = {
       negative_prompts: params.negativePrompts,
       one_shot_seed: params.oneShotSeed,
       force_personal_points: params.forcePersonalPoints ?? false,
+      acceptance_template_id: params.acceptanceTemplateId,
     });
   },
 

@@ -196,7 +196,7 @@ export function TvcProjectDetail({ projectId, onBack, className }: TvcProjectDet
             <Music className="w-3 h-3" />
             <span>背景音乐</span>
           </div>
-          <video src={project.bgm_url} controls muted className="w-full h-8 bg-black/40" />
+          <video src={project.bgm_url} controls className="w-full h-8 bg-black/40" />
         </div>
       )}
     </div>

@@ -66,7 +66,6 @@ describe('tvcApi', () => {
       expect(mockPost).toHaveBeenCalledWith('/glm/product-reference', expect.objectContaining({
         image_url: 'data:image/png;base64,abc',
         intent: 'tvc',
-        model: 'glm-5v-turbo',
       }))
       expect(result.analysis).toEqual(mockAnalysis)
     })

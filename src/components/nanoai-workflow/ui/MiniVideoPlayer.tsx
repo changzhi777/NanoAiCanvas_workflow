@@ -31,9 +31,10 @@ export const MiniVideoPlayer = memo(function MiniVideoPlayer({
   const [muted, setMuted] = useState(true);  // 默认静音，避免自动播放限制
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(meta?.duration ?? 0);
+  const [isPortrait, setIsPortrait] = useState(false);  // 竖屏 9:16 适配
 
   useEffect(() => {
-    setPlaying(false); setTime(0); setDuration(meta?.duration ?? 0);
+    setPlaying(false); setTime(0); setDuration(meta?.duration ?? 0); setIsPortrait(false);
   }, [src, meta?.duration]);
 
   const togglePlay = useCallback(() => {
@@ -57,6 +58,7 @@ export const MiniVideoPlayer = memo(function MiniVideoPlayer({
   const onLoadedMetadata = useCallback(() => {
     const v = videoRef.current;
     if (v && Number.isFinite(v.duration)) setDuration(v.duration);
+    if (v && v.videoHeight > v.videoWidth) setIsPortrait(true);
   }, []);
 
   const fmt = (s: number) => {
@@ -75,8 +77,8 @@ export const MiniVideoPlayer = memo(function MiniVideoPlayer({
       'shadow-[0_4px_16px_rgba(0,0,0,0.15)]',
       className,
     )}>
-      {/* 视频区 */}
-      <div className="relative aspect-video">
+      {/* 视频区（竖屏自适应 9:16） */}
+      <div className={cn('relative', isPortrait ? 'aspect-[9/16] max-h-[420px] mx-auto w-auto' : 'aspect-video')}>
         <video
           ref={videoRef}
           src={src}

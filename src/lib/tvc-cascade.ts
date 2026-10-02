@@ -51,20 +51,50 @@ export interface TvcCalcResult {
   videoCount: number        // shotCount
   estimatedTimeMin: number  // 预估最小耗时（秒）
   estimatedTimeMax: number  // 预估最大耗时（秒）
-  estimatedCost: number     // 预估积分消耗（粗略）
+  estimatedCost: number     // 预估积分消耗
   costBreakdown: {
-    text: number            // 文本生成（脚本）
-    image: number           // 图片生成（首帧+尾帧）
+    text: number            // 文本生成（脚本×3）
+    image: number           // 图片生成（2 张固定）
     video: number           // 视频生成
-    bgm: number             // BGM
+    bgm: number             // BGM（video 档）
+    acceptance: number      // 验收双闸（关联模板时）
   }
+}
+
+// 与后端 BillingRule 种子价对齐（text 10 / image 5 / video 20 / bgm 20 / acceptance 5）
+const UNIT_PRICES = { text: 10, image: 5, video: 20, bgm: 20, acceptance: 5 }
+
+export interface TvcCalcOptions {
+  model?: string
+  oneShot?: boolean          // 一镜到底：单镜头
+  includeAcceptance?: boolean // 关联验收模板
 }
 
 export function calcTvcParams(
   totalDuration: number,
-  model: string = 'jimeng-video-01',
+  modelOrOpts: string | TvcCalcOptions = {},
 ): TvcCalcResult {
+  const opts: TvcCalcOptions = typeof modelOrOpts === 'string' ? { model: modelOrOpts } : modelOrOpts
+  const model = opts.model || 'jimeng-video-01'
   const durations = MODEL_DURATION_LIMITS[model] || [5]
+
+  if (opts.oneShot) {
+    // 一镜到底：单段长镜头（H3 4-15s），生图固定 2 张
+    const shotDuration = Math.min(Math.max(totalDuration, 4), 15)
+    const cost = {
+      text: UNIT_PRICES.text * 3,
+      image: UNIT_PRICES.image * 2,
+      video: UNIT_PRICES.video,
+      bgm: UNIT_PRICES.bgm,
+      acceptance: opts.includeAcceptance ? UNIT_PRICES.acceptance : 0,
+    }
+    return {
+      totalDuration, shotDuration, shotCount: 1, imageCount: 2, videoCount: 1,
+      estimatedTimeMin: 620, estimatedTimeMax: 1260,
+      estimatedCost: cost.text + cost.image + cost.video + cost.bgm + cost.acceptance,
+      costBreakdown: cost,
+    }
+  }
 
   // 选择最接近且不超过总时长 1/2 的时长
   const maxShotDur = totalDuration / 2
@@ -89,13 +119,14 @@ export function calcTvcParams(
   const estimatedTimeMin = scriptTime + optimizeTime + breakdownTime + imageTime + videoTime + bgmTime
   const estimatedTimeMax = Math.round(estimatedTimeMin * 1.8)
 
-  const costBreakdown = {
-    text: 2,
-    image: 5 * imageCount,
-    video: 15 * shotCount,
-    bgm: 3,
+  const cost = {
+    text: UNIT_PRICES.text * 3,
+    image: UNIT_PRICES.image * 2,
+    video: UNIT_PRICES.video * shotCount,
+    bgm: UNIT_PRICES.bgm,
+    acceptance: opts.includeAcceptance ? UNIT_PRICES.acceptance : 0,
   }
-  const estimatedCost = costBreakdown.text + costBreakdown.image + costBreakdown.video + costBreakdown.bgm
+  const estimatedCost = cost.text + cost.image + cost.video + cost.bgm + cost.acceptance
 
   return {
     totalDuration,
@@ -106,7 +137,7 @@ export function calcTvcParams(
     estimatedTimeMin: Math.round(estimatedTimeMin),
     estimatedTimeMax,
     estimatedCost,
-    costBreakdown,
+    costBreakdown: cost,
   }
 }
 

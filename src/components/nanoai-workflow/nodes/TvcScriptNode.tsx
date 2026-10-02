@@ -9,7 +9,7 @@ import { memo, useCallback, useState, useRef, useMemo, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 import {
   FileText, X, Image as ImageIcon,
-  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight, Square, Eye, EyeOff, Wand2,
+  Play, Zap, Loader2, Coins, ChevronDown, ChevronRight, Square, Eye, EyeOff, Wand2, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '../ui/Theme';
@@ -22,6 +22,9 @@ import { calcTvcParams } from '@/lib/tvc-cascade';
 import { LanternImage } from '../ui/LanternImage';
 import { MiniVideoPlayer } from '../ui/MiniVideoPlayer';
 import { PromptOptimizerDialog } from '../ui/PromptOptimizerDialog';
+import { ImportBriefDialog } from '../ui/ImportBriefDialog';
+import { AcceptanceReportCard } from '../ui/AcceptanceReportCard';
+import type { AcceptanceTemplate } from '@/lib/api/tvc-acceptance-api';
 
 // ==================== 类型 ====================
 
@@ -51,6 +54,9 @@ export interface TvcScriptData extends WorkflowNodeData {
     productImage?: string | null;
     /** 一镜到底"再生成一次"：复用的 composition_seed */
     oneShotSeed?: string;
+    /** 验收标准审查闸：关联的客户模板 */
+    acceptanceTemplateId?: string;
+    acceptanceTemplateName?: string;
   };
   result?: {
     script?: TvcScript;
@@ -93,13 +99,15 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [costExpanded, setCostExpanded] = useState(false);
+  const [briefDialogOpen, setBriefDialogOpen] = useState(false);
+  const [optimizerOpen, setOptimizerOpen] = useState(false);
   const ime = useIMETextarea(data.params.inputText);
 
   const { isExecuting, executeStep, executeAuto } = useTvcExecution(id, data, updateNodeParams, updateNode);
 
   // ---- 终止任务 ----
   const handleCancelTask = useCallback(async () => {
-    if (!window.confirm('确认终止当前 TVC 任务？已扣积分不予退还。')) return;
+    if (!window.confirm('确认终止当前 TVC 任务？已完成的生成步骤将按实际进度退款。')) return;
     const taskId = (data.result as { taskId?: string } | undefined)?.taskId;
     try {
       if (taskId) {
@@ -161,9 +169,12 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
 
   // ---- 积分预估 ----
   const costEstimate = useMemo(() => {
-    const calc = calcTvcParams(params.totalDuration || 30);
-    return calc;
-  }, [params.totalDuration]);
+    return calcTvcParams(params.totalDuration || 30, {
+      model: params.videoModel || 'MiniMax-H3',
+      oneShot: params.shotCount === 1,
+      includeAcceptance: !!params.acceptanceTemplateId,
+    });
+  }, [params.totalDuration, params.videoModel, params.shotCount, params.acceptanceTemplateId]);
 
   // ---- 渲染 ----
   const isRunning = data.status === NodeStatus.RUNNING || isExecuting;
@@ -214,6 +225,34 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
                 : 'bg-gray-50 border-gray-200 text-gray-800',
             )}
           />
+          {/* 工具角标：提示词优化 + Brief 导入 */}
+          <div className="absolute bottom-2 right-2 flex gap-1">
+            <button
+              onClick={() => setOptimizerOpen(true)}
+              disabled={!params.inputText.trim()}
+              title="提示词二次优化"
+              className={cn(
+                'w-6 h-6 rounded-md flex items-center justify-center transition-colors',
+                'bg-slate-700/60 hover:bg-slate-600 text-slate-300 disabled:opacity-30',
+              )}
+            >
+              <Wand2 className="w-3 h-3" />
+            </button>
+            <button
+              onClick={() => setBriefDialogOpen(true)}
+              disabled={isRunning}
+              title="导入飞书 Brief（验收标准审查闸）"
+              className={cn(
+                'h-6 px-1.5 rounded-md flex items-center gap-0.5 text-[9px] font-medium transition-colors',
+                params.acceptanceTemplateId
+                  ? 'bg-emerald-600/80 text-white'
+                  : 'bg-slate-700/60 hover:bg-slate-600 text-slate-300 disabled:opacity-30',
+              )}
+            >
+              <ShieldCheck className="w-3 h-3" />
+              {params.acceptanceTemplateId ? '已关联' : '验收'}
+            </button>
+          </div>
           {hasScript && (
             <div className={cn(
               'absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-full',
@@ -370,7 +409,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         );
       })()}
 
-      {/* 一镜到底完成：内嵌播放器 + "再生成一次"（复用 composition_seed） */}
+      {/* 一镜到底完成：内嵌播放器 + 验收报告卡 + "再生成一次" */}
       {!isRunning && result?.videoUrl && params.shotCount === 1 && (() => {
         const one = result.oneShot;
         const handleRegenerate = () => {
@@ -382,7 +421,7 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
           executeAuto({ oneShotSeed: seed });
         };
         return (
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3 space-y-2">
             <MiniVideoPlayer
               src={result.videoUrl}
               meta={{
@@ -393,6 +432,12 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
               }}
               onRegenerate={handleRegenerate}
             />
+            {result.taskId && params.acceptanceTemplateId && (
+              <AcceptanceReportCard
+                taskId={result.taskId}
+                templateName={params.acceptanceTemplateName}
+              />
+            )}
           </div>
         );
       })()}
@@ -458,6 +503,34 @@ export const TvcScriptNode = memo(({ id, data }: { id: string; data: TvcScriptDa
         position={Position.Right}
         id="output-script"
         className="!w-3 !h-3 !bg-blue-500 !border-2 !border-blue-300"
+      />
+
+      {/* 提示词二次优化弹窗 */}
+      <PromptOptimizerDialog
+        open={optimizerOpen}
+        originalPrompt={params.inputText}
+        onAccept={(optimized) => {
+          updateNodeParams(id, { inputText: optimized });
+          setOptimizerOpen(false);
+          toast.success('已替换为优化后提示词');
+        }}
+        onClose={() => setOptimizerOpen(false)}
+      />
+
+      {/* 飞书 Brief 导入弹窗（验收标准审查闸） */}
+      <ImportBriefDialog
+        open={briefDialogOpen}
+        onLinked={(tpl: AcceptanceTemplate) => {
+          updateNodeParams(id, {
+            acceptanceTemplateId: tpl.id,
+            acceptanceTemplateName: tpl.name,
+            // 竖屏模板联动一镜到底参数（ Brief 9:16 时不改时长，仅记录）
+            ...(tpl.aspect_ratio === '9:16' ? {} : {}),
+          });
+          setBriefDialogOpen(false);
+          toast.success(`已关联验收标准：${tpl.name}`);
+        }}
+        onClose={() => setBriefDialogOpen(false)}
       />
     </div>
   );

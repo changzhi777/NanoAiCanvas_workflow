@@ -620,6 +620,7 @@ async def list_team_members(
 class TvcEstimateRequest(BaseModel):
     shot_count: int = 6
     include_bgm: bool = True
+    include_acceptance: bool = False  # 验收双闸审查包
 
 
 @router.post("/tvc-estimate")
@@ -631,12 +632,15 @@ async def estimate_tvc_cost(
     """TVC 任务积分预估（公式与 tvc_engine.deduct_points 统一，单一真相源）"""
     from app.services.points_service import calc_tvc_cost
 
-    cost = await calc_tvc_cost(db, req.shot_count, include_bgm=req.include_bgm)
+    cost = await calc_tvc_cost(db, req.shot_count, include_bgm=req.include_bgm,
+                               include_acceptance=req.include_acceptance)
     text_total, image_total = cost["text"], cost["image"]
     video_total, bgm_total = cost["video"], cost["bgm"]
+    acceptance_total = cost["acceptance"]
     total = cost["total"]
     text_price, image_price = cost["prices"]["text"], cost["prices"]["image"]
     video_price, bgm_price = cost["prices"]["video"], cost["prices"]["bgm"]
+    acceptance_price = cost["prices"]["acceptance"]
 
     account = await get_or_create_user_account(db, current_user.id)
 
@@ -645,6 +649,7 @@ async def estimate_tvc_cost(
         "images": image_total,
         "video": video_total,
         "bgm": bgm_total,
+        "acceptance": acceptance_total,
         "total": total,
         "balance": account.balance,
         "sufficient": account.balance >= total,
@@ -653,6 +658,7 @@ async def estimate_tvc_cost(
             "image_per": image_price,
             "video_per": video_price,
             "bgm_per": bgm_price,
+            "acceptance_per": acceptance_price,
             "shot_count": req.shot_count,
             "image_count": 2,  # 主参考图 + 场景设计图（固定，与生成环节一致）
         },

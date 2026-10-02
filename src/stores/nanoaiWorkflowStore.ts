@@ -1477,7 +1477,18 @@ export const useNanoaiWorkflowStore = create<WorkflowState>()(
     {
       name: 'nanoai-workflow-storage',
       partialize: (state) => ({
-        nodes: state.nodes,
+        // base64 大图不入 localStorage（5MB 限制，两张图即爆 → 全画布状态丢失）
+        nodes: state.nodes.map((n) => {
+          const p = (n.data as { params?: Record<string, unknown> })?.params;
+          if (p && (typeof p.referenceImage === 'string' && p.referenceImage.startsWith('data:')
+              || typeof p.productImage === 'string' && p.productImage.startsWith('data:'))) {
+            return {
+              ...n,
+              data: { ...n.data, params: { ...p, referenceImage: null, productImage: null } },
+            };
+          }
+          return n;
+        }),
         edges: state.edges,
         templates: state.templates,
         versions: state.versions,

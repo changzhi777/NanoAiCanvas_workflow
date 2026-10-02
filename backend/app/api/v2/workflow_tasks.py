@@ -17,7 +17,7 @@ from typing import Optional
 from app.api.auth import get_current_user_optional
 from app.models import User
 from app.services import workflow_executor
-from .tvc_engine import execute_tvc
+from .tvc_engine import execute_tvc, execute_redo
 
 router = APIRouter(prefix="/api/v2/tvc-tasks", tags=["tvc-tasks"])
 
@@ -36,6 +36,7 @@ class SubmitRequest(BaseModel):
     video_model: Optional[str] = None  # None → 读全局配置 step5_video.default_provider
     style_reference: Optional[str] = None
     reference_image: Optional[str] = None
+    product_image: Optional[str] = None  # 一镜到底产品图（K3 灯笼双图位，注入 character-ref 生图防产品走样）
     # 用户级模型覆盖（来自属性面板）
     script_model: Optional[str] = None
     optimize_model: Optional[str] = None
@@ -48,6 +49,8 @@ class SubmitRequest(BaseModel):
     # 一镜到底"再生成一次"：复用上次 composition_seed（可逆还原同组合）
     one_shot_seed: Optional[str] = None
     force_personal_points: bool = False  # 团队不足时确认用个人积分
+    # 验收标准审查闸：关联客户模板（KFC 等）→ 剧本闸+成片闸
+    acceptance_template_id: Optional[str] = None
 
 
 @router.post("/submit")
@@ -107,7 +110,9 @@ async def submit_task(
 
     task_id = f"tvc_{uuid.uuid4().hex[:12]}"
     nodes = _build_nodes(req)
-    await workflow_executor.create_task(task_id, req.workflow_id, nodes)
+    # 请求快照（单步重做用；base64 大图不入 Redis）
+    snapshot = req.model_dump(exclude={"reference_image"})
+    await workflow_executor.create_task(task_id, req.workflow_id, nodes, request_snapshot=snapshot)
 
     user_id = current_user.id if current_user else None
     asyncio.create_task(execute_tvc(task_id, req, user_id))
@@ -187,6 +192,86 @@ async def cancel_task(task_id: str):
         raise HTTPException(status_code=400, detail="任务已完成，无法取消")
     await workflow_executor.complete_task(task_id, "cancelled")
     return {"task_id": task_id, "status": "cancelled"}
+
+
+class RedoRequest(BaseModel):
+    from_step: str  # images | video
+    force_personal_points: bool = False
+
+
+REDO_LIMIT = 3
+
+
+@router.post("/{task_id}/redo")
+async def redo_task(task_id: str, req: RedoRequest,
+                    current_user: Optional[User] = Depends(get_current_user_optional)):
+    """单步重做（验收审查不达标后）：只重跑生图或视频(+BGM)，正常计费，上限 3 次。"""
+    from app.models.tvc_acceptance import TvcAcceptanceReport
+    from app.database import async_session_maker
+    from sqlalchemy import select
+
+    if req.from_step not in ("images", "video"):
+        raise HTTPException(status_code=400, detail="from_step 须为 images / video")
+
+    state = await workflow_executor.load_task(task_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if state.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="仅已完成任务可单步重做")
+
+    snapshot = state.get("request") or {}
+    if not snapshot:
+        raise HTTPException(status_code=400, detail="任务缺少请求快照，无法单步重做（请重新提交）")
+    # video 重做依赖 step4 图片产物；images 重做依赖 breakdown
+    need_node = "step-breakdown" if req.from_step == "images" else "step-images"
+    src = next((n for n in state.get("nodes", []) if n.get("id") == need_node), None)
+    if not src or src.get("status") != "success":
+        raise HTTPException(status_code=400, detail=f"上游节点 {need_node} 未完成，无法重做")
+
+    # 成片报告 redo_count 上限
+    template_id = snapshot.get("acceptance_template_id")
+    if template_id:
+        async with async_session_maker() as db:
+            row = (await db.execute(
+                select(TvcAcceptanceReport)
+                .where(TvcAcceptanceReport.task_id == task_id, TvcAcceptanceReport.gate == "final")
+                .order_by(TvcAcceptanceReport.created_at.desc())
+            )).scalars().first()
+            count = row.redo_count if row else 0
+        if count >= REDO_LIMIT:
+            raise HTTPException(status_code=409, detail=f"重做次数已达上限（{REDO_LIMIT} 次）")
+
+    # 模拟执行中防并发重做
+    state["status"] = "running"
+    await workflow_executor._save(task_id, state)
+
+    submit_req = SubmitRequest(**snapshot)
+    submit_req.force_personal_points = req.force_personal_points
+    user_id = current_user.id if current_user else None
+    asyncio.create_task(execute_redo(task_id, req.from_step, submit_req, user_id,
+                                     acceptance_template_id=template_id))
+
+    # redo_count 自增（fire-and-forget，不阻塞）
+    async def _bump():
+        try:
+            async with async_session_maker() as db:
+                row = (await db.execute(
+                    select(TvcAcceptanceReport)
+                    .where(TvcAcceptanceReport.task_id == task_id, TvcAcceptanceReport.gate == "final")
+                    .order_by(TvcAcceptanceReport.created_at.desc())
+                )).scalars().first()
+                if row:
+                    row.redo_count = (row.redo_count or 0) + 1
+                    row.decision = "redo_pending"
+                    await db.commit()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"redo bump failed: {e}")
+
+    if template_id:
+        asyncio.create_task(_bump())
+
+    return {"task_id": task_id, "status": "redo_submitted", "from_step": req.from_step}
 
 
 @router.get("/{task_id}/progress")

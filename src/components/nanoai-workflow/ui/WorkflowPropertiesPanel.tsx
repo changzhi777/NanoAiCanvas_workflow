@@ -637,13 +637,6 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                             ))}
                           </select>
                         </div>
-                        <div>
-                          <Label className="text-xs mb-1.5 block text-muted-foreground">品质</Label>
-                          <select value={p.quality} onChange={e => setP({ quality: e.target.value })} className={selectCls}>
-                            <option value="hd">高清</option>
-                            <option value="standard">标清</option>
-                          </select>
-                        </div>
                       </div>
                       <div>
                         <Label className="text-xs mb-1.5 block text-muted-foreground">画面风格</Label>
@@ -695,7 +688,11 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
 
                     {/* 级联计算 */}
                     {(() => {
-                      const calc = calcTvcParams(p.totalDuration || 30);
+                      const calc = calcTvcParams(p.totalDuration || 30, {
+                        model: p.videoModel || 'MiniMax-H3',
+                        oneShot: p.shotCount === 1,
+                        includeAcceptance: !!p.acceptanceTemplateId,
+                      });
                       return (
                         <div className={cn('rounded-lg p-3 space-y-1.5', isDark ? 'bg-slate-900/50' : 'bg-white')}>
                           <div className="text-[11px] font-medium text-muted-foreground mb-1">自动计算</div>

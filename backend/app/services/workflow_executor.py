@@ -98,7 +98,8 @@ async def load_task(task_id: str) -> Optional[dict]:
     return json.loads(raw) if raw else None
 
 
-async def create_task(task_id: str, workflow_id: str, nodes: list) -> dict:
+async def create_task(task_id: str, workflow_id: str, nodes: list,
+                      request_snapshot: dict | None = None) -> dict:
     """创建任务"""
     now = time.time()
     state = {
@@ -107,6 +108,7 @@ async def create_task(task_id: str, workflow_id: str, nodes: list) -> dict:
         "status": "submitted",
         "overall_progress": 0,
         "nodes": nodes,
+        "request": request_snapshot or {},   # 提交参数快照（单步重做用）
         "created_at": now,
         "started_at": now,  # ETA 基准
         "updated_at": now,
@@ -209,6 +211,24 @@ async def complete_task(task_id: str, status: str = "completed"):
     state["overall_progress"] = 100 if status == "completed" else state["overall_progress"]
     state["completed_at"] = time.time()
     _attach_eta(state)
+    state["updated_at"] = time.time()
+    await _save(task_id, state)
+    await _publish(task_id, state)
+
+
+async def append_review_node(task_id: str, node_id: str, label: str, result: dict):
+    """追加验收审查节点（旁挂展示，不参与主链进度计算）。"""
+    state = await load_task(task_id)
+    if not state:
+        return
+    status = {"passed": "success", "failed": "error"}.get(result.get("status"), "success")
+    # unverified 也展示为 success（降级不告警），报告内自带状态
+    if result.get("status") == "unverified":
+        status = "success"
+    state["nodes"].append({
+        "id": node_id, "label": label, "status": status, "progress": 100,
+        "result": result, "updated_at": time.time(),
+    })
     state["updated_at"] = time.time()
     await _save(task_id, state)
     await _publish(task_id, state)

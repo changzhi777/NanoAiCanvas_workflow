@@ -220,4 +220,4 @@ class TestCalcTvcCost:
 
         with patch("app.services.points_service.resolve_price", new=self._mock_price()):
             cost = await calc_tvc_cost(AsyncMock(), 3)
-        assert cost["prices"] == {"text": 10, "image": 5, "video": 20, "bgm": 20}
+        assert cost["prices"] == {"text": 10, "image": 5, "video": 20, "bgm": 20, "acceptance": 0}
