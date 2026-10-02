@@ -334,7 +334,7 @@ async def extract_frames(video_url: str, n: int = FRAME_COUNT) -> list[str]:
 async def _extract_single_frame(video_url: str, ts: float) -> Optional[str]:
     proc = await asyncio.create_subprocess_exec(
         "ffmpeg", "-v", "error", "-ss", f"{ts:.2f}", "-i", video_url,
-        "-frames:v", "1", "-vf", "scale=512:-2", "-q:v", "7", "-f", "image2pipe", "-v:c", "mjpeg", "-",
+        "-frames:v", "1", "-vf", "scale=512:-2", "-q:v", "7", "-f", "image2pipe", "-c:v", "mjpeg", "-",
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     try:
