@@ -66,6 +66,8 @@ async def fetch_bitable(share_url: str) -> dict:
     """抓取多维表格 → {base_name, fields, rows, tables}。
 
     rows: [{维度名: 单元格文本}]（转置原始行）
+    匿名链路：先 GET 分享页种游客会话 cookie，再带 cookie 调 clientvars
+    （裸调 clientvars 返回 code=5 Login Required，2026-10-02 实证）。
     """
     info = parse_share_url(share_url)
     params = dict(_DEFAULT_PARAMS)
@@ -76,6 +78,15 @@ async def fetch_bitable(share_url: str) -> dict:
     url = f"https://{info['host']}{CLIENTVARS_PATH.format(token=info['base_token'])}"
 
     async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+        # 步骤1：访问分享页拿游客 cookie（飞书要求会话才能读 clientvars）
+        try:
+            await client.get(
+                f"https://{info['host']}/base/{info['base_token']}",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+        except Exception:
+            pass  # 页面失败不阻断，clientvars 仍可能成功
+        # 步骤2：带 cookie 调 clientvars
         resp = await client.get(url, params=params, headers={"User-Agent": "Mozilla/5.0"})
     if resp.status_code != 200:
         raise RuntimeError(f"飞书 clientvars HTTP {resp.status_code}（链接可能失效或非匿名可访问）")
