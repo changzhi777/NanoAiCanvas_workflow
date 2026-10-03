@@ -76,6 +76,20 @@ def _match_price(text: str) -> bool:
     return bool(re.search(r"(?:\d{1,3}(?:\.\d{1,2})?|[一二两三四五六七八九十百]+)\s*(?:元|块)", text))
 
 
+# 广告法违禁词硬清单（广告法第九条绝对化用语 + 食品广告特殊规定高频词）
+# 完整软审查（功效声称/母乳替代/医疗用语等语境判断）由 llm_content 层的 prompt_hint 补充
+AD_LAW_BANNED = [
+    "最好", "最佳", "最优", "最低价", "全网最低", "全网第一", "销量第一", "TOP1", "第一品牌",
+    "顶级", "极品", "终极", "极致", "独家", "国家级", "全国销量冠军", "质量免检",
+    "最新科学", "最新技术", "最先进", "全民首选", "史上最",
+]
+
+
+def _match_ad_law(text: str) -> bool:
+    """广告法违禁词扫描。返回 True=命中违禁（不合格）。"""
+    return any(w in text for w in AD_LAW_BANNED)
+
+
 def rule_check(criteria: list[dict], *, parsed_script: dict | None = None,
                brief_ctx: dict | None = None, video_meta: dict | None = None) -> list[dict]:
     """纯函数规则审查。video_meta: {width, height, duration}（成片闸）。
@@ -123,6 +137,16 @@ def rule_check(criteria: list[dict], *, parsed_script: dict | None = None,
                 item["actual"] = "命中" if hit else f"未出现「{needle[:40]}」"
                 if not hit:
                     item["conflict"] = f"必现信息缺失：{needle[:60]}"
+        elif rtype == "ad_law":
+            if not text:
+                item["pass"] = None
+            else:
+                hit = _match_ad_law(text)
+                item["pass"] = not hit
+                item["actual"] = "未检出违禁词" if not hit else "检出违禁词"
+                if hit:
+                    banned = [w for w in AD_LAW_BANNED if w in text]
+                    item["conflict"] = f"广告法违禁词：{'、'.join(banned[:5])}（广告法第九条，罚款 20-100 万）"
         elif rtype == "archive":
             item["pass"] = True  # 存档项不判失败
             item["actual"] = str((brief_ctx or {}).get(rule.get("source")) or "")

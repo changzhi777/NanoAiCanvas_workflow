@@ -104,6 +104,33 @@ class TestRuleCheck:
         assert by_key["video_theme"]["pass"] is True
         assert by_key["video_theme"]["category"] == "archive"
 
+    def test_ad_law_banned_word_hit(self):
+        script = {"shots": [{"video_prompt": "全国销量冠军汉堡 全场最佳", "dialogue": [{"line": "顶级美味"}]}]}
+        items = rule_check(CRITERIA, parsed_script=script, brief_ctx={})
+        by_key = {i["key"]: i for i in items}
+        assert by_key["ad_law_compliance"]["pass"] is False
+        assert by_key["ad_law_compliance"]["veto"] is True
+        assert "销量冠军" in by_key["ad_law_compliance"]["conflict"]
+
+    def test_ad_law_clean_text_passes(self):
+        script = {"shots": [{"video_prompt": "金枕榴莲椰耶蛋挞 咔嚓一口唤醒清晨", "dialogue": []}]}
+        items = rule_check(CRITERIA, parsed_script=script, brief_ctx={})
+        by_key = {i["key"]: i for i in items}
+        assert by_key["ad_law_compliance"]["pass"] is True
+
+    async def test_ad_law_veto_caps_score(self):
+        """违禁词命中是 veto → 总分压 20 且 status failed"""
+        script = {"shots": [{"video_prompt": "史上最好吃的炸鸡", "dialogue": []}]}
+        template = dict(DEFAULT_KFC_TEMPLATE)
+        template["brief_ctx"] = {}
+        llm_out = [{"key": c["key"], "pass": True, "conflict": "", "actual": "", "advice": ""}
+                   for c in CRITERIA if c["category"] == "llm_content"]
+        with patch("app.api.v2.glm_proxy._glm_chat",
+                   new=AsyncMock(return_value={"choices": [{"message": {"content": json.dumps(llm_out)}}]})):
+            report = await run_script_gate("t_adlaw", script, template)
+        assert report["status"] == "failed"
+        assert "ad_law_compliance" in report["veto_hit"]
+
 
 # ==================== LLM 解析与合并 ====================
 

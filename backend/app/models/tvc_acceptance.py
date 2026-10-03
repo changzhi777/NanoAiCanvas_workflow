@@ -66,6 +66,8 @@ def _kfc_criteria():
          "weight": 10, "veto": True, "rule": {"type": "text_contains", "source": "product_name"}, "prompt_hint": None},
         {"key": "price_hit", "label": "价格/活动信息命中", "category": "rule_content",
          "weight": 8, "veto": False, "rule": {"type": "text_contains", "source": "price_info"}, "prompt_hint": None},
+        {"key": "ad_law_compliance", "label": "广告法合规（极限词/食品违禁语）", "category": "rule_content",
+         "weight": 8, "veto": True, "rule": {"type": "ad_law"}, "prompt_hint": None},
         # llm_content
         {"key": "copy_fidelity", "label": "指定文案忠实度", "category": "llm_content",
          "weight": 8, "veto": False, "rule": None, "prompt_hint": "脚本中配音/字幕/台词是否与 Brief 指定文案一致（未指定则跳过）"},
@@ -82,6 +84,9 @@ def _kfc_criteria():
          "weight": 10, "veto": True, "rule": None, "prompt_hint": "出镜人物形象与 Brief 指定设定/参照图一致，不得改动面部、服饰等细节"},
         {"key": "product_fidelity", "label": "产品还原度", "category": "llm_visual",
          "weight": 10, "veto": True, "rule": None, "prompt_hint": "产品外观与参照 KV 一致，颜色材质不能变形"},
+        {"key": "logo_integrity", "label": "Logo/上校头像完整性", "category": "llm_visual",
+         "weight": 10, "veto": True, "rule": None,
+         "prompt_hint": "KFC Logo 与上校头像是否变形/改色/加特效（官方规范：Logo 不可修改，上校形象保持完整；KFC Red 参考 #E4002B）。Logo 缺失本身不扣分，变形/错误呈现才扣"},
         {"key": "scene_mood_visual", "label": "画面氛围/品牌色调", "category": "llm_visual",
          "weight": 5, "veto": False, "rule": None, "prompt_hint": "画面色调氛围符合 Brief（如肯德基品牌红主色调）"},
         # archive（仅存档展示，不参与评分）
