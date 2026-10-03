@@ -277,7 +277,15 @@ async def load_template(template_id, db: AsyncSession) -> Optional[dict]:
 
 async def save_report(task_id: str, gate: str, report: dict, template: dict | None,
                       db: AsyncSession) -> str:
-    """审查报告落库（引擎插桩调用）。返回 report_id。"""
+    """审查报告落库（引擎插桩调用）。返回 report_id。
+
+    redo 链：新报告继承同 task+gate 最新行的 redo_count（重做报告从 0 起算会丢失次数账）。
+    """
+    prev = (await db.execute(
+        select(TvcAcceptanceReport)
+        .where(TvcAcceptanceReport.task_id == task_id, TvcAcceptanceReport.gate == gate)
+        .order_by(TvcAcceptanceReport.created_at.desc())
+    )).scalars().first()
     row = TvcAcceptanceReport(
         task_id=task_id, gate=gate,
         template_id=UUID(template["id"]) if template and template.get("id") else None,
@@ -285,6 +293,7 @@ async def save_report(task_id: str, gate: str, report: dict, template: dict | No
         status=report.get("status", "unverified"), score=int(report.get("score", 0)),
         veto_hit=report.get("veto_hit", []), items=report.get("items", []),
         conflicts_top=report.get("conflicts_top", []), model_meta=report.get("model_meta", {}),
+        redo_count=prev.redo_count if prev else 0,
     )
     db.add(row)
     await db.commit()
