@@ -27,12 +27,12 @@ DEFAULT_CONFIG = {
         "model": "deepseek-v4-pro",
         "fallback_model": "glm-5.3",
         "temperature": 1.0,
-        "max_tokens": 8192,
+        "max_tokens": 32768,  # thinking 计入 max_tokens——8192 被 reasoning 吃掉致正文截断
     },
     "step2_optimize": {
         "model": "deepseek-flash",
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 16384,
     },
     "step3_breakdown": {
         "mode": "logic",
