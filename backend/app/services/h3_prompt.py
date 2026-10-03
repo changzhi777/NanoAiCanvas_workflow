@@ -94,6 +94,10 @@ def _clean(text: str = None) -> str:
 
 # ==================== 主编译器 ====================
 
+def _mmss(sec: float) -> str:
+    return f"00:{sec:06.3f}"
+
+
 def compile_h3_prompt(
     *,
     character_desc: str,
@@ -110,12 +114,15 @@ def compile_h3_prompt(
     duration: int = 15,
     voice_gender: str = "none",
     voice_preset: str = None,
+    story_shots: list = None,
 ) -> dict:
     """五锚点 + 剧本 → H3 三字段结构化 Schema。
 
     返回 {"prompt": 全文, "mode": "t2va/i2va", "voice": 音色预设 dict|None,
           "on_screen_texts": [...], "shots": 段落数}
-    单镜头叙事 + 结尾 KV shot（时间轴切点在 duration-3s）。
+    story_shots 为空 → 单镜头叙事 + 结尾 KV shot；
+    story_shots = [{"visual": "...", "line": "..."}, ...] → 多镜头时间轴
+    （[Shot N] At 00:XX.000 切点协议，末镜头后接 KV 定格 shot）。
     """
     character_desc = _clean(character_desc)
     product_name = _clean(product_name) or "产品"
@@ -130,27 +137,62 @@ def compile_h3_prompt(
     on_screen_texts = []
 
     # ---- 台词构造（③ 定案：单人 + 画外音旁白优先，无配音则转花字） ----
-    speech_line = ""
-    if voice and (narration or dialogue):
-        line = dialogue or narration  # 对白降级合并为单人台词
-        voice_desc = voice["desc"]
-        if dialogue:
-            # 角色出镜台词（声画同出带唇形）
-            speech_line = (
-                f" {character_desc} with {voice_desc} (S1) says: "
-                f"<d>[Chinese] {line} </d>"
-            )
-        else:
-            # 画外音旁白（唇闭声明——官方 4.4 规范）
-            speech_line = (
-                f" {character_desc} with {voice_desc} (S1) says in an off-screen voiceover: "
-                f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed."
-            )
-    elif narration:
-        # 无配音：文案转 on-screen text（引号逐字机制）
-        on_screen_texts.append(narration)
+    voice_desc = voice["desc"] if voice else ""
+    speaker = f" {character_desc} with {voice_desc} (S1)" if voice else ""
 
-    # ---- Shot 1：叙事主体 ----
+    def _voiceover(line: str) -> str:
+        return (
+            f"{speaker} says in an off-screen voiceover: "
+            f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed."
+        )
+
+    def _inline_line(line: str) -> str:
+        return f"{speaker} says: <d>[Chinese] {line} </d>"
+
+    # ---- 多镜头模式：story_shots 驱动 [Shot N] 时间轴 ----
+    desc_parts = []
+    shots_out = []
+    if story_shots:
+        n_shots = len(story_shots)
+        kv_cut = duration - 3
+        # 镜头均匀分配时长（KV shot 占末尾 3s）
+        seg = kv_cut / n_shots
+        for i, sh in enumerate(story_shots):
+            visual = _clean(sh.get("visual") or "")
+            line = _clean(sh.get("line") or "")
+            head = f"[Shot {i + 1}]"
+            if i > 0:
+                head += f" At {_mmss(i * seg)}, the shot cuts to"
+            seg_text = f"{head} {visual}"
+            if line:
+                seg_text += " " + _voiceover(line) + " The visual continues as described."
+            desc_parts.append(seg_text)
+            shots_out.append(seg_text[:60])
+        # KV 定格 shot
+        kv_text = f"{product_name}" + (f" {product_price}" if product_price else "")
+        on_screen_texts.append(kv_text)
+        desc_parts.append(
+            f"[Shot {n_shots + 1}] At {_mmss(kv_cut)}, the shot cuts to the final product KV: "
+            f"{product_name} presented as the hero product on its signature packaging, "
+            f'with on-screen text reading "{_clean(kv_text)}" and clean space for the headline.'
+        )
+        description = " ".join(desc_parts)
+        prompt = (
+            f"integrated_multimodal_description: {description}\n\n"
+            f"overall_soundscape: Soft restaurant ambience continues underneath with light kitchen sounds. "
+            f"A crisp bite and gentle packaging rustle accompany the product close-up.\n\n"
+            f"non_diegetic_music: {_clean(bgm_prompt) or 'N/A'}"
+        )
+        return {
+            "prompt": prompt,
+            "mode": "t2va",
+            "voice": voice,
+            "on_screen_texts": [t for t in on_screen_texts if t],
+            "shots": n_shots + 1,
+            "cut_at": kv_cut,
+        }
+
+    # ---- 单镜头模式（原逻辑） ----
     s1_parts = [
         f"[Shot 1] {style_word}, commercial advertising,",
         f"{scene_desc or 'a bright branded restaurant scene'} with {_light_phrase(light_style)}.",
@@ -158,8 +200,11 @@ def compile_h3_prompt(
         f"{character_desc} interacts with {product_name}"
         + (f" — {product_sell}" if product_sell else "") + ".",
     ]
-    if speech_line:
-        s1_parts.append(speech_line)
+    if voice and (narration or dialogue):
+        line = dialogue or narration
+        s1_parts.append(_voiceover(line) if not dialogue else _inline_line(line))
+    elif narration:
+        on_screen_texts.append(narration)
 
     # ---- Shot 2：结尾 KV 定格 ----
     kv_text = f"{product_name}"

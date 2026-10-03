@@ -871,6 +871,21 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                         if dlg_txt:
                             break
                     bgm_cfg = (config or {}).get("step5_bgm", {})
+
+                    # 五锚点 V5：从 req.prompt 提取 [镜头N] 分段 → 多镜头时间轴
+                    # （客户意见"镜头单调没按情节"——Brief 情节分段直接映射 H3 [Shot N] 协议）
+                    import re as _re
+                    story_shots = []
+                    user_prompt = getattr(req, "prompt", "") or ""
+                    segs = _re.split(r"\[镜头(\d)\]", user_prompt)
+                    if len(segs) >= 3:
+                        for i in range(1, len(segs) - 1, 2):
+                            seg_visual = segs[i + 1].strip()
+                            if seg_visual:
+                                story_shots.append({"visual": seg_visual[:300],
+                                                    "line": ""})
+                    story_shots = story_shots[:4]  # 15s 上限 4 镜头
+
                     compiled = compile_h3_prompt(
                         character_desc=getattr(req, "character_desc", "") or subject_desc[:200],
                         product_name=getattr(req, "product_name_desc", "") or "",
@@ -886,6 +901,7 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                         duration=int(one.get("duration") or 15),
                         voice_gender=getattr(req, "voice_gender", "none") or "none",
                         voice_preset=getattr(req, "voice_preset", None),
+                        story_shots=story_shots or None,
                     )
                     one["prompt"] = compiled["prompt"]
                     one["h3_voice"] = compiled["voice"]["id"] if compiled.get("voice") else None
