@@ -131,8 +131,13 @@ def rule_check(criteria: list[dict], *, parsed_script: dict | None = None,
                 item["pass"] = None  # Brief 未提供该字段，跳过判定
             else:
                 hit = needle in text
-                if source == "price_info":
-                    hit = hit or _match_price(text)
+                if not hit and source == "price_info":
+                    hit = _match_price(text)
+                if not hit and source == "product_name":
+                    # 全串（含括号备注）未命中 → 括号拆分主名/短名任一命中即过
+                    # 如「肯德基×三体宇宙联名翅桶（十翅一桶）」→ 主名 或 「十翅一桶」
+                    parts = [p.strip() for p in re.split(r"[（）()]", needle) if len(p.strip()) >= 4]
+                    hit = any(p in text for p in parts)
                 item["pass"] = hit
                 item["actual"] = "命中" if hit else f"未出现「{needle[:40]}」"
                 if not hit:
@@ -142,11 +147,17 @@ def rule_check(criteria: list[dict], *, parsed_script: dict | None = None,
                 item["pass"] = None
             else:
                 hit = _match_ad_law(text)
-                item["pass"] = not hit
-                item["actual"] = "未检出违禁词" if not hit else "检出违禁词"
                 if hit:
+                    # 初判违禁 → 标记 suspect，由 LLM 语境复核（"宇宙终极问题"等非宣传性使用不违规）
                     banned = [w for w in AD_LAW_BANNED if w in text]
-                    item["conflict"] = f"广告法违禁词：{'、'.join(banned[:5])}（广告法第九条，罚款 20-100 万）"
+                    item["pass"] = False
+                    item["suspect_adlaw"] = True
+                    item["banned_words"] = banned
+                    item["conflict"] = f"疑似广告法违禁词：{'、'.join(banned[:5])}（待语境复核）"
+                    item["actual"] = text[:120]
+                else:
+                    item["pass"] = True
+                    item["actual"] = "未检出违禁词"
         elif rtype == "archive":
             item["pass"] = True  # 存档项不判失败
             item["actual"] = str((brief_ctx or {}).get(rule.get("source")) or "")
@@ -156,10 +167,13 @@ def rule_check(criteria: list[dict], *, parsed_script: dict | None = None,
 
 # ==================== LLM 文本层（剧本闸） ====================
 
-_SCRIPT_REVIEW_PROMPT = """你是广告片验收审查员。对照客户 Brief 标准，审查以下 TVC 脚本 JSON。
+_SCRIPT_REVIEW_PROMPT = """你是广告片验收审查员兼广告法合规审核员。对照客户 Brief 标准，审查以下 TVC 脚本 JSON。
 
-## Brief 标准（仅审查 llm_content 类项）
+## Brief 标准
 {criteria_block}
+
+## 广告法语境复核（如下方列出疑似违禁词）
+{adlaw_block}
 
 ## Brief 上下文
 {brief_block}
@@ -171,15 +185,32 @@ _SCRIPT_REVIEW_PROMPT = """你是广告片验收审查员。对照客户 Brief �
 只输出 JSON 数组（不要 markdown 代码块），每项：
 [{{"key": "...", "pass": true/false, "conflict": "失败原因一句话", "actual": "实际看到什么", "advice": "修改建议一句话"}}]
 pass 无法判定时用 null。key 必须与标准项 key 一致，逐项输出。
-注意：所有字符串值内部禁止使用英文双引号，引用文案请用『』。"""
+广告法复核规则：仅当词语被用于**宣传性绝对化断言**（如宣称产品"终极选择""最佳口感"）才判 false；叙事性/描述性语境（如角色思考"宇宙终极问题"）判 true 并在 actual 注明"叙事性使用，非宣传断言"。
+所有字符串值内部禁止使用英文双引号，引用文案请用『』。"""
+
+
+_ADLOW_REVIEW_BLOCK = """以下词语被正则初判命中，请结合上下文判断是否构成广告法绝对化用语（宣传性使用才违规）：
+{words}
+上下文摘录：{context}"""
 
 
 async def llm_content_review(criteria: list[dict], parsed_script: dict,
-                             brief_ctx: dict) -> list[dict]:
-    """glm-5.3 文本审查 llm_content 项。模型失败抛异常（由上层降级）。"""
+                             brief_ctx: dict, suspect_items: list[dict] = None) -> list[dict]:
+    """glm-5.3 文本审查 llm_content 项 + 广告法疑似项语境复核。模型失败抛异常（由上层降级）。"""
     from app.api.v2.glm_proxy import _glm_chat
 
     llm_items = [c for c in criteria if c.get("category") == "llm_content"]
+    adlaw_block = ""
+    if suspect_items:
+        llm_items = llm_items + [
+            {"key": it["key"], "label": it.get("label", it["key"]),
+             "prompt_hint": "广告法合规复核（见疑似违禁词）"}
+            for it in suspect_items
+        ]
+        adlaw_block = _ADLOW_REVIEW_BLOCK.format(
+            words="、".join(w for it in suspect_items for w in it.get("banned_words", [])),
+            context="；".join(it.get("actual", "")[:100] for it in suspect_items),
+        )
     if not llm_items:
         return []
     criteria_block = "\n".join(
@@ -191,7 +222,8 @@ async def llm_content_review(criteria: list[dict], parsed_script: dict,
     resp = await _glm_chat(
         REVIEW_TEXT_MODEL,
         [{"role": "user", "content": _SCRIPT_REVIEW_PROMPT.format(
-            criteria_block=criteria_block, brief_block=brief_block, script_json=script_json)}],
+            criteria_block=criteria_block, adlaw_block=adlaw_block or "（无）",
+            brief_block=brief_block, script_json=script_json)}],
         temperature=1.0, max_tokens=4000,
         thinking=False,  # 用户指令：glm-5.3 审查不开 thinking（结构化输出无需 reasoning，省时省 token）
     )
@@ -399,7 +431,10 @@ async def run_script_gate(task_id: str, parsed_script: dict, template: dict) -> 
     brief_ctx = template.get("brief_ctx") or {}
     try:
         rule_items = rule_check(criteria, parsed_script=parsed_script, brief_ctx=brief_ctx)
-        llm_items = await llm_content_review(criteria, parsed_script, brief_ctx)
+        # 广告法疑似项（正则初判命中）交 LLM 语境复核（二段式）
+        suspects = [it for it in rule_items if it.get("suspect_adlaw")]
+        llm_items = await llm_content_review(criteria, parsed_script, brief_ctx,
+                                             suspect_items=suspects)
         items = merge_items(rule_items, llm_items)
         # llm_visual 属成片闸（抽帧后才有画面），剧本闸剔除
         items = [it for it in items if it.get("category") != "llm_visual"]
