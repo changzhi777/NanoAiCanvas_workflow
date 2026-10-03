@@ -141,13 +141,15 @@ def compile_h3_prompt(
     speaker = f" {character_desc} with {voice_desc} (S1)" if voice else ""
 
     def _voiceover(line: str) -> str:
-        # <d> 台词 H3 自带单次字幕（V7 实证追加 subtitles 声明会导致字幕重复）
+        # 旁白（唇闭无对白口型）→ 需要显式字幕声明（H3 对 off-screen 语音不出自动字幕）
         return (
             f"{speaker} says in an off-screen voiceover: "
-            f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed."
+            f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed, "
+            f'with on-screen subtitles reading "{line}".'
         )
 
     def _inline_line(line: str) -> str:
+        # 出镜台词 → <d> 自带单次字幕（V8 实证：显式声明会导致字幕重复）
         return f"{speaker} says: <d>[Chinese] {line} </d>"
 
     # ---- 多镜头模式：story_shots 驱动 [Shot N] 时间轴 ----
