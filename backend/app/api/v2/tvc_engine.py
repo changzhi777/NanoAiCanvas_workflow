@@ -121,7 +121,9 @@ async def execute_tvc(task_id: str, req, user_id=None):
                 logger.warning(f"acceptance template load failed: {tpl_err}")
 
         # 验收模板驱动的生成参数：竖屏比例 + 计费档
-        if acceptance_tpl and acceptance_tpl.get("aspect_ratio") == "9:16":
+        # ⑤ 横竖版优先级：显式 req.aspect_ratio > 验收模板 > 默认 16:9
+        ar = getattr(req, "aspect_ratio", None) or (acceptance_tpl or {}).get("aspect_ratio")
+        if ar == "9:16":
             config["_aspect_ratio"] = "9:16"
 
         # 积分预扣
@@ -837,11 +839,49 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                 )
                 vp = one.get("prompt", "")
 
+            # ===== 提示词层 2.5：H3 结构化 Schema 编译（五锚点主控，TVC_H3_SCHEMA_PROMPT 开关可回滚） =====
+            if getattr(settings, "TVC_H3_SCHEMA_PROMPT", True):
+                try:
+                    from app.services.h3_prompt import compile_h3_prompt
+                    ps = script_result.get("parsed_script") or {}
+                    narration_txt = str(ps.get("narration") or "")
+                    dlg_txt = ""
+                    for _s in ps.get("shots") or []:
+                        for _d in _s.get("dialogue") or []:
+                            dlg_txt = str(_d.get("line") or "")
+                            break
+                        if dlg_txt:
+                            break
+                    bgm_cfg = (config or {}).get("step5_bgm", {})
+                    compiled = compile_h3_prompt(
+                        character_desc=getattr(req, "character_desc", "") or subject_desc[:200],
+                        product_name=getattr(req, "product_name_desc", "") or "",
+                        product_sell=getattr(req, "product_sell", "") or "",
+                        product_price=getattr(req, "product_price", "") or "",
+                        scene_desc=str(ps.get("logline") or "")[:200] or (getattr(req, "prompt", "") or "")[:160],
+                        camera_movement=getattr(req, "camera_movement", None),
+                        light_style=getattr(req, "light_style", None),
+                        narration=narration_txt[:120],
+                        dialogue=dlg_txt[:120],
+                        bgm_prompt=str(bgm_cfg.get("prompt") or ""),
+                        style_word="3D CG",
+                        duration=int(one.get("duration") or 15),
+                        voice_gender=getattr(req, "voice_gender", "none") or "none",
+                        voice_preset=getattr(req, "voice_preset", None),
+                    )
+                    one["prompt"] = compiled["prompt"]
+                    one["h3_voice"] = compiled["voice"]["id"] if compiled.get("voice") else None
+                    logger.info(f"H3 schema prompt compiled: voice={one.get('h3_voice')} shots={compiled['shots']}")
+                except Exception as h3_err:
+                    logger.warning(f"H3 schema compile failed, fallback legacy prompt: {h3_err}")
+
             # ===== 提示词审查层 3：广告主题锚点 =====
             # 视觉 prompt 末尾追加用户创意锚点（取 req.prompt 前 80 字），
             # 确保生图/视频模型始终关联广告主题（产品词/品牌词/风格词）
+            # H3 Schema 模式跳过——编译器已含产品/场景锚，尾部追加会破坏 schema（music 字段后缀）
+            h3_schema_used = "integrated_multimodal_description:" in one.get("prompt", "")
             anchor = (getattr(req, "prompt", "") or "")[:80].strip()
-            if anchor and anchor not in vp:
+            if anchor and anchor not in vp and not h3_schema_used:
                 one["prompt"] = f"{vp} Ad theme anchor: {anchor}"
 
             await log_action(
@@ -853,12 +893,22 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
             # 参考图 prompt = 主体静态描述 + anchor（不能用运动 prompt 截断——
             # 模板动作文案("The subject sits in a void...")无主体细节且 [:200] 会截掉尾部 anchor，
             # 生图模型收到纯运动描述 → 参考图跑题（Bug#7 同源，2026-10-02 法风烧饼单复发实证）
-            ref_parts = [
-                "Commercial advertising reference image, high detail.",
-                str(one.get("subject_desc") or "").strip(),
-                str(one.get("object_desc") or "").strip(),
-                f"Ad theme anchor: {anchor}" if anchor else "",
-            ]
+            if h3_schema_used:
+                # Schema 模式：五锚点字段直拼（角色+产品+anchor），不经运动模板
+                ref_parts = [
+                    "Commercial advertising reference image, high detail.",
+                    getattr(req, "character_desc", "") or "",
+                    getattr(req, "product_name_desc", "") or "",
+                    getattr(req, "product_sell", "") or "",
+                    f"Ad theme anchor: {anchor}" if anchor else "",
+                ]
+            else:
+                ref_parts = [
+                    "Commercial advertising reference image, high detail.",
+                    str(one.get("subject_desc") or "").strip(),
+                    str(one.get("object_desc") or "").strip(),
+                    f"Ad theme anchor: {anchor}" if anchor else "",
+                ]
             ref_prompt = " ".join(p for p in ref_parts if p).strip() or one["prompt"][:400]
             return {
                 "character_ref_prompt": ref_prompt[:800],

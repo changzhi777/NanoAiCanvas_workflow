@@ -51,6 +51,14 @@ class SubmitRequest(BaseModel):
     force_personal_points: bool = False  # 团队不足时确认用个人积分
     # 验收标准审查闸：关联客户模板（KFC 等）→ 剧本闸+成片闸
     acceptance_template_id: Optional[str] = None
+    # ===== 五锚点主控（H3 Schema 编译器输入） =====
+    character_desc: Optional[str] = None       # ②人物角色描述（预设+可编辑）
+    product_name_desc: Optional[str] = None    # ④产品全称
+    product_sell: Optional[str] = None         # ④核心卖点
+    product_price: Optional[str] = None        # ④价格
+    voice_gender: Optional[str] = None         # ③配音 none/male/female
+    voice_preset: Optional[str] = None         # ③音色预设 id（按性别联动）
+    aspect_ratio: Optional[str] = None         # ⑤画面 9:16/16:9（显式 > 验收模板 > 默认16:9）
 
 
 @router.post("/submit")

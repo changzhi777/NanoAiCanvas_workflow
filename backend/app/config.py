@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     # "openai"    → minimax /chat/completions（旧路径，兼容回退）
     IMG_DESC_VISION_ENDPOINT: str = "anthropic"
 
+    # TVC 五锚点：H3 结构化 Schema 编译开关（false 回滚旧自由文本 prompt 链路）
+    TVC_H3_SCHEMA_PROMPT: bool = True
+
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
