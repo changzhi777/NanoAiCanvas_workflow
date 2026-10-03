@@ -31,8 +31,8 @@ class TestDefaultConfig:
         assert DEFAULT_CONFIG["step5_video"]["default_provider"] == "MiniMax-H3"
 
     def test_step1_model_is_glm_53(self):
-        """剧本生成主模型 = glm-5.3（2026-09-30 升级）"""
-        assert DEFAULT_CONFIG["step1_script"]["model"] == "glm-5.3"
+        """剧本生成主模型 = deepseek-v4-pro（2026-10-03 DS4 默认分档）"""
+        assert DEFAULT_CONFIG["step1_script"]["model"] == "deepseek-v4-pro"
 
     def test_step1_fallback_not_legacy_abab(self):
         """fallback 不再指向已废弃的 abab6.5s-chat"""
