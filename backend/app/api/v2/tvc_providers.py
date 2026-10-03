@@ -173,11 +173,19 @@ def _gen_one_gpt_image_25_flare(settings: Settings, aspect_ratio: str = "1280*72
                     "Content-Type": "application/json",
                 },
             )
+            submit_failed = False
             if resp.status_code != 200:
-                raise Exception(f"GPT-Image-2.5-flare submit error: {resp.status_code} {resp.text[:200]}")
-            result = resp.json()
-            if result.get("code") != 200:
-                raise Exception(f"GPT-Image-2.5-flare submit failed: {result.get('msg', 'unknown')}")
+                logger.warning(f"GPT-Image-2.5-flare submit HTTP {resp.status_code}, trying gpt-image-2.5 fallback")
+                submit_failed = True
+            else:
+                result = resp.json()
+                if result.get("code") != 200:
+                    logger.warning(f"GPT-Image-2.5-flare submit failed: {result.get('msg', '')}, trying gpt-image-2.5 fallback")
+                    submit_failed = True
+
+            if submit_failed:
+                # flare 提交即维护/失败（2026-10-03"该接口正在维护"实证）→ 降级 gpt-image-2.5
+                return await _gen_via_gpt_image_25(api_key, base_url, payload)
 
             task_uid = result.get("data", {}).get("id", "")
             if not task_uid:
