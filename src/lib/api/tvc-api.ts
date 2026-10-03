@@ -152,6 +152,14 @@ export interface SubmitTaskParams {
   forcePersonalPoints?: boolean;
   /** 验收标准审查闸：关联客户验收模板 */
   acceptanceTemplateId?: string;
+  // ===== 五锚点主控（H3 Schema 编译器输入） =====
+  characterDesc?: string;      // ②人物角色描述
+  productNameDesc?: string;    // ④产品全称
+  productSell?: string;        // ④核心卖点
+  productPrice?: string;       // ④价格
+  voiceGender?: 'none' | 'male' | 'female';  // ③配音
+  voicePreset?: string;        // ③音色预设 id
+  aspectRatio?: '9:16' | '16:9';  // ⑤画面
 }
 
 export interface EstimatePointsParams {
@@ -247,6 +255,13 @@ export const tvcApi = {
       one_shot_seed: params.oneShotSeed,
       force_personal_points: params.forcePersonalPoints ?? false,
       acceptance_template_id: params.acceptanceTemplateId,
+      character_desc: params.characterDesc,
+      product_name_desc: params.productNameDesc,
+      product_sell: params.productSell,
+      product_price: params.productPrice,
+      voice_gender: params.voiceGender,
+      voice_preset: params.voicePreset,
+      aspect_ratio: params.aspectRatio,
     });
   },
 

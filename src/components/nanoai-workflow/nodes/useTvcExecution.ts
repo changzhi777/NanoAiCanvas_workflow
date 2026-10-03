@@ -167,6 +167,13 @@ export function useTvcExecution(
         negativePrompts: params.negativePrompts,
         oneShotSeed: overrides?.oneShotSeed ?? (params as { oneShotSeed?: string }).oneShotSeed,
         acceptanceTemplateId: params.acceptanceTemplateId || undefined,  // 验收审查闸
+        characterDesc: params.characterDesc || undefined,
+        productNameDesc: params.productNameDesc || undefined,
+        productSell: params.productSell || undefined,
+        productPrice: params.productPrice || undefined,
+        voiceGender: params.voiceGender || undefined,
+        voicePreset: params.voicePreset || undefined,
+        aspectRatio: params.aspectRatio || undefined,
       };
 
       let response;

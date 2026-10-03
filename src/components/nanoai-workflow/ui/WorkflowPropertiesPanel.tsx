@@ -611,6 +611,90 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                       )
                     })()}
 
+                    {/* ===== 五锚点主控（H3 Schema 编译器输入） ===== */}
+                    {(() => {
+                      const charPresets = [
+                        { value: 'kfc-3d', label: '3D 动漫吃货哥', desc: '3D CG 渲染的Q版吃货哥，白色厨师帽红色围裙，圆脸大眼短黑发，皮克斯级质感，表情夸张生动' },
+                        { value: 'realistic', label: '真人写实', desc: '真人 live-action 演绎，自然光影，亲和力强的美食体验官形象' },
+                        { value: 'guofeng', label: '国风', desc: '国风水墨渲染人物，汉服元素，飘逸灵动' },
+                        { value: 'custom', label: '自定义', desc: '' },
+                      ];
+                      const curPreset = charPresets.find(c => c.desc === (p.characterDesc || ''))?.value || (p.characterDesc ? 'custom' : 'kfc-3d');
+                      const voicePresets: Record<string, { value: string; label: string }[]> = {
+                        male: [
+                          { value: 'male-elite', label: '精英青年' },
+                          { value: 'male-warm', label: '暖大叔' },
+                          { value: 'male-energetic', label: '活力少年' },
+                        ],
+                        female: [
+                          { value: 'female-sweet', label: '甜美' },
+                          { value: 'female-yujie', label: '御姐' },
+                          { value: 'female-shaonv', label: '少女' },
+                        ],
+                      };
+                      const vg = p.voiceGender || 'none';
+                      return (
+                        <div className={cn('space-y-3 p-3 rounded-lg border', isDark ? 'border-purple-500/20 bg-purple-500/[0.04]' : 'border-purple-200 bg-purple-50/50')}>
+                          <div className="text-xs font-semibold text-purple-400">🎯 五锚点主控</div>
+
+                          {/* ② 人物角色 */}
+                          <div>
+                            <Label className="text-xs mb-1 block text-muted-foreground">② 人物角色</Label>
+                            <select
+                              value={curPreset}
+                              onChange={e => { const c = charPresets.find(x => x.value === e.target.value); setP({ characterDesc: c?.desc || '' }); }}
+                              className={selectCls}
+                            >
+                              {charPresets.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                            </select>
+                            <textarea
+                              value={p.characterDesc || ''}
+                              onChange={e => setP({ characterDesc: e.target.value })}
+                              placeholder="人物描述（可编辑）"
+                              rows={2}
+                              className={cn('mt-1 w-full text-xs rounded-md border px-2 py-1.5 resize-none', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')}
+                            />
+                          </div>
+
+                          {/* ④ 宣传产品 */}
+                          <div>
+                            <Label className="text-xs mb-1 block text-muted-foreground">④ 宣传产品</Label>
+                            <input value={p.productNameDesc || ''} onChange={e => setP({ productNameDesc: e.target.value })} placeholder="产品全称（如：培根厚蛋烧法风烧饼）" className={cn('w-full text-xs rounded-md border px-2 py-1.5 mb-1', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')} />
+                            <input value={p.productSell || ''} onChange={e => setP({ productSell: e.target.value })} placeholder="核心卖点（如：54层松脆酥皮，培根厚蛋拉丝）" className={cn('w-full text-xs rounded-md border px-2 py-1.5 mb-1', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')} />
+                            <input value={p.productPrice || ''} onChange={e => setP({ productPrice: e.target.value })} placeholder="价格（如：12.5元）" className={cn('w-full text-xs rounded-md border px-2 py-1.5', isDark ? 'bg-slate-900/50 border-white/10 text-slate-200' : 'bg-white border-gray-200')} />
+                          </div>
+
+                          {/* ③ 配音 */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs mb-1 block text-muted-foreground">③ 配音</Label>
+                              <select value={vg} onChange={e => setP({ voiceGender: e.target.value, voicePreset: undefined })} className={selectCls}>
+                                <option value="none">无配音</option>
+                                <option value="male">男声</option>
+                                <option value="female">女声</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label className="text-xs mb-1 block text-muted-foreground">音色</Label>
+                              <select value={p.voicePreset || ''} onChange={e => setP({ voicePreset: e.target.value })} disabled={vg === 'none'} className={cn(selectCls, vg === 'none' && 'opacity-40')}>
+                                <option value="">默认</option>
+                                {(voicePresets[vg] || []).map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* ⑤ 画面 */}
+                          <div>
+                            <Label className="text-xs mb-1 block text-muted-foreground">⑤ 画面比例</Label>
+                            <select value={p.aspectRatio || '9:16'} onChange={e => setP({ aspectRatio: e.target.value })} className={selectCls}>
+                              <option value="9:16">竖版 9:16（推荐）</option>
+                              <option value="16:9">横版 16:9</option>
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* 基础配置 */}
                     <div className="space-y-3">
                       <div>

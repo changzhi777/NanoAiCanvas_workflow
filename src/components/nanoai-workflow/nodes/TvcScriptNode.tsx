@@ -57,6 +57,14 @@ export interface TvcScriptData extends WorkflowNodeData {
     /** 验收标准审查闸：关联的客户模板 */
     acceptanceTemplateId?: string;
     acceptanceTemplateName?: string;
+    // ===== 五锚点主控 =====
+    characterDesc?: string;       // ②人物角色描述
+    productNameDesc?: string;     // ④产品全称
+    productSell?: string;         // ④核心卖点
+    productPrice?: string;        // ④价格
+    voiceGender?: 'none' | 'male' | 'female';  // ③配音
+    voicePreset?: string;         // ③音色预设
+    aspectRatio?: '9:16' | '16:9';  // ⑤画面
   };
   result?: {
     script?: TvcScript;
