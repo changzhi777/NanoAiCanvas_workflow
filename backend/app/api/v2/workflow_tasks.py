@@ -59,6 +59,7 @@ class SubmitRequest(BaseModel):
     voice_gender: Optional[str] = None         # ③配音 none/male/female
     voice_preset: Optional[str] = None         # ③音色预设 id（按性别联动）
     aspect_ratio: Optional[str] = None         # ⑤画面 9:16/16:9（显式 > 验收模板 > 默认16:9）
+    last_frame_url: Optional[str] = None       # 尾帧融合：KV 图 URL（H3 last_frame，结尾定格真实 KV）
 
 
 @router.post("/submit")
