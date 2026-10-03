@@ -24,13 +24,13 @@ router = APIRouter(prefix="/api/v2/tvc-config", tags=["tvc-config"])
 
 DEFAULT_CONFIG = {
     "step1_script": {
-        "model": "glm-5.3",
-        "fallback_model": "glm-4.5-air",
+        "model": "deepseek-v4-pro",
+        "fallback_model": "glm-5.3",
         "temperature": 1.0,
         "max_tokens": 8192,
     },
     "step2_optimize": {
-        "model": "glm-4.5-air",
+        "model": "deepseek-flash",
         "temperature": 0.7,
         "max_tokens": 4096,
     },

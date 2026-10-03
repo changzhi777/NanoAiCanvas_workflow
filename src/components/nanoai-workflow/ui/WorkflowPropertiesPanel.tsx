@@ -806,18 +806,18 @@ export function WorkflowPropertiesPanel(props?: React.HTMLAttributes<HTMLDivElem
                         <div className="space-y-3 mt-3">
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">剧本生成</Label>
-                            <select value={p.scriptModel || 'glm-5.3'} onChange={e => setP({ scriptModel: e.target.value })} className={selectCls}>
-                              <option value="glm-5.3">GLM-5.3（推荐）</option>
-                              <option value="glm-5.3-flash">GLM-5.3-Flash（快速）</option>
-                              <option value="deepseek-v4-pro">DeepSeek-V4-Pro（兜底）</option>
+                            <select value={p.scriptModel || 'deepseek-v4-pro'} onChange={e => setP({ scriptModel: e.target.value })} className={selectCls}>
+                              <option value="deepseek-v4-pro">DeepSeek-V4-Pro（推荐·深度）</option>
+                              <option value="deepseek-flash">DeepSeek-Flash（快速）</option>
+                              <option value="glm-5.3">GLM-5.3（备选）</option>
                             </select>
                           </div>
                           <div>
                             <Label className="text-xs mb-1.5 block text-muted-foreground">提示词优化</Label>
-                            <select value={p.optimizeModel || 'glm-5.3-flash'} onChange={e => setP({ optimizeModel: e.target.value })} className={selectCls}>
-                              <option value="glm-5.3-flash">GLM-5.3-Flash（推荐）</option>
-                              <option value="glm-5.3">GLM-5.3（深度）</option>
-                              <option value="deepseek-flash">DeepSeek-Flash（兜底）</option>
+                            <select value={p.optimizeModel || 'deepseek-flash'} onChange={e => setP({ optimizeModel: e.target.value })} className={selectCls}>
+                              <option value="deepseek-flash">DeepSeek-Flash（推荐·快速）</option>
+                              <option value="deepseek-v4-pro">DeepSeek-V4-Pro（深度）</option>
+                              <option value="glm-5.3">GLM-5.3（备选）</option>
                             </select>
                           </div>
                           <div>

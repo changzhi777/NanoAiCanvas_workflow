@@ -281,6 +281,15 @@ async def _glm_chat(model: str, messages: list, temperature: float = 0.7, max_to
     """
     settings = get_settings()
 
+    # ===== DeepSeek 指定模型直连（model 含 deepseek 时跳过 GLM 主路，2026-10-03 默认 DS4） =====
+    if model.startswith("deepseek") and settings.DEEPSEEK_API_KEY:
+        result = await _anthropic_compat_chat(
+            settings.ANTHROPIC_DEEPSEEK_URL, settings.DEEPSEEK_API_KEY,
+            model, messages, temperature, max_tokens, label="DeepSeek", thinking=thinking,
+        )
+        result["_meta"] = {"provider": "deepseek", "model": model}
+        return result
+
     # ===== 主路：智谱 GLM Anthropic 兼容 =====
     if settings.GLM_API_KEY:
         try:

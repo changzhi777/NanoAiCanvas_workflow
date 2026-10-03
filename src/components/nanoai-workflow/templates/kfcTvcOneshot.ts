@@ -4,7 +4,7 @@
  * 预置参数对齐客户 Brief 标准：
  * - 一镜到底（shotCount=1，15s 竖屏 9:16）
  * - 生图 GPT-Image-2.5-flare（720*1280）+ 视频 MiniMax H3（4-15s 全时长）
- * - 剧本 glm-5.3
+ * - 剧本 DeepSeek-V4-Pro（重），优化 DeepSeek-Flash（轻）
  * - 验收标准审查闸：节点右上「验收」按钮导入飞书 Brief → 剧本闸+成片闸双审查
  *
  * 使用流程：
@@ -65,8 +65,8 @@ export const createKfcTvcNodes = (): WorkflowNode[] => {
           // KFC 定版模型组合（2026-09-30 模型审计结论）
           imageModel: 'gpt-image-2.5-flare',
           videoModel: 'MiniMax-H3',
-          scriptModel: 'glm-5.3',
-          optimizeModel: 'glm-5.3-flash',
+          scriptModel: 'deepseek-v4-pro',
+          optimizeModel: 'deepseek-flash',
           cameraMovement: 'push-in',
           lightStyle: 'golden_hour',
           negativePrompts: ['avoid_jitter', 'avoid_bent_limbs'],
