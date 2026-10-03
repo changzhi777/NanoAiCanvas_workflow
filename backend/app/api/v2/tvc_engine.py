@@ -465,17 +465,35 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     if not json_str:
         json_str = _find_balanced(content, '{', '}')
 
-    if json_str:
+    def _try_parse(js):
+        if not js:
+            return {}
         try:
-            script = json.loads(json_str)
+            return json.loads(js)
         except json.JSONDecodeError:
             try:
-                cleaned = _repair_json(json_str)
-                script = json.loads(cleaned)
+                return json.loads(_repair_json(js))
             except json.JSONDecodeError:
-                script = {}
-    else:
-        script = {}
+                return {}
+
+    script = _try_parse(json_str)
+    if not script.get("shots"):
+        # content 截断/异常兜底：thinking 模型偶发把完整 JSON 写进 reasoning_content
+        # （2026-10-03 法风烧饼单实证：content 仅 48 字 `<output>{` 开头）
+        rc = msg.get("reasoning_content", "").strip()
+        if rc:
+            rc_json = None
+            m2 = re.search(r"<output>([\s\S]*?)</output>", rc)
+            if m2:
+                rc_json = _find_balanced(m2.group(1), '{', '}')
+            if not rc_json:
+                rc_json = _find_balanced(rc, '{', '}')
+            cand = _try_parse(rc_json)
+            if cand.get("shots"):
+                logger.warning(f"GLM script content truncated ({len(content)} chars), recovered from reasoning_content ({len(rc)} chars)")
+                script = cand
+                if len(content) < len(rc):
+                    content = rc
 
     return {"raw_content": content, "parsed_script": script}
 
