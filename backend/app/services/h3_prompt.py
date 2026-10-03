@@ -143,11 +143,15 @@ def compile_h3_prompt(
     def _voiceover(line: str) -> str:
         return (
             f"{speaker} says in an off-screen voiceover: "
-            f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed."
+            f"<d>[Chinese] {line} </d> while the on-screen character's lips remain completely closed, "
+            f'with synchronized on-screen subtitles reading "{line}".'
         )
 
     def _inline_line(line: str) -> str:
-        return f"{speaker} says: <d>[Chinese] {line} </d>"
+        return (
+            f"{speaker} says: <d>[Chinese] {line} </d> "
+            f'with synchronized on-screen subtitles reading "{line}".'
+        )
 
     # ---- 多镜头模式：story_shots 驱动 [Shot N] 时间轴 ----
     desc_parts = []
