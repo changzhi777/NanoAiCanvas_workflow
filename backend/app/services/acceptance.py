@@ -462,6 +462,9 @@ async def run_final_gate(task_id: str, video_url: str, parsed_script: dict,
         video_meta = await probe_video(video_url)
         rule_items = rule_check(criteria, parsed_script=parsed_script,
                                 brief_ctx=brief_ctx, video_meta=video_meta)
+        # ad_law 归剧本闸判定（script_items 携带 LLM 语境复核结果）——
+        # final 的正则重扫同文本会覆盖复核结论（V2 实证误报"终极"）
+        rule_items = [it for it in rule_items if it["key"] != "ad_law_compliance"]
         frames = await extract_frames(video_url)
         visual_items = await m3_visual_review(frames, criteria, ref_images, settings)
         items = merge_items(script_items or [], rule_items, visual_items)
