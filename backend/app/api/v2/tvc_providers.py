@@ -4,9 +4,12 @@ TVC 图片/视频 Provider 工厂
 """
 import httpx
 import asyncio
+import logging
 from typing import Callable, Optional
 
 from app.config import Settings
+
+logger = logging.getLogger(__name__)
 
 
 # ==================== 图片 Provider ====================
@@ -210,9 +213,53 @@ def _gen_one_gpt_image_25_flare(settings: Settings, aspect_ratio: str = "1280*72
                     return {"image_url": url}
 
                 if status not in (0, 1):
-                    raise Exception(f"GPT-Image-2.5-flare failed with status={status}")
+                    # flare 失败（如"维护中，模型正在修复"）→ 自动降级 gpt-image-2.5（同 prompt 去 quality）
+                    logger.warning(f"GPT-Image-2.5-flare status={status}, falling back to gpt-image-2.5")
+                    return await _gen_via_gpt_image_25(api_key, base_url, payload)
 
         raise Exception(f"GPT-Image-2.5-flare timeout after {max_wait}s (task: {task_uid})")
+
+    async def _gen_via_gpt_image_25(api_key: str, base_url: str, payload: dict) -> dict:
+        """gpt-image-2.5 基础版降级（0.1 元/张，无 quality 参数，2026-10-03 flare 维护期实证可用）。"""
+        body_25 = {k: v for k, v in payload.items() if k != "quality"}
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{base_url}/api/async/image_gpt_2.5",
+                json=body_25,
+                headers={"Authorization": api_key, "Content-Type": "application/json"},
+            )
+            if resp.status_code != 200:
+                raise Exception(f"GPT-Image-2.5 submit error: {resp.status_code} {resp.text[:200]}")
+            result = resp.json()
+            if result.get("code") != 200:
+                raise Exception(f"GPT-Image-2.5 submit failed: {result.get('msg', 'unknown')}")
+            task_uid = result.get("data", {}).get("id", "")
+            if not task_uid:
+                raise Exception("No task id in GPT-Image-2.5 response")
+
+        max_wait = 240
+        elapsed = 0
+        async with httpx.AsyncClient(timeout=30) as client:
+            while elapsed < max_wait:
+                await asyncio.sleep(6)
+                elapsed += 6
+                resp = await client.get(
+                    f"{base_url}/api/async/detail?key={api_key}&id={task_uid}"
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json().get("data", {})
+                status = data.get("status", 0)
+                if status == 2:
+                    rd = data.get("result", {})
+                    url = rd if isinstance(rd, str) else (rd[0] if isinstance(rd, list) and rd else (rd.get("url", "") if isinstance(rd, dict) else ""))
+                    if url:
+                        return {"image_url": url, "provider_model": "gpt-image-2.5"}
+                    raise Exception(f"GPT-Image-2.5 succeeded but no URL: {data}")
+                if status not in (0, 1):
+                    raise Exception(f"GPT-Image-2.5 failed status={status}")
+
+        raise Exception("GPT-Image-2.5 timeout after 240s")
 
     return _gen
 
