@@ -874,6 +874,7 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
 
                     # 五锚点 V5：从 req.prompt 提取 [镜头N] 分段 → 多镜头时间轴
                     # （客户意见"镜头单调没按情节"——Brief 情节分段直接映射 H3 [Shot N] 协议）
+                    # 台词提取：分段内 配音：'…' / 说：'…' / 配音+字幕：'…'
                     import re as _re
                     story_shots = []
                     user_prompt = getattr(req, "prompt", "") or ""
@@ -881,9 +882,13 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                     if len(segs) >= 3:
                         for i in range(1, len(segs) - 1, 2):
                             seg_visual = segs[i + 1].strip()
-                            if seg_visual:
-                                story_shots.append({"visual": seg_visual[:300],
-                                                    "line": ""})
+                            if not seg_visual:
+                                continue
+                            m_line = _re.search(
+                                r"(?:配音\+?字幕|配音|旁白|台词|说)[：:]?\s*'([^']+)'", seg_visual)
+                            seg_line = m_line.group(1).strip() if m_line else ""
+                            story_shots.append({"visual": seg_visual[:300],
+                                                "line": seg_line[:120]})
                     story_shots = story_shots[:4]  # 15s 上限 4 镜头
 
                     compiled = compile_h3_prompt(
