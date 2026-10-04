@@ -212,13 +212,14 @@ async def execute_tvc(task_id: str, req, user_id=None):
             await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=fallback)
 
-        # Step 5.5: SRT 生成 + 字幕烧录（无台词短路 / 烧录开关）
+        # Step 5.5: SRT 生成 + 字幕烧录（SRT 始终生成入库；烧录按开关）
         voice = getattr(req, "voice_gender", None) or "none"
-        if voice != "none" and getattr(settings, "TVC_SUBTITLE_BURN", False):
+        if voice != "none":
             try:
-                await _burn_subtitles_step(task_id, settings)
+                await _burn_subtitles_step(task_id, settings,
+                                           burn_enabled=getattr(settings, "TVC_SUBTITLE_BURN", False))
             except Exception as burn_err:
-                logger.warning(f"subtitle burn failed (degraded to clean): {burn_err}")
+                logger.warning(f"subtitle step failed (degraded to clean): {burn_err}")
 
         # Step 6: 保存资产到资产库
         if user_id:
@@ -242,11 +243,11 @@ async def execute_tvc(task_id: str, req, user_id=None):
         await workflow_executor.fail_task(task_id, str(e))
 
 
-async def _burn_subtitles_step(task_id: str, settings):
-    """Step 5.5：SRT 生成 + 容器烧录（无台词时由调用方短路）。
+async def _burn_subtitles_step(task_id: str, settings, burn_enabled: bool = False):
+    """Step 5.5：SRT 生成入库（始终）+ 可选烧录（burn_enabled 开关）。
 
-    流程：从 task state 取 srt_entries → 生成 SRT → 下载主视频 → 烧录 → COS 上传。
-    失败由调用方降级（干净版 + 日志）。
+    SRT 无论烧录与否都生成并上传 COS（客户可拿去剪映/PR 后期加工）。
+    烧录仅在 burn_enabled=True 时执行（替换视频 URL 为烧录版）。
     """
     import httpx as _httpx
     import os as _os
@@ -292,16 +293,35 @@ async def _burn_subtitles_step(task_id: str, settings):
                     d = ((st.get("result") or {}).get("duration")) or 15.0
                     video_duration = float(d)
 
-    if not srt_entries or not video_url:
-        logger.info(f"subtitle step skipped: srt={len(srt_entries)} url={bool(video_url)}")
+    if not srt_entries:
+        logger.info(f"subtitle step skipped: no srt_entries")
         return
 
-    # 生成 SRT
+    # 生成 SRT（始终执行——无论是否烧录，SRT 文件都入库）
     srt_content = generate_srt(srt_entries, video_duration)
     if not srt_content:
         return
 
-    # 下载主视频到容器 /tmp
+    # SRT 上传 COS（始终）
+    srt_tmp = _tempfile.NamedTemporaryFile(mode="w", suffix=".srt", delete=False,
+                                            encoding="utf-8")
+    srt_tmp.write(srt_content)
+    srt_tmp.close()
+    try:
+        srt_cos = await _upload_cos(srt_tmp.name, f"tvc/{task_id}/sub_zh.srt")
+        if srt_cos:
+            state = await workflow_executor.load_task(task_id)
+            state.setdefault("srt_asset", {})["url"] = srt_cos
+            state["srt_asset"]["content"] = srt_content[:2000]
+            await workflow_executor._save(task_id, state)
+            logger.info(f"SRT uploaded: {srt_cos[:60]}")
+    finally:
+        _os.unlink(srt_tmp.name)
+
+    # 烧录（仅 burn_enabled=True 时执行）
+    if not burn_enabled or not video_url:
+        return
+
     video_tmp = _tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
     try:
         async with _httpx.AsyncClient(timeout=120) as client:
@@ -309,14 +329,11 @@ async def _burn_subtitles_step(task_id: str, settings):
             video_tmp.write(resp.content)
         video_tmp.close()
 
-        # 烧录
         burned_path = await burn_subtitles(video_tmp.name, srt_content)
         logger.info(f"subtitles burned: {burned_path} ({_os.path.getsize(burned_path)//1024}KB)")
 
-        # 上烧录版到 COS（替换原始 URL）
         burned_cos = await _upload_cos(burned_path, f"tvc/{task_id}/video_subtitled.mp4")
         if burned_cos:
-            # 更新 task state 中的视频 URL（让 _save_assets 用烧录版）
             state = await workflow_executor.load_task(task_id)
             for n in state.get("nodes", []):
                 if n.get("id") == "step-video":
@@ -327,22 +344,6 @@ async def _burn_subtitles_step(task_id: str, settings):
                             st["result"]["video_url"] = burned_cos
             await workflow_executor._save(task_id, state)
             logger.info(f"video URL updated to burned COS: {burned_cos[:60]}")
-
-        # 上传 SRT 到 COS
-        srt_tmp = _tempfile.NamedTemporaryFile(mode="w", suffix=".srt", delete=False,
-                                                encoding="utf-8")
-        srt_tmp.write(srt_content)
-        srt_tmp.close()
-        try:
-            srt_cos = await _upload_cos(srt_tmp.name, f"tvc/{task_id}/sub_zh.srt")
-            if srt_cos:
-                # SRT URL 存到 task state（_save_assets 会取用）
-                state = await workflow_executor.load_task(task_id)
-                state.setdefault("srt_asset", {})["url"] = srt_cos
-                state["srt_asset"]["content"] = srt_content[:2000]  # 截断存储
-                await workflow_executor._save(task_id, state)
-        finally:
-            _os.unlink(srt_tmp.name)
 
     finally:
         _os.unlink(video_tmp.name)
