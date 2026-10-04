@@ -1212,7 +1212,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
     node = state["nodes"][node_idx]
     subtasks = node.get("subtasks", [])
 
-    # 从 Step 4 获取 2 张参考图 URL
+    # 从 Step 4 获取 2 张参考图 URL；无则用 req.reference_image 兜底
     image_node = state["nodes"][node_idx - 1]
     image_subtasks = image_node.get("subtasks", [])
     character_ref_url = ""
@@ -1225,6 +1225,11 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
                 character_ref_url = url
             elif ist["id"] == "scene-ref":
                 scene_ref_url = url
+    # V27 兜底：显式 reference_image 优先（M3 路径可能跳过 step-images）
+    if not character_ref_url and getattr(req, "reference_image", None):
+        character_ref_url = req.reference_image
+    if not scene_ref_url and getattr(req, "reference_image", None):
+        scene_ref_url = req.reference_image
 
     shots = breakdown.get("shots", [])
     video_resolution = getattr(req, "quality", None) or "720p"
