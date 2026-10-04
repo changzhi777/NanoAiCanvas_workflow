@@ -212,9 +212,9 @@ async def execute_tvc(task_id: str, req, user_id=None):
             await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=fallback)
 
-        # Step 5.5: SRT 生成 + 字幕烧录（无台词短路）
+        # Step 5.5: SRT 生成 + 字幕烧录（无台词短路 / 烧录开关）
         voice = getattr(req, "voice_gender", None) or "none"
-        if voice != "none":
+        if voice != "none" and getattr(settings, "TVC_SUBTITLE_BURN", False):
             try:
                 await _burn_subtitles_step(task_id, settings)
             except Exception as burn_err:

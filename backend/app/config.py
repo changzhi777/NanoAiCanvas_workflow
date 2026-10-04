@@ -77,6 +77,7 @@ class Settings(BaseSettings):
 
     # TVC 五锚点：H3 结构化 Schema 编译开关（false 回滚旧自由文本 prompt 链路）
     TVC_H3_SCHEMA_PROMPT: bool = True
+    TVC_SUBTITLE_BURN: bool = False  # 字幕烧录开关（时间轴校准前禁用，审查用干净版）
 
     # SMTP (optional - password reset emails)
     SMTP_HOST: str = ""
