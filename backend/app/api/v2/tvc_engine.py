@@ -212,6 +212,14 @@ async def execute_tvc(task_id: str, req, user_id=None):
             await workflow_executor.update_node(task_id, 4, {"status": "running", "progress": 0})
             await _generate_videos(task_id, 4, breakdown, req, settings, config, video_model=fallback)
 
+        # Step 5.5: SRT 生成 + 字幕烧录（无台词短路）
+        voice = getattr(req, "voice_gender", None) or "none"
+        if voice != "none":
+            try:
+                await _burn_subtitles_step(task_id, settings)
+            except Exception as burn_err:
+                logger.warning(f"subtitle burn failed (degraded to clean): {burn_err}")
+
         # Step 6: 保存资产到资产库
         if user_id:
             await _save_assets(task_id, user_id, req, breakdown)
@@ -232,6 +240,112 @@ async def execute_tvc(task_id: str, req, user_id=None):
             except Exception as refund_err:
                 logger.error(f"TVC refund failed for task {task_id}: {refund_err}")
         await workflow_executor.fail_task(task_id, str(e))
+
+
+async def _burn_subtitles_step(task_id: str, settings):
+    """Step 5.5：SRT 生成 + 容器烧录（无台词时由调用方短路）。
+
+    流程：从 task state 取 srt_entries → 生成 SRT → 下载主视频 → 烧录 → COS 上传。
+    失败由调用方降级（干净版 + 日志）。
+    """
+    import httpx as _httpx
+    import os as _os
+    import tempfile as _tempfile
+    from app.services.srt_generator import generate_srt, burn_subtitles
+
+    async def _upload_cos(local_path: str, key: str) -> str | None:
+        """本地文件直传 COS（复用现有配置）"""
+        import json as _json
+        from qcloud_cos import CosConfig, CosS3Client
+        cfg = CosConfig(
+            Region=_os.environ.get("COS_REGION", ""),
+            SecretId=_os.environ.get("COS_SECRET_ID", ""),
+            SecretKey=_os.environ.get("COS_SECRET_KEY", ""),
+        )
+        client = CosS3Client(cfg)
+        bucket = _os.environ.get("COS_BUCKET", "")
+        if not bucket:
+            return None
+        client.upload_file(Bucket=bucket, Key=key, LocalFilePath=local_path)
+        base = _os.environ.get("COS_BASE_URL") or f"https://{bucket}.cos.{_os.environ.get('COS_REGION')}.myqcloud.com"
+        return f"{base}/{key}"
+
+    state = await workflow_executor.load_task(task_id)
+    if not state:
+        return
+
+    # 取 srt_entries（step-optimize 的 _one_shot 内）
+    srt_entries = []
+    video_url = ""
+    video_duration = 15.0
+    for n in state.get("nodes", []):
+        if n.get("id") == "step-optimize":
+            one = ((n.get("result") or {}).get("_one_shot")) or {}
+            srt_entries = one.get("srt_entries") or []
+        if n.get("id") == "step-video":
+            for st in n.get("subtasks") or []:
+                if st.get("id") == "bgm":
+                    continue
+                u = ((st.get("result") or {}).get("video_url")) or ""
+                if u:
+                    video_url = u
+                    d = ((st.get("result") or {}).get("duration")) or 15.0
+                    video_duration = float(d)
+
+    if not srt_entries or not video_url:
+        logger.info(f"subtitle step skipped: srt={len(srt_entries)} url={bool(video_url)}")
+        return
+
+    # 生成 SRT
+    srt_content = generate_srt(srt_entries, video_duration)
+    if not srt_content:
+        return
+
+    # 下载主视频到容器 /tmp
+    video_tmp = _tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+    try:
+        async with _httpx.AsyncClient(timeout=120) as client:
+            resp = await client.get(video_url)
+            video_tmp.write(resp.content)
+        video_tmp.close()
+
+        # 烧录
+        burned_path = await burn_subtitles(video_tmp.name, srt_content)
+        logger.info(f"subtitles burned: {burned_path} ({_os.path.getsize(burned_path)//1024}KB)")
+
+        # 上烧录版到 COS（替换原始 URL）
+        burned_cos = await _upload_cos(burned_path, f"tvc/{task_id}/video_subtitled.mp4")
+        if burned_cos:
+            # 更新 task state 中的视频 URL（让 _save_assets 用烧录版）
+            state = await workflow_executor.load_task(task_id)
+            for n in state.get("nodes", []):
+                if n.get("id") == "step-video":
+                    for st in n.get("subtasks") or []:
+                        if st.get("id") == "bgm":
+                            continue
+                        if ((st.get("result") or {}).get("video_url")) == video_url:
+                            st["result"]["video_url"] = burned_cos
+            await workflow_executor._save(task_id, state)
+            logger.info(f"video URL updated to burned COS: {burned_cos[:60]}")
+
+        # 上传 SRT 到 COS
+        srt_tmp = _tempfile.NamedTemporaryFile(mode="w", suffix=".srt", delete=False,
+                                                encoding="utf-8")
+        srt_tmp.write(srt_content)
+        srt_tmp.close()
+        try:
+            srt_cos = await _upload_cos(srt_tmp.name, f"tvc/{task_id}/sub_zh.srt")
+            if srt_cos:
+                # SRT URL 存到 task state（_save_assets 会取用）
+                state = await workflow_executor.load_task(task_id)
+                state.setdefault("srt_asset", {})["url"] = srt_cos
+                state["srt_asset"]["content"] = srt_content[:2000]  # 截断存储
+                await workflow_executor._save(task_id, state)
+        finally:
+            _os.unlink(srt_tmp.name)
+
+    finally:
+        _os.unlink(video_tmp.name)
 
 
 async def _refund_acceptance(user_id):
@@ -891,6 +1005,15 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                                                 "line": seg_line[:120]})
                     story_shots = story_shots[:4]  # 15s 上限 4 镜头
 
+                    # M4：剧本 dialogue_timeline 时间轴注入（DS4 输出的精确时间为权威源）
+                    _dtl = (script_result.get("parsed_script") or {}).get("dialogue_timeline") or []
+                    if _dtl:
+                        for j, sh in enumerate(story_shots):
+                            if j < len(_dtl):
+                                sh["start"] = float(_dtl[j].get("start", 0))
+                                sh["end"] = float(_dtl[j].get("end", 0))
+                        logger.info(f"dialogue_timeline injected: {len(_dtl)} entries")
+
                     compiled = compile_h3_prompt(
                         character_desc=getattr(req, "character_desc", "") or subject_desc[:200],
                         product_name=getattr(req, "product_name_desc", "") or "",
@@ -910,7 +1033,8 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                     )
                     one["prompt"] = compiled["prompt"]
                     one["h3_voice"] = compiled["voice"]["id"] if compiled.get("voice") else None
-                    logger.info(f"H3 schema prompt compiled: voice={one.get('h3_voice')} shots={compiled['shots']}")
+                    one["srt_entries"] = compiled.get("srt_entries", [])  # 🆕 字幕条目（同源）
+                    logger.info(f"H3 schema prompt compiled: voice={one.get('h3_voice')} shots={compiled['shots']} srt={len(one['srt_entries'])}")
                 except Exception as h3_err:
                     logger.warning(f"H3 schema compile failed, fallback legacy prompt: {h3_err}")
 

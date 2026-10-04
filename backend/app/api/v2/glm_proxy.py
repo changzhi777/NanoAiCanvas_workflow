@@ -827,6 +827,9 @@ TVC_SCRIPT_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
     }}
   ],
   "narration": "完整的旁白/画外音文本（如有），或故事线叙述",
+  "dialogue_timeline": [
+    {{"line": "台词原文（与 shots 内 dialogue 完全一致）", "start": 0.5, "end": 3.8}}
+  ],
   "timeline_summary": {{
     "total_duration": {total_duration},
     "shot_count": {shot_count},
@@ -869,7 +872,16 @@ TVC_SCRIPT_PROMPT = """你是个剧本编辑，擅长将文字写得更有故事
 1. 第一个镜头 transition 用 fade_in，最后一个用 fade_out
 2. 中间镜头用 cut 或 dissolve
 3. 时间必须连续，无间隔
-4. duration 必须等于 {shot_duration}"""
+4. duration 必须等于 {shot_duration}
+
+## dialogue_timeline 编写规则（字幕时间轴——必填）
+1. 收集所有 shots 内的 dialogue 和 narration 的台词，按出场顺序排列
+2. 按 3.5 个汉字/秒 估算每句时长（如 14 字 ≈ 4 秒）
+3. 首句从 0.5 秒开始（视频起始短暂静默）
+4. 末句必须在 {total_duration} - 3.0 秒之前结束（留 3 秒给产品 KV 定格）
+5. 相邻台词间隔至少 0.5 秒
+6. line 字段必须与 shots 内 dialogue/narration 原文完全一致（逐字）
+7. start/end 为秒数（浮点数，如 0.5、3.8）"""
 
 
 class TvcScriptRequest(BaseModel):

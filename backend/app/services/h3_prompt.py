@@ -155,20 +155,37 @@ def compile_h3_prompt(
     # ---- 多镜头模式：story_shots 驱动 [Shot N] 时间轴 ----
     desc_parts = []
     shots_out = []
+    srt_entries = []  # 字幕条目（单一变量源——与 <d> 同源）
     if story_shots:
         n_shots = len(story_shots)
         kv_cut = duration - 3
-        # 镜头均匀分配时长（KV shot 占末尾 3s）
-        seg = kv_cut / n_shots
+        # 镜头时长：dialogue_timeline 的 start/end 优先，否则均匀分配
+        has_timeline = all(sh.get("start") is not None and sh.get("end") is not None
+                           for sh in story_shots)
         for i, sh in enumerate(story_shots):
             visual = _clean(sh.get("visual") or "")
             line = _clean(sh.get("line") or "")
-            head = f"[Shot {i + 1}]"
+            if has_timeline:
+                shot_start = float(sh["start"])
+                shot_end = min(float(sh["end"]), kv_cut)
+            else:
+                seg = kv_cut / n_shots
+                shot_start = i * seg
+                shot_end = shot_start + seg
+            head = f"[Shot {i + 1}] (00:{shot_start:06.3f} to 00:{shot_end:06.3f})"
             if i > 0:
-                head += f" At {_mmss(i * seg)}, the shot cuts to"
+                head += f" At {_mmss(shot_start)}, the shot cuts to"
             seg_text = f"{head} {visual}"
             if line:
-                seg_text += " " + _voiceover(line) + " The visual continues as described."
+                # 时窗声明 + 台词（同一 line 变量喂 <d> 和 srt_entries）
+                seg_text += (
+                    f" {_voiceover(line)} "
+                    f"spoken precisely within this time window. "
+                    f"The visual continues as described."
+                )
+                srt_entries.append({
+                    "text": line, "start": shot_start, "end": shot_end,
+                })
             desc_parts.append(seg_text)
             shots_out.append(seg_text[:60])
         # KV 定格 shot
@@ -180,10 +197,14 @@ def compile_h3_prompt(
             f'with on-screen text reading "{_clean(kv_text)}" and clean space for the headline.'
         )
         description = " ".join(desc_parts)
+        # clean frame（抑制 H3 原生字幕渲染——字幕由后烧）
+        soundscape = (
+            "Soft restaurant ambience continues underneath with light kitchen sounds. "
+            "A crisp bite and gentle packaging rustle accompany the product close-up."
+        )
         prompt = (
             f"integrated_multimodal_description: {description}\n\n"
-            f"overall_soundscape: Soft restaurant ambience continues underneath with light kitchen sounds. "
-            f"A crisp bite and gentle packaging rustle accompany the product close-up.\n\n"
+            f"overall_soundscape: {soundscape}\n\n"
             f"non_diegetic_music: {_clean(bgm_prompt) or 'N/A'}"
         )
         return {
@@ -193,9 +214,11 @@ def compile_h3_prompt(
             "on_screen_texts": [t for t in on_screen_texts if t],
             "shots": n_shots + 1,
             "cut_at": kv_cut,
+            "srt_entries": srt_entries,  # 🆕 字幕条目（同源时间轴）
         }
 
     # ---- 单镜头模式（原逻辑） ----
+    srt_entries = []  # 默认空（无台词时）
     s1_parts = [
         f"[Shot 1] {style_word}, commercial advertising,",
         f"{scene_desc or 'a bright branded restaurant scene'} with {_light_phrase(light_style)}.",
@@ -206,8 +229,11 @@ def compile_h3_prompt(
     if voice and (narration or dialogue):
         line = dialogue or narration
         s1_parts.append(_voiceover(line) if not dialogue else _inline_line(line))
+        # 单一变量源：同一 line 喂 <d> 和 srt_entries
+        srt_entries = [{"text": _clean(line), "start": 0.5, "end": cut_s - 0.5}]
     elif narration:
         on_screen_texts.append(narration)
+        srt_entries = []
 
     # ---- Shot 2：结尾 KV 定格 ----
     kv_text = f"{product_name}"
@@ -244,6 +270,7 @@ def compile_h3_prompt(
         "on_screen_texts": [t for t in on_screen_texts if t],
         "shots": 2,
         "cut_at": cut_s,
+        "srt_entries": srt_entries,  # 🆕 字幕条目（同源时间轴）
     }
 
 
