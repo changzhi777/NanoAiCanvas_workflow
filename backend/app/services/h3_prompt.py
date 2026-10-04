@@ -115,6 +115,8 @@ def compile_h3_prompt(
     voice_gender: str = "none",
     voice_preset: str = None,
     story_shots: list = None,
+    soundscape_override: str = None,
+    skip_kv_shot: bool = False,
 ) -> dict:
     """五锚点 + 剧本 → H3 三字段结构化 Schema。
 
@@ -123,6 +125,8 @@ def compile_h3_prompt(
     story_shots 为空 → 单镜头叙事 + 结尾 KV shot；
     story_shots = [{"visual": "...", "line": "..."}, ...] → 多镜头时间轴
     （[Shot N] At 00:XX.000 切点协议，末镜头后接 KV 定格 shot）。
+    soundscape_override: 实验室/其他场景声景覆盖（None=餐厅默认模板）。
+    skip_kv_shot: True=不自动追加编译器 KV 定格 shot（改用 H3 last_frame 尾帧融合时设 True）。
     """
     character_desc = _clean(character_desc)
     product_name = _clean(product_name) or "产品"
@@ -188,17 +192,18 @@ def compile_h3_prompt(
                 })
             desc_parts.append(seg_text)
             shots_out.append(seg_text[:60])
-        # KV 定格 shot
-        kv_text = f"{product_name}" + (f" {product_price}" if product_price else "")
-        on_screen_texts.append(kv_text)
-        desc_parts.append(
-            f"[Shot {n_shots + 1}] At {_mmss(kv_cut)}, the shot cuts to the final product KV: "
-            f"{product_name} presented as the hero product on its signature packaging, "
-            f'with on-screen text reading "{_clean(kv_text)}" and clean space for the headline.'
-        )
+        # KV 定格 shot（skip_kv_shot=True 时不自动追加——交由 H3 last_frame 尾帧融合）
+        if not skip_kv_shot:
+            kv_text = f"{product_name}" + (f" {product_price}" if product_price else "")
+            on_screen_texts.append(kv_text)
+            desc_parts.append(
+                f"[Shot {n_shots + 1}] At {_mmss(kv_cut)}, the shot cuts to the final product KV: "
+                f"{product_name} presented as the hero product on its signature packaging, "
+                f'with on-screen text reading "{_clean(kv_text)}" and clean space for the headline.'
+            )
         description = " ".join(desc_parts)
         # clean frame（抑制 H3 原生字幕渲染——字幕由后烧）
-        soundscape = (
+        soundscape = soundscape_override or (
             "Soft restaurant ambience continues underneath with light kitchen sounds. "
             "A crisp bite and gentle packaging rustle accompany the product close-up."
         )
@@ -248,8 +253,8 @@ def compile_h3_prompt(
 
     description = " ".join(s1_parts) + " " + s2
 
-    # ---- soundscape（环境音推导，1-2 句默认模板） ----
-    soundscape = (
+    # ---- soundscape（环境音推导，1-2 句默认模板；支持外部覆盖） ----
+    soundscape = soundscape_override or (
         "Soft restaurant ambience continues underneath with light kitchen sounds. "
         "A crisp bite and gentle packaging rustle accompany the product close-up."
     )

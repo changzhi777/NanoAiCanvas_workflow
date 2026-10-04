@@ -987,6 +987,16 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                             break
                     bgm_cfg = (config or {}).get("step5_bgm", {})
 
+                    # V27：实验室声景覆盖（绕过餐厅默认模板）+ skip_kv_shot
+                    # 让 H3 last_frame 尾帧融合用户 KV 图（不自动追加编译器 KV shot）
+                    lab_soundscape = (
+                        "Quiet research-laboratory ambience: low computer hum, "
+                        "soft keyboard clatter, occasional faint equipment beeps, "
+                        "air-conditioning hiss."
+                    )
+                    last_frame_url = getattr(req, "last_frame_url", None)
+                    skip_kv = bool(last_frame_url)  # 传 last_frame 则让 H3 接管尾帧
+
                     # 五锚点 V5：从 req.prompt 提取 [镜头N] 分段 → 多镜头时间轴
                     # （客户意见"镜头单调没按情节"——Brief 情节分段直接映射 H3 [Shot N] 协议）
                     # 台词提取：分段内 配音：'…' / 说：'…' / 配音+字幕：'…'
@@ -1031,6 +1041,8 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                         voice_gender=getattr(req, "voice_gender", "none") or "none",
                         voice_preset=getattr(req, "voice_preset", None),
                         story_shots=story_shots or None,
+                        soundscape_override=lab_soundscape,
+                        skip_kv_shot=skip_kv,
                     )
                     one["prompt"] = compiled["prompt"]
                     one["h3_voice"] = compiled["voice"]["id"] if compiled.get("voice") else None
