@@ -84,19 +84,19 @@ def _gen_one_gpt_image_2(settings: Settings) -> Callable:
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{base_url}/api/async/image_gpt?key={api_key}",
+                f"{base_url}/api/async/image_gpt_2.5",
                 data={"prompt": prompt, "size": "auto"},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                headers={"Authorization": api_key},
             )
             if resp.status_code != 200:
-                raise Exception(f"GPT-Image-2 submit error: {resp.status_code}")
+                raise Exception(f"GPT-Image-2.5 submit error: {resp.status_code}")
             result = resp.json()
             if result.get("code") != 200:
-                raise Exception(f"GPT-Image-2 submit failed: {result.get('msg', 'unknown')}")
+                raise Exception(f"GPT-Image-2.5 submit failed: {result.get('msg', 'unknown')}")
 
             task_uid = result.get("data", {}).get("id", "")
             if not task_uid:
-                raise Exception("No task id in GPT-Image-2 response")
+                raise Exception("No task id in GPT-Image-2.5 response")
 
         max_wait = 600  # 抬高轮询超时：MiniMax H3 后端排队时易超时 180s（旧值）
         interval = 5
@@ -106,7 +106,9 @@ def _gen_one_gpt_image_2(settings: Settings) -> Callable:
                 await asyncio.sleep(interval)
                 elapsed += interval
                 resp = await client.get(
-                    f"{base_url}/api/async/detail?key={api_key}&id={task_uid}"
+                    f"{base_url}/api/async/detail",
+                    params={"id": task_uid},
+                    headers={"Authorization": api_key},
                 )
                 if resp.status_code != 200:
                     continue
@@ -199,7 +201,9 @@ def _gen_one_gpt_image_25_flare(settings: Settings, aspect_ratio: str = "1280*72
                 await asyncio.sleep(interval)
                 elapsed += interval
                 resp = await client.get(
-                    f"{base_url}/api/async/detail?key={api_key}&id={task_uid}"
+                    f"{base_url}/api/async/detail",
+                    params={"id": task_uid},
+                    headers={"Authorization": api_key},
                 )
                 if resp.status_code != 200:
                     continue
@@ -252,7 +256,9 @@ def _gen_one_gpt_image_25_flare(settings: Settings, aspect_ratio: str = "1280*72
                 await asyncio.sleep(6)
                 elapsed += 6
                 resp = await client.get(
-                    f"{base_url}/api/async/detail?key={api_key}&id={task_uid}"
+                    f"{base_url}/api/async/detail",
+                    params={"id": task_uid},
+                    headers={"Authorization": api_key},
                 )
                 if resp.status_code != 200:
                     continue
@@ -405,7 +411,7 @@ async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait:
         while elapsed < max_wait:
             await asyncio.sleep(interval)
             elapsed += interval
-            resp = await client.get(f"{base_url}/api/async/detail?key={api_key}&id={task_id}")
+            resp = await client.get(f"{base_url}/api/async/detail", params={"id": task_id}, headers={"Authorization": api_key})
             if resp.status_code != 200:
                 continue
             data = resp.json().get("data", {})

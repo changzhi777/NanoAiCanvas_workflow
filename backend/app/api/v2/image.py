@@ -72,6 +72,17 @@ async def submit_gpt_image_task(
     return await submit_image_task(request, db, frontend_key)
 
 
+@router.post("/gpt-image-2.5/generate", response_model=TaskSubmitResponse)
+async def submit_gpt_image_25_task(
+    request: ImageGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """提交 GPT Image 2.5 图片生成任务（速创新端点 /api/async/image_gpt_2.5）"""
+    request.model_type = "gpt-image-2.5"
+    return await submit_image_task(request, db, frontend_key)
+
+
 async def submit_image_task(
     request: ImageGenerateRequest,
     db: AsyncSession,
@@ -164,6 +175,16 @@ async def get_gpt_image_task_status(
 ):
     """查询 GPT Image 2 任务状态"""
     return await get_task_status(task_id, "gpt-image-2", db, frontend_key)
+
+
+@router.get("/gpt-image-2.5/task/{task_id}", response_model=TaskStatusResponse)
+async def get_gpt_image_25_task_status(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """查询 GPT Image 2.5 任务状态"""
+    return await get_task_status(task_id, "gpt-image-2.5", db, frontend_key)
 
 
 async def get_task_status(

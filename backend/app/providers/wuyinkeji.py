@@ -1,10 +1,19 @@
 """
 Wuyinkeji 图片生成 Provider
 调用 https://api.wuyinkeji.com API
+鉴权：Authorization header（不再用 ?key= query）
 """
 import httpx
 from typing import Dict, Any, List
 from .base import BaseImageProvider
+
+
+def _wuyin_headers(api_key: str) -> Dict[str, str]:
+    """速创 API 鉴权 header：Authorization + Content-Type"""
+    return {
+        "Authorization": api_key,
+        "Content-Type": "application/json",
+    }
 
 
 class WuyinkejiProvider(BaseImageProvider):
@@ -18,41 +27,42 @@ class WuyinkejiProvider(BaseImageProvider):
     async def generate_image(self, params: Dict[str, Any]) -> str:
         """
         提交图片生成任务
-        NanoBanana2: form-encoded, key via query param
-        GPT-Image-2: JSON body with key
+        NanoBanana2/GPT-Image-2/2.5：统一 Authorization header 鉴权
         """
         model_type = params.get("model_type", "nano-banana2")
         prompt = params.get("prompt", "")
         size = params.get("size", "1K")
         urls = params.get("urls", [])
 
-        # 选择端点
+        # 选择端点（速创新规范：gpt-image-2.5 独立端点）
         endpoint_map = {
             "nano-banana2": "/api/async/image_nanoBanana2",
             "nano-banana-pro": "/api/async/image_nanoBanana2",
             "gpt-image-2": "/api/async/image_gpt",
+            "gpt-image-2.5": "/api/async/image_gpt_2.5",
         }
         endpoint = endpoint_map.get(model_type, "/api/async/image_nanoBanana2")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            if model_type == "gpt-image-2":
-                # GPT-Image-2: JSON body
+            if model_type in ("gpt-image-2", "gpt-image-2.5"):
+                # GPT-Image-2 / 2.5：JSON body，key 通过 Authorization header
+                body = {"prompt": prompt, "size": size}
+                if urls:
+                    body["urls"] = ",".join(urls) if isinstance(urls, list) else urls
                 response = await client.post(
                     f"{self.base_url}{endpoint}",
-                    headers={"Content-Type": "application/json"},
-                    json={"key": self.api_key, "prompt": prompt, "size": size},
+                    headers=_wuyin_headers(self.api_key),
+                    json=body,
                 )
             else:
-                # NanoBanana2: form-encoded, key via query param
+                # NanoBanana2：form-encoded，key 通过 Authorization header（不再用 ?key= query）
                 form_data = {"prompt": prompt, "size": size}
                 if urls:
-                    import json
-                    form_data["urls"] = json.dumps(urls)
-
+                    form_data["urls"] = ",".join(urls) if isinstance(urls, list) else urls
                 response = await client.post(
-                    f"{self.base_url}{endpoint}?key={self.api_key}",
+                    f"{self.base_url}{endpoint}",
+                    headers={"Authorization": self.api_key},
                     data=form_data,
-                    headers={"Content-Type": "application/x-www-form-urlencoded"},
                 )
 
             response.raise_for_status()
@@ -66,11 +76,13 @@ class WuyinkejiProvider(BaseImageProvider):
     async def get_task_status(self, task_id: str) -> Dict[str, Any]:
         """
         查询任务状态
-        GET /api/async/detail?key={api_key}&id={task_id}
+        GET /api/async/detail?key=...&id=...  →  改为 Authorization header
         """
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(
-                f"{self.base_url}/api/async/detail?key={self.api_key}&id={task_id}"
+                f"{self.base_url}/api/async/detail",
+                params={"id": task_id},
+                headers=_wuyin_headers(self.api_key),
             )
             response.raise_for_status()
             result = response.json()

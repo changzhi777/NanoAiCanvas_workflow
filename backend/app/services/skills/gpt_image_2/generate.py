@@ -86,7 +86,7 @@ class ImageGenerator:
                     poll_resp = await client.get(
                         f"{WUYIN_BASE}/api/async/detail",
                         headers={"Authorization": WUYIN_KEY},
-                        params={"key": WUYIN_KEY, "id": remote_id},
+                        params={"id": remote_id},
                     )
                     if poll_resp.status_code != 200:
                         continue

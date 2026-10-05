@@ -68,14 +68,14 @@ async def _scan_wuyinkeji(base_url: str, api_key: str) -> List[str]:
                 if model_name == "gpt-image-2":
                     resp = await client.post(
                         f"{base_url}{endpoint}",
-                        headers={"Content-Type": "application/json"},
-                        json={"key": api_key, "prompt": "test", "size": "auto"},
+                        headers={"Authorization": api_key, "Content-Type": "application/json"},
+                        json={"prompt": "test", "size": "auto"},
                     )
                 else:
                     resp = await client.post(
-                        f"{base_url}{endpoint}?key={api_key}",
+                        f"{base_url}{endpoint}",
                         data={"prompt": "test", "size": "1K"},
-                        headers={"Content-Type": "application/x-www-form-urlencoded"},
+                        headers={"Authorization": api_key},
                     )
 
                 if resp.status_code == 200:
