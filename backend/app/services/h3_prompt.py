@@ -117,6 +117,7 @@ def compile_h3_prompt(
     story_shots: list = None,
     soundscape_override: str = None,
     skip_kv_shot: bool = False,
+    lip_sync: bool = False,
 ) -> dict:
     """五锚点 + 剧本 → H3 三字段结构化 Schema。
 
@@ -127,6 +128,8 @@ def compile_h3_prompt(
     （[Shot N] At 00:XX.000 切点协议，末镜头后接 KV 定格 shot）。
     soundscape_override: 实验室/其他场景声景覆盖（None=餐厅默认模板）。
     skip_kv_shot: True=不自动追加编译器 KV 定格 shot（改用 H3 last_frame 尾帧融合时设 True）。
+    lip_sync: True=inline 对白（角色开口说话，唇动+同源 on-screen 字幕）；
+              False=画外音旁白（唇闭）。
     """
     character_desc = _clean(character_desc)
     product_name = _clean(product_name) or "产品"
@@ -154,7 +157,13 @@ def compile_h3_prompt(
         )
 
     def _inline_line(line: str) -> str:
-        return f"{speaker} says: <d>[Chinese] {line} </d>"
+        # 口型同步模式：inline 对白（唇动）+ 同源 on-screen 字幕
+        return (
+            f"{speaker} says: <d>[Chinese] {line} </d>, "
+            f'speaking directly to camera with natural lip movements '
+            f'synchronized to the dialogue, '
+            f'with on-screen text reading "{line}".'
+        )
 
     # ---- 多镜头模式：story_shots 驱动 [Shot N] 时间轴 ----
     desc_parts = []
@@ -182,8 +191,10 @@ def compile_h3_prompt(
             seg_text = f"{head} {visual}"
             if line:
                 # 时窗声明 + 台词（同一 line 变量喂 <d> 和 srt_entries）
+                # lip_sync=True → inline 对白（开口唇动）；False → 画外音（唇闭）
+                _line_fn = _inline_line if lip_sync else _voiceover
                 seg_text += (
-                    f" {_voiceover(line)} "
+                    f" {_line_fn(line)} "
                     f"spoken precisely within this time window. "
                     f"The visual continues as described."
                 )
@@ -233,7 +244,8 @@ def compile_h3_prompt(
     ]
     if voice and (narration or dialogue):
         line = dialogue or narration
-        s1_parts.append(_voiceover(line) if not dialogue else _inline_line(line))
+        _use_inline = lip_sync or bool(dialogue)
+        s1_parts.append(_inline_line(line) if _use_inline else _voiceover(line))
         # 单一变量源：同一 line 喂 <d> 和 srt_entries
         srt_entries = [{"text": _clean(line), "start": 0.5, "end": cut_s - 0.5}]
     elif narration:

@@ -1043,6 +1043,7 @@ async def _optimize_prompts(script_result: dict, req, settings, config: dict = N
                         story_shots=story_shots or None,
                         soundscape_override=lab_soundscape,
                         skip_kv_shot=skip_kv,
+                        lip_sync=bool(getattr(req, "lip_sync", False)),
                     )
                     one["prompt"] = compiled["prompt"]
                     one["h3_voice"] = compiled["voice"]["id"] if compiled.get("voice") else None
