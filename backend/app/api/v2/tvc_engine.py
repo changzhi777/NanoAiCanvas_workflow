@@ -1247,7 +1247,7 @@ async def _generate_videos(task_id: str, node_idx: int, breakdown: dict, req, se
 
     async def _process_video(i: int, st: dict):
         shot_num = i + 1
-        first_url = character_ref_url
+        first_url = getattr(req, "first_frame_url", None) or character_ref_url
         # 尾帧：显式 KV 图（五锚点尾帧融合）优先，否则场景图
         last_url = getattr(req, "last_frame_url", None) or scene_ref_url
         visual_prompt = shots[i].get("visual_prompt", "") if i < len(shots) else ""
