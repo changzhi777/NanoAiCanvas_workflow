@@ -39,7 +39,8 @@ class Settings(BaseSettings):
     GLM_API_KEY: str = ""
     GLM_API_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
     # 智谱 Anthropic 兼容端点（GLM Coding Plan 主路）
-    ANTHROPIC_GLM_URL: str = "https://open.bigmodel.cn/api/anthropic/v1/messages"
+    # 2026-10 切换至 MiniMax M3 多模态模型（GLM 端点 404 错源；M3 兼容 Anthropic 协议）
+    ANTHROPIC_GLM_URL: str = "https://api.minimax.cn/anthropic/v1/messages"
     # DeepSeek Anthropic 兼容端点（兜底）
     ANTHROPIC_DEEPSEEK_URL: str = "https://api.deepseek.com/anthropic/v1/messages"
     GLM_DEFAULT_MODEL: str = "glm-5.3"
