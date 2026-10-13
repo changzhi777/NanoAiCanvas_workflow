@@ -700,7 +700,7 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt_text},
-                    _build_minimax_image_block(image, source_type="anthropic"),
+                    _build_minimax_image_block(image, source_type="openai"),
                 ],
             }],
             "temperature": 0.5,
