@@ -706,7 +706,7 @@ async def _describe_with_minimax_m3(image: str, settings) -> Optional[str]:
             "temperature": 0.5,
         }
     else:
-        # minimax /chat/completions（OpenAI 兼容回退）
+        # minimax /chat/completions（OpenAI 兼容回退，image_url 块更稳）
         url = f"{base_url}/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -792,11 +792,16 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     # 构造 user content：有图用多模态 content 数组（图描述优先走缓存，省 token + 提速）
     if use_vision:
         # 缓存命中：描述注入 user text，image 仍走 M3（描述+图组合最强）
-        cached_desc = await ImageDescriptionCache.get_or_describe(
-            reference_image,
-            model=cfg.get("vision_model", "MiniMax-M3"),
-            describe_fn=lambda img: _describe_with_minimax_m3(img, settings),
-        )
+        # M3 描述异常透传曾让 task failed elapsed=1 — 加 try 强制降级
+        try:
+            cached_desc = await ImageDescriptionCache.get_or_describe(
+                reference_image,
+                model=cfg.get("vision_model", "MiniMax-M3"),
+                describe_fn=lambda img: _describe_with_minimax_m3(img, settings),
+            )
+        except Exception as m3_err:
+            logger.warning(f"M3 描述降级为 None（{m3_err}）— 继续走 first_frame 锚定路径")
+            cached_desc = None
         image_uri = _to_data_uri(reference_image)
         text_block = (
             f"创作一个短片剧本。主题：{getattr(req, 'prompt', '')}\n"
