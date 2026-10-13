@@ -6,6 +6,7 @@ from app.api.v2.tvc_providers import (
     get_image_provider, get_video_provider,
     _gen_one_jimeng, _gen_one_gpt_image_2, _gen_one_minimax,
     _submit_video_seedance, _submit_video_minimax, _enhance_image_prompt,
+    _assert_frame_reachable, _with_frame_guard,
 )
 
 
@@ -117,6 +118,76 @@ class TestGetVideoProvider:
 
         provider, name = get_video_provider("unknown", settings)
         assert name == "Seedance 2.0"
+
+
+# ==================== 首/尾帧预检（提交前拦截，不白烧计费） ====================
+
+def _fake_client(head_status=200, get_status=200, head_exc=None):
+    """构造 httpx.AsyncClient 替身：async with 可用，head/get 返回固定状态码。"""
+    resp = MagicMock()
+    resp.status_code = head_status
+    get_resp = MagicMock()
+    get_resp.status_code = get_status
+
+    client = MagicMock()
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=False)
+    client.head = AsyncMock(side_effect=head_exc) if head_exc else AsyncMock(return_value=resp)
+    client.get = AsyncMock(return_value=get_resp)
+    return client
+
+
+class TestFrameGuard:
+    async def test_reachable_url_passes(self):
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient",
+                   return_value=_fake_client(200)):
+            await _assert_frame_reachable("https://cdn.test/ok.png", "首帧图")
+
+    async def test_404_raises(self):
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient",
+                   return_value=_fake_client(404)):
+            with pytest.raises(Exception, match="首帧图不可访问 HTTP 404"):
+                await _assert_frame_reachable("https://cdn.test/gone.png", "首帧图")
+
+    async def test_head_405_falls_back_to_range_get(self):
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient",
+                   return_value=_fake_client(head_status=405, get_status=206)):
+            await _assert_frame_reachable("https://cdn.test/ok.png", "首帧图")
+
+    async def test_placeholder_rejected_without_request(self):
+        # placeholder_ 前缀是本地占位，不该发网络请求
+        with pytest.raises(Exception, match="placeholder"):
+            await _assert_frame_reachable("placeholder_character", "首帧图")
+
+    async def test_empty_url_skipped(self):
+        await _assert_frame_reachable("", "尾帧图")
+
+    async def test_network_error_retries_then_raises(self):
+        client = _fake_client(head_exc=ConnectionError("boom"))
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient", return_value=client):
+            with pytest.raises(Exception, match="尾帧图预检失败"):
+                await _assert_frame_reachable("https://cdn.test/x.png", "尾帧图")
+        assert client.head.await_count == 2  # 抖动重试一次
+
+    async def test_guard_blocks_provider_when_first_frame_dead(self):
+        inner = AsyncMock()
+        guarded = _with_frame_guard(inner)
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient",
+                   return_value=_fake_client(404)):
+            with pytest.raises(Exception, match="首帧图不可访问"):
+                await guarded(1, "https://cdn.test/gone.png", "", 5)
+        inner.assert_not_awaited()  # 关键：失效首帧不进入 provider，不产生计费
+
+    async def test_guard_passes_through_when_reachable(self):
+        inner = AsyncMock(return_value={"video_url": "https://cdn.test/v.mp4"})
+        guarded = _with_frame_guard(inner)
+        with patch("app.api.v2.tvc_providers.httpx.AsyncClient",
+                   return_value=_fake_client(200)):
+            out = await guarded(1, "https://cdn.test/ok.png", "https://cdn.test/last.png", 5,
+                                prompt="p")
+        assert out["video_url"] == "https://cdn.test/v.mp4"
+        inner.assert_awaited_once_with(1, "https://cdn.test/ok.png",
+                                       "https://cdn.test/last.png", 5, prompt="p")
 
 
 # ==================== 图片 Provider 行为测试 ====================

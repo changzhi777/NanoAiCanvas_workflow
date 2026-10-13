@@ -6,6 +6,7 @@ GLM API 代理路由 - 提示词优化
 
 import asyncio
 import logging
+import re
 import httpx
 from fastapi import APIRouter, HTTPException, Depends
 from starlette.responses import StreamingResponse
@@ -70,8 +71,26 @@ def _repair_json(raw: str) -> str:
     return ''.join(result)
 
 
+_THINK_BLOCK = re.compile(r"<(think|thinking|reasoning)>.*?</\1>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_think(text: str) -> str:
+    """剥离思维链块。
+
+    推理模型偶发把 <think>…</think> 直接写进 content（而非 reasoning_content 字段）。
+    思维链里的花括号是**平衡对**（如复述模板时的 `- shot_count: {shot_count}`），
+    会被 _find_balanced 当成 JSON 起点取走 → 解析结果静默变成 {}。
+    """
+    return _THINK_BLOCK.sub("", text or "").strip()
+
+
 def _find_balanced(text: str, open_ch: str, close_ch: str) -> str | None:
-    """Bracket-count to find first complete balanced JSON structure."""
+    """Bracket-count to find first complete balanced JSON structure.
+
+    入口先剥离思维链：模型把思维链混进 content 时，其中的花括号会污染取起点
+    （见 _strip_think）。本函数是全部 JSON 解析路径的公共入口，在此免疫即可覆盖所有调用点。
+    """
+    text = _strip_think(text)
     start = text.find(open_ch)
     if start < 0:
         return None

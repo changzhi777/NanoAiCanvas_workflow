@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 from app.api.v2.tvc_engine import _breakdown_shots, _optimize_prompts
+from app.api.v2.glm_proxy import _strip_think, _find_balanced
 
 
 # ==================== 共享 fixture ====================
@@ -145,3 +146,46 @@ class TestPointsFlow:
                     await refund_points("user-1", 50)
                     assert mock_account.balance == 150
                     mock_db.commit.assert_called_once()
+
+
+# ==================== 思维链剥离（剧本静默解析成 {} 的根因） ====================
+
+class TestStripThink:
+    def test_plain_text_untouched(self):
+        assert _strip_think('{"shots": []}') == '{"shots": []}'
+
+    def test_think_block_removed(self):
+        assert _strip_think("<think>推理过程</think>\n<output>{}</output>") == "<output>{}</output>"
+
+    def test_tag_variants_and_case(self):
+        for tag in ("think", "thinking", "reasoning", "THINK", "Think"):
+            assert _strip_think(f"<{tag}>x</{tag}>real") == "real"
+
+    def test_empty_and_none_safe(self):
+        assert _strip_think("") == ""
+        assert _strip_think(None) == ""
+
+    def test_unclosed_think_left_alone(self):
+        # 没有闭合标签 → 不是完整块，不动它（避免误删后续正文）
+        assert _strip_think("<think>没闭合") == "<think>没闭合"
+
+    def test_braces_in_think_no_longer_hijack_json(self):
+        """根因复现：思维链里复述模板的 {shot_count} 是平衡花括号对，
+        未剥离时 _find_balanced 会取到它 → 剧本解析成 {}。
+        _find_balanced 现已内置免疫（入口剥离），无需调用方手动处理。"""
+        content = (
+            "<think>\nLooking at the system prompt:\n"
+            "- shot_count: {shot_count} - I should use the user's specified value\n"
+            "</think>\n"
+            '<output>{"shots": [{"visual_prompt": "真镜头"}]}</output>'
+        )
+        assert _find_balanced(content, '{', '}') == '{"shots": [{"visual_prompt": "真镜头"}]}'
+
+    def test_find_balanced_immunity_covers_all_call_sites(self):
+        """全部调用点共用 _find_balanced，故这一处免疫即覆盖 glm_proxy/minimax/tvc_engine。"""
+        content = "<think>模板里有 {shot_count} 和 [0]</think>\n```json\n{\"a\": 1}\n```"
+        assert _find_balanced(content, '{', '}') == '{"a": 1}'
+        assert _find_balanced(content, '[', ']') is None  # 思维链里的 [0] 已被剥掉
+
+    def test_find_balanced_untouched_without_think(self):
+        assert _find_balanced('前缀 {"a": 1} 后缀', '{', '}') == '{"a": 1}'

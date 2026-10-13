@@ -513,7 +513,10 @@ async def execute_redo(task_id: str, from_step: str, req, user_id=None,
 # ==================== Step 1: 剧本生成 ====================
 
 async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
-    from .glm_proxy import TVC_SCRIPT_PROMPT, TVC_MODE_CONSTRAINTS, STYLE_MAP, _find_balanced, _repair_json
+    # _strip_think 在此用于让 raw_content 本身干净（会入库展示），解析路径的免疫由
+    # _find_balanced 内部负责 —— 见 glm_proxy._strip_think
+    from .glm_proxy import (TVC_SCRIPT_PROMPT, TVC_MODE_CONSTRAINTS, STYLE_MAP,
+                            _find_balanced, _repair_json, _strip_think)
 
     cfg = (config or {}).get("step1_script", {})
     mode = TVC_MODE_CONSTRAINTS.get(req.mode, TVC_MODE_CONSTRAINTS["cinematic"])
@@ -561,9 +564,9 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     )
 
     msg = data.get("choices", [{}])[0].get("message", {})
-    content = msg.get("content", "").strip()
+    content = _strip_think(msg.get("content", ""))
     if not content:
-        rc = msg.get("reasoning_content", "").strip()
+        rc = _strip_think(msg.get("reasoning_content", ""))
         if rc:
             match = re.search(r"<output>(.*?)</output>", rc, re.DOTALL)
             content = match.group(1).strip() if match else rc
@@ -595,7 +598,7 @@ async def _call_glm_tvc_script(req, settings, config: dict = None) -> dict:
     if not script.get("shots"):
         # content 截断/异常兜底：thinking 模型偶发把完整 JSON 写进 reasoning_content
         # （2026-10-03 法风烧饼单实证：content 仅 48 字 `<output>{` 开头）
-        rc = msg.get("reasoning_content", "").strip()
+        rc = _strip_think(msg.get("reasoning_content", ""))
         if rc:
             rc_json = None
             m2 = re.search(r"<output>([\s\S]*?)</output>", rc)

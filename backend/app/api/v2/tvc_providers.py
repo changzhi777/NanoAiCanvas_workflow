@@ -403,6 +403,48 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
 
 # ==================== 视频 Provider ====================
 
+async def _assert_frame_reachable(url: str, label: str) -> None:
+    """首/尾帧 URL 提交前预检。
+
+    速创/Seedance 都是**接单后**才去下载参考图，URL 失效会白烧一次计费、且要等排队
+    十几分钟才在轮询里暴露（status=3 远程图片下载失败）。这里提前拦掉。
+    """
+    if not url:
+        return
+    if url.startswith("placeholder_"):
+        raise Exception(f"{label}不可用（placeholder）: {url}")
+    if not url.startswith(("http://", "https://")):
+        return
+
+    last_err = None
+    resp = None
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
+        for _ in range(2):  # 网络抖动重试一次；HTTP 4xx 是确定性失败，直接落到下方判断
+            try:
+                resp = await client.head(url)
+                if resp.status_code == 405:  # 部分 CDN 不支持 HEAD，退化为 Range GET
+                    resp = await client.get(url, headers={"Range": "bytes=0-0"})
+                break
+            except Exception as e:
+                last_err, resp = e, None
+
+    if resp is None:
+        raise Exception(f"{label}预检失败: {url} ({last_err})")
+    if resp.status_code >= 400:
+        raise Exception(f"{label}不可访问 HTTP {resp.status_code}: {url}")
+
+
+def _with_frame_guard(fn: Callable) -> Callable:
+    """给视频 provider 的 _run 套上参考图预检（3 个通道共用，避免逐处改）。"""
+
+    async def _guarded(shot_num: int, first_url: str, last_url: str, duration: int, prompt: str = "") -> dict:
+        await _assert_frame_reachable(first_url, "首帧图")
+        await _assert_frame_reachable(last_url, "尾帧图")
+        return await fn(shot_num, first_url, last_url, duration, prompt=prompt)
+
+    return _guarded
+
+
 async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait: int = 1200) -> str:
     """轮询速创异步任务（与生图同构：GET detail，status=2 成功）→ 返回视频 URL。"""
     interval = 10
@@ -431,6 +473,8 @@ async def _poll_wuyin_video(api_key: str, base_url: str, task_id: str, max_wait:
                 return url
             if status not in (0, 1):
                 raise Exception(f"视频生成失败 status={status} msg={data.get('message', '')}")
+            if elapsed % 60 == 0:  # 心跳：消除 20 分钟静默轮询的运维盲区
+                logger.info(f"H3 视频轮询中 {elapsed}s/{max_wait}s task={task_id} status={status}")
     raise Exception(f"视频生成超时 {max_wait}s (task: {task_id})")
 
 
@@ -596,7 +640,11 @@ def get_video_provider(video_model: str, settings: Settings, resolution: str = "
     """
     vm = (video_model or "").lower()
     if "minimax-official" in vm or "minimax-coding" in vm or "hailuo" in vm:
-        return _submit_video_minimax_official(settings, resolution=resolution), "MiniMax Official"
+        return _with_frame_guard(
+            _submit_video_minimax_official(settings, resolution=resolution)
+        ), "MiniMax Official"
     if "minimax" in vm:
-        return _submit_video_minimax(settings, resolution=resolution, model=video_model, ratio=ratio), "MiniMax H3"
-    return _submit_video_seedance(settings, resolution=resolution), "Seedance 2.0"
+        return _with_frame_guard(
+            _submit_video_minimax(settings, resolution=resolution, model=video_model, ratio=ratio)
+        ), "MiniMax H3"
+    return _with_frame_guard(_submit_video_seedance(settings, resolution=resolution)), "Seedance 2.0"
