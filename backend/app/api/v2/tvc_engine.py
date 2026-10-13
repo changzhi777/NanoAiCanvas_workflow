@@ -789,6 +789,9 @@ async def _call_minimax_tvc_script(req, settings, config: dict = None) -> dict:
     if style:
         system_prompt += f"\n\n## 画面风格\n{style}"
 
+    # 2026-10: MiniMax 端点对多模态 image_url/base64 块均 400 错源，临时强制走纯文本
+    use_vision = False
+
     # 构造 user content：有图用多模态 content 数组（图描述优先走缓存，省 token + 提速）
     if use_vision:
         # 缓存命中：描述注入 user text，image 仍走 M3（描述+图组合最强）
