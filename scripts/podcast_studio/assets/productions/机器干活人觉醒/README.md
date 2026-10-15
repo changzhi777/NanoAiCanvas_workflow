@@ -58,6 +58,18 @@ python3 generate.py --topic "机器干活人觉醒" --style culture --resume --n
 - 生成通道：速创双端点维护 → MiniMax image-01-live（aspect 16:9）
 - 字幕：PlayRes 1280×720 / 字号 36 / 折行 26 字（config 化）
 
+## v7 对谈手绘图卡版（2026-10-16，当前交付）
+
+| 文件 | 说明 |
+|---|---|
+| `成片_V3_对谈手绘图卡_胡总解说_230s.mp4` | **当前交付**：1280×720，229.7s |
+| `cards_v3/v3_A*.png` | 3 张对谈场景（胡总坐「量子修行」式书房沙发讲解，subject_reference 锚定） |
+| `cards_v3/v3_B*_ref.png` | 5 张手绘知识图卡（胡总素描形象入卡：崩塌石柱/心灯相传/人机对峙…） |
+
+- 形态参考：视频号「量子修行」对谈节目（书房沙发讲解场景替代原对谈者）
+- 图卡风格：参考视频 33s 处手绘铅笔素描知识卡（no-text 留白框，文案由字幕层承担）
+- 生成：MiniMax image-01 subject_reference 人物融合（速创 GPT-Image-2.5 维护期替代通道）
+
 ## 版本沿革（归档）
 
 - v1 TTS 版（Gentle_Senior 女声 + 山河古韵 BGM + TTS 时间轴）→ 音色不符
