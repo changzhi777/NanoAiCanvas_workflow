@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NanoAi无限画布 · AI 驱动的无限画布创作平台</title>
+<style>
+  @page { size: A4; margin: 0; }
+  :root {
+    --primary: #1E40AF;
+    --secondary: #3B82F6;
+    --accent: #22C55E;
+    --bg: #FFFFFF;
+    --bg-soft: #EFF6FF;
+    --text: #1E3A8A;
+    --text-body: #334155;
+    --border: #DBEAFE;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--text-body); background: var(--bg);
+    line-height: 1.7; font-size: 14px;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 48px 56px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 55%, #3B82F6 100%);
+    color: #fff; border-radius: 16px;
+    padding: 44px 48px; margin-bottom: 36px;
+  }
+  .hero .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .hero .brand svg { width: 44px; height: 44px; }
+  .hero h1 { font-size: 30px; font-weight: 700; letter-spacing: 1px; }
+  .hero .tagline {
+    font-size: 17px; opacity: .95; margin-top: 10px; font-weight: 500;
+  }
+  .hero .chips { display: flex; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.28);
+    padding: 5px 14px; border-radius: 999px; font-size: 12.5px;
+  }
+
+  /* Sections */
+  h2 {
+    font-size: 20px; color: var(--primary); font-weight: 700;
+    margin: 34px 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  h2 .bar { width: 5px; height: 20px; background: var(--secondary); border-radius: 3px; display: inline-block; }
+  p { margin-bottom: 10px; text-align: justify; }
+  strong { color: var(--primary); }
+
+  /* Value cards */
+  .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 6px; }
+  .card {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  .card .t { display: flex; align-items: center; gap: 9px; font-weight: 700; color: var(--primary); margin-bottom: 6px; font-size: 14.5px; }
+  .card .t svg { width: 19px; height: 19px; flex: none; }
+  .card .d { font-size: 13px; color: var(--text-body); }
+
+  /* Feature matrix table */
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  th {
+    background: var(--primary); color: #fff; text-align: left;
+    padding: 9px 12px; font-weight: 600;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #F8FAFF; }
+  td.k { color: var(--primary); font-weight: 600; white-space: nowrap; }
+
+  /* Comparison table */
+  .cmp th:nth-child(2) { background: var(--primary); }
+  .cmp th:nth-child(3) { background: #64748B; }
+  .cmp td.win { color: var(--accent); font-weight: 700; }
+
+  /* Pipeline */
+  .pipeline { display: flex; align-items: stretch; gap: 6px; margin: 14px 0 10px; }
+  .pipe {
+    flex: 1; text-align: center; background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 4px;
+  }
+  .pipe .n { font-size: 11px; color: var(--secondary); font-weight: 700; }
+  .pipe .w { font-size: 13.5px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .arrow { align-self: center; color: var(--secondary); font-size: 16px; font-weight: 700; flex: none; }
+
+
+  /* Screenshots */
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 6px; }
+  .shot { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #0F172A; }
+  .shot img { width: 100%; display: block; }
+  .shot .cap {
+    padding: 8px 12px; font-size: 12px; color: var(--primary);
+    background: var(--bg-soft); font-weight: 600;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Scene grid */
+  .scenes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .scene {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px; text-align: center; background: #fff;
+  }
+  .scene svg { width: 26px; height: 26px; margin-bottom: 8px; }
+  .scene .t { font-weight: 700; color: var(--primary); font-size: 13.5px; margin-bottom: 4px; }
+  .scene .d { font-size: 12px; color: #64748B; }
+
+  /* Summary */
+  .summary {
+    background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+    border-left: 5px solid var(--primary); border-radius: 0 12px 12px 0;
+    padding: 18px 22px; margin-top: 10px;
+  }
+
+  footer { margin-top: 30px; text-align: center; font-size: 11.5px; color: #94A3B8; }
+
+  @media print {
+    .page { padding: 32px 40px; }
+    .hero { border-radius: 12px; }
+  }
+  @media (max-width: 720px) {
+    .page { padding: 24px 18px; }
+    .cards { grid-template-columns: 1fr; }
+    .scenes { grid-template-columns: repeat(2, 1fr); }
+    .pipeline { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="8.5" y="14" width="7" height="7" rx="1.5"/>
+        <path d="M6.5 10v2.5h9V10M12 12.5V14"/>
+      </svg>
+      <h1>NanoAi无限画布</h1>
+    </div>
+    <div class="tagline">AI 驱动的无限画布创作平台 —— 从创意到成片，一站式内容生产工作流</div>
+    <div class="chips">
+      <span class="chip">端到端全链路</span>
+      <span class="chip">多模型智能路由</span>
+      <span class="chip">可视化无限画布</span>
+      <span class="chip">多 Agent 协作</span>
+      <span class="chip">NanoAi Node 分布式算力（Go 底层）</span>
+      <span class="chip">错峰自动调度</span>
+      <span class="chip">企业级运营</span>
+    </div>
+  </div>
+
+  <!-- 1 定位 -->
+  <h2><span class="bar"></span>产品定位</h2>
+  <p>NanoAi无限画布 是一个基于无限画布的 AI 内容生产平台。以可视化节点工作流为核心，打通「创意文案 → 分镜设计 → 图像生成 → 视频生成 → 配乐合成 → 成片输出」全链路，让创作者在一个画布内完成过去需要多款工具反复衔接的全部工作。</p>
+  <p>与 ComfyUI 等节点式创作工具相比，NanoAi无限画布 的核心差异在于：<strong>端到端一站式</strong>。ComfyUI 擅长单点图像生成的精细化编排，但文案、分镜、视频、配乐、成片仍需借助外部工具手工衔接；NanoAi无限画布 将完整内容生产管线内化为平台能力，节点之间数据自动流转，一键即可从一句话创意直达成片。</p>
+
+  <!-- 2 全链路 -->
+  <h2><span class="bar"></span>端到端生产管线</h2>
+  <div class="pipeline">
+    <div class="pipe"><div class="n">01</div><div class="w">创意文案</div></div>
+    <div class="arrow">→</div>
+    <div class="pipe"><div class="n">02</div><div class="w">分镜脚本</div></div>
+    <div class="arrow">→</div>
+    <div class="pipe"><div class="n">03</div><div class="w">图像生成</div></div>
+    <div class="arrow">→</div>
+    <div class="pipe"><div class="n">04</div><div class="w">视频生成</div></div>
+    <div class="arrow">→</div>
+    <div class="pipe"><div class="n">05</div><div class="w">配乐配音</div></div>
+    <div class="arrow">→</div>
+    <div class="pipe"><div class="n">06</div><div class="w">合成成片</div></div>
+  </div>
+
+  <!-- 3 核心价值 -->
+  <h2><span class="bar"></span>核心价值</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>全链路闭环</div>
+      <div class="d">文案、分镜、生图、视频、BGM、合成六大环节全部内置，无需在多个工具间导出导入。</div>
+    </div>
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>多模型智能路由</div>
+      <div class="d">DeepSeek-V4-Pro 剧本模型、先进生图与视频生成模型、MiniMax 音色设计与 TTS 模型，按任务特性自动路由。</div>
+    </div>
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2.5h9V10M12 12.5V14"/></svg>可视化编排</div>
+      <div class="d">基于无限画布的节点式工作流，拖拽连线、数据自动流转，所见即所得。</div>
+    </div>
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>模板化生产</div>
+      <div class="d">内置数十种工作流模板（TVC 广告、故事板、角色与场景设计等），开箱即用。</div>
+    </div>
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4z"/><path d="M9 12l2 2 4-4"/></svg>AI 质量验收</div>
+      <div class="d">生成结果自动视觉验收与一致性评分，低分自动降级重试，减少人工返工。</div>
+    </div>
+    <div class="card">
+      <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="9.5" r="2.5"/><path d="M16 14.5c3 0 5.5 2 5.5 5"/></svg>企业级运营</div>
+      <div class="d">积分计价、团队协作、API Key 池、用量审计等运营管理能力完备。</div>
+    </div>
+  </div>
+
+  <!-- 4 功能矩阵 -->
+  <h2><span class="bar"></span>功能矩阵</h2>
+  <table>
+    <tr><th style="width:110px">能力域</th><th style="width:170px">功能</th><th>说明</th></tr>
+    <tr><td class="k">创意输入</td><td>文案 / 剧本生成</td><td>DeepSeek-V4-Pro 驱动，结构化剧本输出，含分镜脚本与配音时间轴</td></tr>
+    <tr><td class="k">视觉设计</td><td>角色 / 场景设计</td><td>AI 角色三视图、场景概念图，支持参考图一致性控制</td></tr>
+    <tr><td class="k">视频生产</td><td>图生视频 / 文生视频</td><td>多模型视频生成，支持首尾帧锚定、口型同步</td></tr>
+    <tr><td class="k">音频生产</td><td>BGM 生成 / 配音</td><td>国风到影视级配乐；MiniMax 音色设计与 TTS 模型，多音色自然语音</td></tr>
+    <tr><td class="k">后期合成</td><td>视频合成引擎</td><td>转场、字幕、混音、多规格输出</td></tr>
+    <tr><td class="k">质量控制</td><td>AI 视觉验收</td><td>生成结果自动一致性评分，不达标自动重试</td></tr>
+    <tr><td class="k">协作运营</td><td>团队 / 积分 / 资产库</td><td>团队积分优先、资产版本管理、全链路审计</td></tr>
+  </table>
+
+  <!-- 4.5 产品界面 -->
+  <h2><span class="bar"></span>产品界面</h2>
+  <div class="shots">
+    <div class="shot"><img src="screenshots/01-canvas-overview.png" alt="无限画布总览：TVC 全链路工作流节点编排" /><div class="cap">无限画布 · TVC 全链路节点编排（文案 → 分镜视频 → BGM → 合成）</div></div>
+    <div class="shot"><img src="screenshots/02-node-props-panel.png" alt="节点属性参数面板：五锚点主控、一镜到底、画面比例等配置" /><div class="cap">节点属性面板 · 五锚点主控 / 一镜到底 / 画面比例 / 优化模式</div></div>
+    <div class="shot"><img src="screenshots/03-workflow-panel.png" alt="工作流画布与背景音乐上传节点" /><div class="cap">工作流节点 · BGM 接入与音频输出端口</div></div>
+    <div class="shot"><img src="screenshots/04-admin.png" alt="管理后台：渠道商、API Key 池、模型配置、积分管理等运营模块" /><div class="cap">管理后台 · 渠道商 / API Key 池 / 模型配置 / 积分与团队运营</div></div>
+  </div>
+
+  <!-- 5 对比 -->
+  <h2><span class="bar"></span>与 ComfyUI 类工具对比</h2>
+  <table class="cmp">
+    <tr><th style="width:120px">维度</th><th>NanoAi无限画布</th><th>ComfyUI 类节点工具</th></tr>
+    <tr><td class="k">生产管线</td><td class="win">文案到成片端到端闭环</td><td>聚焦单点图像生成编排</td></tr>
+    <tr><td class="k">算力形态</td><td class="win">NanoAi Node 分布式算力池（Go 单二进制节点，跨平台零依赖部署）</td><td>本地单机算力，受限于本机硬件</td></tr>
+    <tr><td class="k">任务调度</td><td class="win">错峰自动调度（白天下单 / 夜间执行 / 早上审稿）</td><td>手动触发，无队列调度</td></tr>
+    <tr><td class="k">视频能力</td><td class="win">内置图生视频 / 文生视频 / 口型同步</td><td>需外挂第三方视频工具</td></tr>
+    <tr><td class="k">音频能力</td><td class="win">内置 BGM 生成与配音 TTS</td><td>不支持，需外部工具</td></tr>
+    <tr><td class="k">模型接入</td><td class="win">DeepSeek-V4-Pro 剧本 / 生图 / 视频 / MiniMax 音色 TTS 全模型栈</td><td>依赖本地模型与手动装插件</td></tr>
+    <tr><td class="k">使用门槛</td><td class="win">模板化开箱即用，业务人员可上手</td><td>面向算法工程师，门槛高</td></tr>
+    <tr><td class="k">协作运营</td><td class="win">团队 / 积分 / 资产库 / 审计完备</td><td>单机为主，协作能力弱</td></tr>
+    <tr><td class="k">部署形态</td><td class="win">云端服务，浏览器即用</td><td>本地部署，依赖硬件配置</td></tr>
+  </table>
+
+  <!-- 6 架构 -->
+  <h2><span class="bar"></span>技术架构</h2>
+  <p>平台采用前后端分离架构：前端基于 React 与无限画布引擎实现可视化编排；后端以高性能异步框架承载工作流执行引擎、任务队列与多 AI 服务路由；<strong>NanoAi Node</strong> 是带算力的分布式任务执行节点，组成云端算力池，平台自动完成算力分配与任务调度。</p>
+
+  <svg viewBox="0 0 860 300" style="width:100%;height:auto;background:#F8FAFF;border:1px solid #DBEAFE;border-radius:12px;padding:8px" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3B82F6"/></marker>
+    </defs>
+    <rect x="18" y="30" width="150" height="56" rx="10" fill="#EFF6FF" stroke="#1E40AF" stroke-width="1.5"/>
+    <text x="93" y="54" text-anchor="middle" font-size="14" font-weight="700" fill="#1E3A8A">创作者</text>
+    <text x="93" y="72" text-anchor="middle" font-size="11" fill="#475569">白天下计划任务</text>
+    <rect x="255" y="18" width="200" height="80" rx="10" fill="#1E40AF"/>
+    <text x="355" y="44" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">NanoAi 无限画布平台</text>
+    <text x="355" y="63" text-anchor="middle" font-size="11" fill="#BFDBFE">任务编排 · 算力分配</text>
+    <text x="355" y="80" text-anchor="middle" font-size="11" fill="#BFDBFE">队列调度 · 质量验收</text>
+    <rect x="545" y="18" width="295" height="80" rx="10" fill="#fff" stroke="#1E40AF" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="692" y="38" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1E40AF">NanoAi Node 算力池（分布式执行节点）</text>
+    <rect x="562" y="48" width="80" height="38" rx="8" fill="#EFF6FF" stroke="#3B82F6"/>
+    <text x="602" y="65" text-anchor="middle" font-size="10.5" fill="#1E3A8A">Node ①</text>
+    <text x="602" y="79" text-anchor="middle" font-size="9.5" fill="#64748B">生图算力</text>
+    <rect x="652" y="48" width="80" height="38" rx="8" fill="#EFF6FF" stroke="#3B82F6"/>
+    <text x="692" y="65" text-anchor="middle" font-size="10.5" fill="#1E3A8A">Node ②</text>
+    <text x="692" y="79" text-anchor="middle" font-size="9.5" fill="#64748B">视频算力</text>
+    <rect x="742" y="48" width="80" height="38" rx="8" fill="#EFF6FF" stroke="#3B82F6"/>
+    <text x="782" y="65" text-anchor="middle" font-size="10.5" fill="#1E3A8A">Node N…</text>
+    <text x="782" y="79" text-anchor="middle" font-size="9.5" fill="#64748B">弹性扩缩</text>
+    <line x1="168" y1="58" x2="250" y2="58" stroke="#3B82F6" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="209" y="50" text-anchor="middle" font-size="10" fill="#3B82F6">提交任务</text>
+    <line x1="455" y1="58" x2="540" y2="58" stroke="#3B82F6" stroke-width="2" marker-end="url(#ar)"/>
+    <text x="497" y="50" text-anchor="middle" font-size="10" fill="#3B82F6">算力分配</text>
+    <path d="M692 98 L692 130 L355 130 L355 103" stroke="#22C55E" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="523" y="124" text-anchor="middle" font-size="10.5" fill="#16A34A">夜间排队并行执行 · 产出回传</text>
+    <path d="M255 84 L93 84 L93 205 L255 205" stroke="#94A3B8" stroke-width="1.6" fill="none" stroke-dasharray="5 4"/>
+    <text x="150" y="198" text-anchor="middle" font-size="10.5" fill="#64748B">早上审稿验收</text>
+    <rect x="255" y="160" width="585" height="90" rx="10" fill="#fff" stroke="#DBEAFE"/>
+    <text x="272" y="182" font-size="12" font-weight="700" fill="#1E3A8A">错峰调度时序</text>
+    <rect x="272" y="192" width="150" height="26" rx="6" fill="#DBEAFE"/>
+    <text x="347" y="209" text-anchor="middle" font-size="10.5" fill="#1E3A8A">白天 · 下单 + 审稿</text>
+    <rect x="430" y="192" width="200" height="26" rx="6" fill="#1E40AF"/>
+    <text x="530" y="209" text-anchor="middle" font-size="10.5" fill="#fff">夜间 · Node 池排队满负荷执行</text>
+    <rect x="638" y="192" width="185" height="26" rx="6" fill="#DCFCE7"/>
+    <text x="730" y="209" text-anchor="middle" font-size="10.5" fill="#16A34A">早上 · 产出验收交付</text>
+    <text x="272" y="238" font-size="10" fill="#64748B">避开制作团队高峰期：白天聚焦质量审查与创意打磨，夜间算力自动满负荷运转</text>
+  </svg>
+
+  <div class="cards" style="margin-top:14px">
+    <div class="card">
+      <div class="t">分布式算力池</div>
+      <div class="d">NanoAi Node 节点带算力接入即成为执行单元，平台按任务类型自动分配算力，多任务并行不排队，节点规模弹性扩缩。</div>
+    </div>
+    <div class="card">
+      <div class="t">错峰调度工作流</div>
+      <div class="d">「白天下计划任务，夜间排队执行，早上审稿」——自动避开制作团队高峰期，白天人力聚焦质量审查与创意打磨。</div>
+    </div>
+    <div class="card">
+      <div class="t">Go 语言底层，高效低耗</div>
+      <div class="d">Node 节点以 Go 编写：高并发原生支持，单节点同时执行多任务；无虚拟机运行时开销，资源占用极低，闲置功耗小。</div>
+    </div>
+    <div class="card">
+      <div class="t">单二进制 · 全平台</div>
+      <div class="d">编译为单一二进制文件，零依赖一条命令部署；跨 Windows / Linux / macOS / ARM 平台，任何闲置电脑可秒变算力节点。</div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th style="width:150px">模块</th><th>职责</th></tr>
+    <tr><td class="k">工作流引擎</td><td>异步多步编排、断点续传、实时进度推送</td></tr>
+    <tr><td class="k">多模型路由</td><td>DeepSeek-V4-Pro 剧本 / 生图 / 视频 / MiniMax 音色 TTS 模型统一接入与调度</td></tr>
+    <tr><td class="k">Agent 子系统</td><td>多角色 AI 协作生产，具备记忆沉淀与自优化能力</td></tr>
+    <tr><td class="k">质量闸</td><td>AI 视觉验收与一致性评分，低分自动重试</td></tr>
+    <tr><td class="k">运营体系</td><td>积分计价、团队协作、资产库、全链路审计</td></tr>
+  </table>
+
+  <!-- 7 场景 -->
+  <h2><span class="bar"></span>适用场景</h2>
+  <div class="scenes">
+    <div class="scene">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M10 9l5 3-5 3V9z"/></svg>
+      <div class="t">广告营销</div><div class="d">TVC / 短视频广告快速量产</div>
+    </div>
+    <div class="scene">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+      <div class="t">内容创作</div><div class="d">知识解说 / 短剧内容流水线</div>
+    </div>
+    <div class="scene">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <div class="t">数字人生产</div><div class="d">形象设计 / 一致性 / 口播视频</div>
+    </div>
+    <div class="scene">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1E40AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+      <div class="t">文创设计</div><div class="d">角色设定 / 场景概念批量探索</div>
+    </div>
+  </div>
+
+  <!-- 8 总结 -->
+  <h2><span class="bar"></span>总结</h2>
+  <div class="summary">
+    <p style="margin:0">NanoAi无限画布 把「AI 内容生产」从多个离散工具的手工拼接，升级为一个画布内的自动化流水线。对于需要持续产出视频内容的团队，它意味着<strong>更短的交付周期、更低的多工具协作成本</strong>，以及可运营、可审计的生产过程。</p>
+  </div>
+
+  <footer>NanoAi无限画布 · AI 驱动的无限画布创作平台 · 产品功能介绍</footer>
+</div>
+</body>
+</html>
