@@ -1,0 +1,59 @@
+# 播客管线配置 — 双形态（monologue|dialogue）× 双风格（culture|tech）
+# 修改本文件即改变全管线行为，无需动代码
+
+defaults:
+  mode: monologue            # monologue | dialogue
+  style: tech                # culture | tech
+  target_duration: 60        # monologue 目标时长（秒）；dialogue 由文案长度驱动（120-300s）
+  words_per_second: 4.5      # TTS 语速预算（字/秒）
+  sentence_count: [8, 10]    # monologue 句数范围
+  sentence_gap: 0.3          # 句间停顿（秒）
+  voice_speed: 0.95          # TTS 语速（[0.5,2]，1.0 标准；0.95 更沉稳）
+  dialogue_group_size: 4     # 对谈模式每 N 句共用一张图（防图数爆炸）
+  audio: { sample_rate: 32000, format: mp3 }
+  subtitle: { font_size: 40, margin_v: 90, outline: 3 }   # 坐标基于 PlayRes 720x1280（libass 默认 288 会放大 4.4 倍）
+  bgm_volume: 0.18          # 按用户"太抢"反馈下调（0.25→0.18）
+  image:
+    provider: gpt-image-2.5   # 速创；封面另用 image-01-live（MiniMax 套餐内）
+    aspect: "720*1280"        # 9:16 竖屏
+    size: 320                 # KenBurns 输出短边
+
+# 音色：MiniMax 系统预设名（t2a_v2 voice_setting.voice_id）
+# 备选试听后可换；Phase 3 voice_clone 后替换为自定义 voice_id
+voices:
+  monologue: "Chinese (Mandarin)_Radio_Host"   # 电台男主播（2026-10-15 用户：不用女声）
+  dialogue:
+    host: "Chinese (Mandarin)_Gentle_Senior"
+    guest: "Chinese (Mandarin)_News_Anchor"     # 男声播报腔（2026-10-15 批量探测可用）
+
+models:
+  script: "MiniMax-M2.7"      # 剧本（探测通过 + 生产 TVC 在用）
+  tts: "speech-2.8-hd"        # 官方推荐自然度最高；快版 speech-2.8-turbo
+  cover: "image-01-live"      # 封面（MiniMax 套餐内）
+
+# 爆点视频（首尾各一段，Hailuo-02 首帧锚定 6s；配 character_ref 则转 S2V-01 主体参照）
+hero:
+  enabled: true
+  duration: 6            # 每段爆点时长（Hailuo-02 支持 6/10s）
+  resolution: "768P"
+  # character_ref: "https://.../人物参照图.png"   # 固定角色系列（如扎吉）启用
+  front_prompt: >
+    Slow cinematic push-in on the scene, dust motes drifting in warm light,
+    subtle parallax between foreground and background, documentary atmosphere
+  back_prompt: >
+    Slow pull-back revealing the whole scene, gentle light shift, calm closure,
+    documentary atmosphere
+
+styles:
+  tech:
+    bgm: tech_clean.mp3
+    visual: >
+      vintage physics laboratory aesthetic, brass instruments and glass apparatus,
+      warm amber museum lighting, dark wooden shelves, subtle constellation overlays,
+      editorial photography, vertical 9:16 composition, high detail, no text
+  culture:
+    bgm: awakening.mp3            # 本片定制曲《脉动之光》（2026-10-15 按文案情绪弧线设计）
+    visual: >
+      Chinese ink-wash painting style, ancient books and bamboo slips, calligraphy
+      texture, soft mist, generous negative space, elegant minimalism, warm paper
+      tones, vertical 9:16 composition, high detail, no text
