@@ -81,7 +81,7 @@ def _split_sentences(text: str, start: float, end: float) -> list[tuple[float, f
     return out
 
 
-def build_srt(timeline: dict, path: pathlib.Path, sub_cfg: dict):
+def build_srt(timeline: dict, path: pathlib.Path, sub_cfg: dict, wrap_width: int = 14):
     def ts(sec: float) -> str:
         ms = int(round(sec * 1000))
         h, ms = divmod(ms, 3600000)
@@ -89,7 +89,7 @@ def build_srt(timeline: dict, path: pathlib.Path, sub_cfg: dict):
         s, ms = divmod(ms, 1000)
         return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
-    def wrap(text: str, width: int = 14) -> str:
+    def wrap(text: str, width: int = sub_cfg.get("wrap", 14)) -> str:
         """长句折行（竖屏单行超 14 字会溢出画幅；生产 srt_generator 同款策略）。"""
         return "\n".join(text[i:i + width] for i in range(0, len(text), width))
 
@@ -168,7 +168,7 @@ def assemble(timeline: dict, cards: list[str], cfg: dict,
     work.mkdir(parents=True, exist_ok=True)
     d = cfg["defaults"]
     fps = 30
-    size = (720, 1280)
+    size = tuple(d["image"].get("out_size", [720, 1280]))
 
     # 1. 片段构建：单口播按句、对谈按 groups 组，统一分段渲染
     #    段时长 = 内容时长 + 句间停顿（末段不含），与音频侧严格对齐；
@@ -257,12 +257,13 @@ def assemble(timeline: dict, cards: list[str], cfg: dict,
         shutil.copy(pathlib.Path(external_srt).resolve(), srt)
         print("  ✓ 外部精确定时字幕")
     else:
-        build_srt(timeline, srt, d["subtitle"])
+        build_srt(timeline, srt, d["subtitle"], wrap_width=d["subtitle"].get("wrap", 14))
 
     # 6. 总装：视频 + 口播 (+BGM) + 字幕
     #    烧录需 libass；探测不到则降级内嵌软字幕（任何环境都能出片）
     #    字幕滤镜路径转义是重灾区 → cwd 切到 out/ 用相对路径，零转义
-    sub_style = (f"PlayResX=720,PlayResY=1280,"
+    pr = d["subtitle"].get("playres", [1280, 720])
+    sub_style = (f"PlayResX={pr[0]},PlayResY={pr[1]},"
                  f"FontSize={d['subtitle']['font_size']},MarginV={d['subtitle']['margin_v']},"
                  f"Outline={d['subtitle']['outline']},PrimaryColour=&H00FFFFFF,"
                  f"OutlineColour=&H00000000,Bold=1")

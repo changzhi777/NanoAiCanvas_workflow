@@ -11,12 +11,12 @@ defaults:
   voice_speed: 0.95          # TTS 语速（[0.5,2]，1.0 标准；0.95 更沉稳）
   dialogue_group_size: 4     # 对谈模式每 N 句共用一张图（防图数爆炸）
   audio: { sample_rate: 32000, format: mp3 }
-  subtitle: { font_size: 40, margin_v: 90, outline: 3 }   # 坐标基于 PlayRes 720x1280（libass 默认 288 会放大 4.4 倍）
+  subtitle: { font_size: 36, margin_v: 50, outline: 3, playres: [1280, 720], wrap: 26 }   # 横版 720p
   bgm_volume: 0.18          # 按用户"太抢"反馈下调（0.25→0.18）
   image:
     provider: gpt-image-2.5   # 速创；封面另用 image-01-live（MiniMax 套餐内）
-    aspect: "720*1280"        # 9:16 竖屏
-    size: 320                 # KenBurns 输出短边
+    aspect: "1280*720"        # 16:9 横版（2026-10-16 重制）
+    out_size: [1280, 720]     # KenBurns 输出尺寸
 
 # 音色：MiniMax 系统预设名（t2a_v2 voice_setting.voice_id）
 # 备选试听后可换；Phase 3 voice_clone 后替换为自定义 voice_id
@@ -54,6 +54,6 @@ styles:
   culture:
     bgm: awakening.mp3            # 本片定制曲《脉动之光》（2026-10-15 按文案情绪弧线设计）
     visual: >
-      Chinese ink-wash painting style, ancient books and bamboo slips, calligraphy
-      texture, soft mist, generous negative space, elegant minimalism, warm paper
-      tones, vertical 9:16 composition, high detail, no text
+      hand-drawn illustration style, visible brush strokes and pencil texture,
+      warm hand-painted watercolor and gouache tones, storybook illustration
+      quality, charming imperfect linework, soft warm light, high detail, no text

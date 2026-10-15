@@ -44,9 +44,21 @@ python3 generate.py --topic "机器干活人觉醒" --style culture --resume --n
 | 字幕 | libass 烧录，PlayRes 720×1280，字号 40 / MarginV 90，14 字折行 |
 | 分镜 | 11 段（含开场），KenBurns 推拉轮换 |
 
+## v5 横版手绘重制（2026-10-16，当前交付）
+
+| 文件 | 说明 |
+|---|---|
+| `成片_横版手绘_胡总解说_流光BGM_230s.mp4` | 1280×720（16:9），230s |
+| `cards_landscape/card_00-10.png` | 11 张横版手绘插画（image-01-live，1456×816） |
+
+- 画幅 9:16 → **16:9**；风格 水墨写实 → **手绘插画**（brush strokes + gouache）
+- 分镜/文案/解说音轨/BGM 全部不变（解说音轨 SHA `3952272bd16df72b` 复核一致）
+- 生成通道：速创双端点维护 → MiniMax image-01-live（aspect 16:9）
+- 字幕：PlayRes 1280×720 / 字号 36 / 折行 26 字（config 化）
+
 ## 版本沿革（归档）
 
 - v1 TTS 版（Gentle_Senior 女声 + 山河古韵 BGM + TTS 时间轴）→ 音色不符
 - v2 胡总解说版（无 BGM）→ 词级精确字幕
 - v3 脉动之光 BGM 版 → **BGM 带人声（歌）作废**，原件在 `assets/bgm/_archive/pulse_of_light_VOCAL.mp3`
-- **v4（本版）** 流光纯器乐 BGM → 交付
+- v4 流光纯器乐 BGM → 交付（竖版）

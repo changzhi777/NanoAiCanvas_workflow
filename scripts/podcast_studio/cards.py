@@ -103,8 +103,9 @@ def gen_card(prompt: str, cfg: dict, idx: int, out_dir: pathlib.Path) -> pathlib
     except Exception as e:
         errors.append(f"gpt2.5: {e}")
 
-    # 3) MiniMax image-01-live（套餐内；9:16 不支持则回退 1:1，KenBurns 端裁切）
-    for ar in ("9:16", "1:1"):
+    # 3) MiniMax image-01-live（套餐内；横竖版由 config aspect 映射，1:1 兜底由 KenBurns 裁切）
+    img_ar = "16:9" if cfg["defaults"]["image"]["aspect"] == "1280*720" else "9:16"
+    for ar in (img_ar, "1:1"):
         try:
             r = _post_json(f"{mbase}/image_generation",
                            {"model": cfg["models"]["cover"], "prompt": prompt,
