@@ -1,5 +1,5 @@
 'use client'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,6 +21,7 @@ export function EcommerceProductDialog({ onFillPrompts }: EcommerceProductDialog
     referenceImage,
     productAnalysis,
     prompts,
+    error,
     closeDialog,
     setCurrentStep,
     setReferenceImage,
@@ -30,6 +31,7 @@ export function EcommerceProductDialog({ onFillPrompts }: EcommerceProductDialog
     setError,
   } = useEcommerceProductStore()
   const { user } = useAuthStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleImageUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
