@@ -319,6 +319,93 @@ def _gen_one_minimax(settings: Settings) -> Callable:
     return _gen
 
 
+def _gen_one_nanobanana21(settings: Settings, aspect_ratio: str = "1280*720",
+                          product_ref_url: str = None) -> Callable:
+    """NanoBanana2.1（速创异步接口，2026-10-16 接入）。
+
+    POST /api/async/NanoBanana2.1（JSON body）→ data.id
+    轮询 /api/async/detail（status==2 成功，与 image_gpt 同款）。
+    aspect_ratio: "1280*720"(16:9 默认) / "720*1280"(9:16) / "1024x1024" 等全比例。
+    imageSize: 1K(默认) / 2K / 4K。
+    urls: 参考图 URL（公网，多个逗号分隔）—— 人物/产品一致性参照。
+    """
+    api_key = settings.WUYINKEJI_API_KEY
+    base_url = settings.WUYINKEJI_API_BASE_URL.rstrip("/")
+
+    async def _gen(subtask: dict, prompt: str) -> dict:
+        if not api_key:
+            await asyncio.sleep(1.5)
+            return {"image_url": f"placeholder_{subtask['id']}.png"}
+
+        payload = {
+            "prompt": prompt,
+            "imageSize": "1K",
+            "aspectRatio": aspect_ratio,
+        }
+        ref_url = subtask.get("ref_url") or subtask.get("reference_url")
+        if ref_url:
+            payload["urls"] = ref_url
+        elif product_ref_url and subtask.get("id") == "character-ref":
+            payload["urls"] = product_ref_url
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{base_url}/api/async/NanoBanana2.1",
+                json=payload,
+                headers={
+                    "Authorization": api_key,
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code != 200:
+                raise Exception(f"NanoBanana2.1 submit HTTP {resp.status_code}")
+            result = resp.json()
+            if result.get("code") != 200:
+                raise Exception(f"NanoBanana2.1 submit failed: {result.get('msg', '')}")
+
+            task_uid = result.get("data", {}).get("id", "")
+            if not task_uid:
+                raise Exception("No task id in NanoBanana2.1 response")
+
+        max_wait = 600
+        interval = 5
+        elapsed = 0
+        async with httpx.AsyncClient(timeout=30) as client:
+            while elapsed < max_wait:
+                await asyncio.sleep(interval)
+                elapsed += interval
+                resp = await client.get(
+                    f"{base_url}/api/async/detail",
+                    params={"id": task_uid},
+                    headers={"Authorization": api_key},
+                )
+                if resp.status_code != 200:
+                    continue
+                data = resp.json().get("data", {})
+                status = data.get("status", 0)
+
+                if status == 2:
+                    result_data = data.get("result", {})
+                    url = ""
+                    if isinstance(result_data, str):
+                        url = result_data
+                    elif isinstance(result_data, list) and result_data:
+                        item = result_data[0]
+                        url = item if isinstance(item, str) else item.get("url", "")
+                    elif isinstance(result_data, dict):
+                        url = result_data.get("url", "")
+                    if not url:
+                        raise Exception(f"NanoBanana2.1 succeeded but no URL: {data}")
+                    return {"image_url": url}
+
+                if status not in (0, 1):
+                    raise Exception(f"NanoBanana2.1 failed status={status}: {data.get('message', '')}")
+
+        raise Exception(f"NanoBanana2.1 timeout after {max_wait}s (task: {task_uid})")
+
+    return _gen
+
+
 def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict = None,
                        aspect_ratio: str = None, product_ref_url: str = None) -> Callable:
     """image_model: gpt-image-2.5-flare / gpt-image-2 / minimax / (default) jimeng
@@ -330,10 +417,14 @@ def get_image_provider(image_model: str, settings: Settings, enhance_cfg: dict =
         "gpt-image-2.5-flare": _gen_one_gpt_image_25_flare,
         "gpt-image-2": _gen_one_gpt_image_2,
         "minimax": _gen_one_minimax,
+        "nanobanana2.1": _gen_one_nanobanana21,
     }
     factory = factories.get(image_model, _gen_one_jimeng)
     # 闭包：让 provider 拿到 enhance_cfg（避免改 factory 签名）
     if image_model == "gpt-image-2.5-flare":
+        base_factory = factory(settings, aspect_ratio=aspect_ratio or "1280*720",
+                               product_ref_url=product_ref_url)
+    elif image_model == "nanobanana2.1":
         base_factory = factory(settings, aspect_ratio=aspect_ratio or "1280*720",
                                product_ref_url=product_ref_url)
     else:
