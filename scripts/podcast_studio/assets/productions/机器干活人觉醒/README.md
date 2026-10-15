@@ -48,7 +48,9 @@ python3 generate.py --topic "机器干活人觉醒" --style culture --resume --n
 
 | 文件 | 说明 |
 |---|---|
-| `成片_横版手绘_胡总解说_流光BGM_230s.mp4` | 1280×720（16:9），230s |
+| `成片_横版手绘_胡总解说_流光BGM_爆点版_230s.mp4` | **最终交付版**：1280×720 + 首尾 6s 爆点（速创 H3 首帧锚定） |
+| `hero_front.mp4 / hero_back.mp4` | 爆点素材原片 |
+| `成片_横版手绘_胡总解说_流光BGM_230s.mp4` | 无爆点版（对照） |
 | `cards_landscape/card_00-10.png` | 11 张横版手绘插画（image-01-live，1456×816） |
 
 - 画幅 9:16 → **16:9**；风格 水墨写实 → **手绘插画**（brush strokes + gouache）

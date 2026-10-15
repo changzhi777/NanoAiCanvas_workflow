@@ -66,6 +66,43 @@ def _poll_video(task_id: str, key: str, base: str, max_wait: int = 900) -> str:
     raise TimeoutError(f"hero 超时 {max_wait}s task={task_id}")
 
 
+def gen_hero_suchuang(image_url: str, prompt: str, cfg: dict, out: pathlib.Path,
+                      duration: int = 6, ratio: str = "16:9") -> pathlib.Path:
+    """速创 H3 首帧锚定爆点（MiniMax 官方额度耗尽时的通道；image_url 需公网可访问）。"""
+    import urllib.parse
+    keys = get_keys()
+    base = keys["WUYIN_BASE"].rstrip("/")
+    body = {"prompt": prompt, "first_frame": image_url,
+            "resolution": "768P",
+            "duration": str(max(4, min(15, duration))), "ratio": ratio}
+    req = urllib.request.Request(f"{base}/api/async/video_minimax_h3",
+        data=json.dumps(body).encode(),
+        headers={"Authorization": keys["WUYIN_KEY"], "Content-Type": "application/json"},
+        method="POST")
+    r = json.loads(urllib.request.urlopen(req, timeout=60).read())
+    if r.get("code") != 200:
+        raise RuntimeError(f"H3 提交失败: {r.get('msg')}")
+    uid = r["data"]["id"]
+    t0 = time.time()
+    while time.time() - t0 < 900:
+        time.sleep(10)
+        q = urllib.request.Request(f"{base}/api/async/detail?id={uid}",
+            headers={"Authorization": keys["WUYIN_KEY"]})
+        d = json.loads(urllib.request.urlopen(q, timeout=30).read()).get("data", {})
+        st = d.get("status")
+        if st == 2:
+            res = d.get("result", {})
+            url = res if isinstance(res, str) else (res[0] if isinstance(res, list) and res else res.get("url"))
+            out.parent.mkdir(parents=True, exist_ok=True)
+            req2 = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            out.write_bytes(urllib.request.urlopen(req2, timeout=300).read())
+            return out
+        if st not in (0, 1):
+            raise RuntimeError(f"H3 失败 status={st} {d.get('message','')}")
+        print(f"    H3 生成中 {int(time.time()-t0)}s…")
+    raise TimeoutError(f"H3 超时 900s task={uid}")
+
+
 def gen_hero(image: str, prompt: str, cfg: dict, out: pathlib.Path) -> pathlib.Path:
     """生成一段爆点视频（默认 6s 竖屏）。失败抛异常（上层可跳过爆点）。"""
     keys = get_keys()
