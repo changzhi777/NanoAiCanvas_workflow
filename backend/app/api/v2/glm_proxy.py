@@ -449,8 +449,9 @@ async def optimize_prompt(
         if quality_instruction:
             system_prompt += f"。{quality_instruction}"
     # For reasoning models, append direct output instruction
-    if req.model.startswith("glm-4.7"):
-        system_prompt += "\n\n重要：请将最终优化结果放在 <output> 标签中，格式：<output>优化后的提示词</output>"
+    if req.model.startswith("glm-4.7") or req.model.startswith("deepseek"):
+        # reasoning 系模型（glm-4.7 / deepseek*）：锁定 <output> 标签，防思考过程混入结果
+        system_prompt += "\n\n重要：请将最终优化结果放在 <output> 标签中，格式：<output>优化后的提示词</output>。只输出提示词本体，不要解释、不要讨论优化思路。"
     user_content = f"请优化以下描述，生成图片提示词：\n{req.prompt}"
 
     try:
@@ -477,6 +478,11 @@ async def optimize_prompt(
                 else:
                     paragraphs = [p.strip() for p in rc.split("\n") if p.strip() and not p.strip().startswith("*") and len(p.strip()) > 10]
                     optimized = paragraphs[-1] if paragraphs else rc[-500:]
+        # 统一提取 <output> 标签（content 有值时也可能带标签/思考尾巴）
+        import re
+        tag_match = re.search(r"<output>(.*?)</output>", optimized, re.DOTALL)
+        if tag_match:
+            optimized = tag_match.group(1).strip()
         if not optimized:
             raise HTTPException(status_code=502, detail="GLM 返回为空")
 
