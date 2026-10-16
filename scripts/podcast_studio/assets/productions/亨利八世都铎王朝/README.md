@@ -41,7 +41,11 @@
 - **六王后肖像**（3:4 竖版，姓名+命运标签）：Catherine of Aragon—Divorced / Anne Boleyn—Beheaded /
   Jane Seymour—Died / Anne of Cleves—Divorced / Catherine Howard—Beheaded / Catherine Parr—Survived
   - 组装时 crop 偏上（保脸）+ zoompan 缓推
-- **数字人**：速创 H3（`video_minimax_h3`，768P/15s/16:9）→ `video_digital_humans` 口型替换英文 TTS
+- **数字人（V2 换脸）**：**英国绅士教授形象**（用户定稿 A 烟斗书房版：50 岁、银灰发、
+  粗花呢三件套+怀表链、壁炉皮椅书房、福尔摩斯气质；NB21 四款候选审稿定稿）
+  - 锚图 `数字人_绅士教授/锚图_绅士教授A.png` → 速创 H3（`video_minimax_h3`，768P/15s/16:9，
+    英文台词 `<d>[English]`）→ `video_digital_humans` 口型替换英文 TTS
+  - V1 沿用胡总形象（沙发书房），素材保留在 `数字人/`
 
 ## 对齐与字幕
 

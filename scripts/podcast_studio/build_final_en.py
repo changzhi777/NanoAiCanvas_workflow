@@ -41,7 +41,7 @@ tl = json.loads((OUT / "en_timeline.json").read_text(encoding="utf-8"))
 lines = {ln["id"]: ln for ln in tl["lines"]}
 t_open = tl["t_open"]                       # 14.125
 total = tl["total"]                         # 180.8
-close_start = total - dur_of(OUT / "lipsync_henry_close.mp4")   # ~169.78
+close_start = total - dur_of(OUT / "lipsync_prof_close.mp4")   # ~169.78
 starts = {i: lines[i]["start"] for i in range(1, 9)}
 starts[9] = close_start
 
@@ -59,7 +59,7 @@ QUEENS = [card("cards_queens", q) for q in
            "queen4_anne_of_cleves", "queen5_catherine_howard", "queen6_catherine_parr"]]
 
 # ---- 段计划：lipsync_open → 图卡（seg1-8 连续覆盖）→ lipsync_close ----
-seg_plan = [{"type": "lipsync", "video": str(OUT / "lipsync_henry_open.mp4"),
+seg_plan = [{"type": "lipsync", "video": str(OUT / "lipsync_prof_open.mp4"),
              "start": 0.0, "end": t_open}]
 # seg3 拆三张：总卡 6.6s + 王后 6 连播
 S3, S4 = starts[3], starts[4]
@@ -74,7 +74,7 @@ for i in [1, 2, 4, 5, 6, 7, 8]:
     seg_plan.append({"type": "card", "card": TUDOR[i], "start": starts[i],
                      "end": starts[i + 1]})
 seg_plan = sorted(seg_plan, key=lambda s: s["start"])
-seg_plan.append({"type": "lipsync", "video": str(OUT / "lipsync_henry_close.mp4"),
+seg_plan.append({"type": "lipsync", "video": str(OUT / "lipsync_prof_close.mp4"),
                  "start": close_start, "end": total})
 
 # ---- 渲染各段（图卡静态卡；非末卡扣 0.4s 给翻页，总轴零漂移）----
@@ -133,9 +133,9 @@ run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(vlist), "-c", "copy", str
 print(f"✓ 3D 翻页卡链 {dur_of(video):.1f}s（{len(cards)} 卡 / {len(cards)-1} 次翻页）", flush=True)
 
 # ---- 音轨三段拼（统一 wav 防混合容器炸）----
-for src, dst in [(OUT / "lipsync_henry_open.mp4", work / "a_open.wav"),
+for src, dst in [(OUT / "lipsync_prof_open.mp4", work / "a_open.wav"),
                  (OUT / "tts_en" / "tts_en_mid.mp3", work / "a_mid.wav"),
-                 (OUT / "lipsync_henry_close.mp4", work / "a_close.wav")]:
+                 (OUT / "lipsync_prof_close.mp4", work / "a_close.wav")]:
     run([FF, "-y", "-i", str(src), "-vn", "-ar", "44100", "-ac", "2",
          "-c:a", "pcm_s16le", str(dst)])
 alist = work / "a.txt"
