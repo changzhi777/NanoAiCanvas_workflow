@@ -462,7 +462,7 @@ async def optimize_prompt(
                 {"role": "user", "content": user_content},
             ],
             temperature=req.temperature,
-            max_tokens=500,
+            max_tokens=1500,  # reasoning 模型思考+成品共用预算，500 会把 <output> 截断
         )
         msg = data.get("choices", [{}])[0].get("message", {})
         optimized = msg.get("content", "").strip()
@@ -483,6 +483,15 @@ async def optimize_prompt(
         tag_match = re.search(r"<output>(.*?)</output>", optimized, re.DOTALL)
         if tag_match:
             optimized = tag_match.group(1).strip()
+        else:
+            # 无标签：过滤英文思考段（Need/Should/Maybe...），取最后一段中文主体
+            thinking_words = re.compile(r"\b(Need|Should|Let|Maybe|okay|Ensure|Avoid|prompt body|Only prompt)\b")
+            paragraphs = [
+                p.strip() for p in optimized.split("\n")
+                if p.strip() and len(p.strip()) > 40 and not thinking_words.search(p)
+            ]
+            if paragraphs:
+                optimized = paragraphs[-1]
         if not optimized:
             raise HTTPException(status_code=502, detail="GLM 返回为空")
 
