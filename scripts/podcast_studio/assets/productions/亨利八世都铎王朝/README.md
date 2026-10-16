@@ -22,7 +22,8 @@
 - **配音**：MiniMax T2A v2，音色 `ttv-voice-2026101516002026-tBS3qC8Y`（英文播音员），speed 0.95
   - 三段：open 14.14s / mid 155.66s / close 11.04s → 全片音色一致
 - **BGM**：苏格兰风笛（MiniMax Music-3.0 网页生成，600 声贝），`bagpipes.mp3` 126.6s 纯音乐
-  - 混音 `volume=0.15` + `amix normalize=0`（防 1/n 衰减压人声，沿用中文版教训）
+  - ⚠️ **用户终审后去除**（「去掉BGM 纯解说」）——`build_final_en.py` 的 `BGM_GAIN=0` 即纯解说直出；
+    风笛曲留档 `音轨/BGM_苏格兰风笛.mp3`，需要时 `BGM_GAIN>0`（建议 0.15）+ `amix normalize=0` 恢复
   - prompt：高地风笛主题悠扬苍凉，军鼓轻点行进感，弦乐铺底温暖深沉，慢板
 - 首尾段音轨取自 lipsync 输出视频（音频=TTS 原音），三段统一转 wav 再 concat（防混合容器炸）
 

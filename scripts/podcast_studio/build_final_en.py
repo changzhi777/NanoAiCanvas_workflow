@@ -16,7 +16,7 @@ HERE = pathlib.Path("/Volumes/user/cz_code/NanoAiCanvas_workflow/scripts/podcast
 OUT = HERE / "out"
 FF = str(HERE / "bin" / "ffmpeg")
 W, H, FPS = 1280, 720, 30
-BGM_GAIN = 0.15
+BGM_GAIN = 0.0    # 0 = 纯解说（用户指示：去掉BGM）；>0 = 风笛垫底音量
 
 def run(cmd, cwd=None):
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=cwd)
@@ -120,18 +120,22 @@ run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(alist),
      "-c:a", "pcm_s16le", str(voice)])
 print(f"✓ 音轨 {dur_of(voice):.1f}s", flush=True)
 
-# ---- 总装：BGM 风笛 + 双语字幕 ----
+# ---- 总装：BGM（可选）+ 双语字幕 ----
 bgm = HERE / "assets" / "bgm" / "bagpipes.mp3"
 final = OUT / "final_henry8_en.mp4"
 sub_style = ("PlayResX=1280,PlayResY=720,FontSize=30,MarginV=46,Outline=3,"
              "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Bold=1")
 cmd = [FF, "-y", "-i", str(video), "-i", str(voice)]
-cmd += ["-stream_loop", "-1", "-i", str(bgm)]
-mix = (f"[1:a]volume=1.0[v];[2:a]volume={BGM_GAIN}[b];"
-       f"[v][b]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
+if BGM_GAIN > 0:
+    cmd += ["-stream_loop", "-1", "-i", str(bgm)]
+    mix = (f"[1:a]volume=1.0[v];[2:a]volume={BGM_GAIN}[b];"
+           f"[v][b]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
+else:
+    mix = "[1:a]anull[a]"
 cmd += ["-filter_complex", mix, "-map", "0:v", "-map", "[a]",
         "-vf", f"subtitles={OUT / 'en_bilingual.srt'}:force_style='{sub_style}'",
         "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
         "-c:a", "aac", "-b:a", "128k", str(final)]
 run(cmd)
-print(f"✓ Henry VIII 英文版成片 {final}  {dur_of(final):.1f}s", flush=True)
+print(f"✓ Henry VIII 英文版成片 {final}  {dur_of(final):.1f}s  "
+      f"[{'BGM ' + str(BGM_GAIN) if BGM_GAIN > 0 else '纯解说'}]", flush=True)
