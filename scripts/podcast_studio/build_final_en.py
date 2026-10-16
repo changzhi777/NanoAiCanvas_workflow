@@ -24,7 +24,7 @@ OUT = HERE / "out"
 FF = str(HERE / "bin" / "ffmpeg")
 W, H, FPS = 1280, 720, 30
 BGM_GAIN = 0.0    # 0 = 纯解说（用户指示：去掉BGM）；>0 = 风笛垫底音量
-SFX_GAIN = 0.5    # 翻书音效混入增益
+SFX_GAIN = 0.3    # 翻书音效混入增益（0.5 → 0.3，用户指示再小一点）
 TURN = 0.7        # 3D 翻页过渡时长（0.7s 自然翻页节奏）
 
 def run(cmd, cwd=None):
