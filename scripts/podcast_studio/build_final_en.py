@@ -24,7 +24,7 @@ OUT = HERE / "out"
 FF = str(HERE / "bin" / "ffmpeg")
 W, H, FPS = 1280, 720, 30
 BGM_GAIN = 0.0    # 0 = 纯解说（用户指示：去掉BGM）；>0 = 风笛垫底音量
-SFX_GAIN = 0.3    # 翻书音效混入增益（0.5 → 0.3，用户指示再小一点）
+SFX_GAIN = 0.0    # 0 = 无翻书音效（用户指示不要）；>0 = 翻书音效增益（建议 0.3）
 TURN = 0.7        # 3D 翻页过渡时长（0.7s 自然翻页节奏）
 
 def run(cmd, cwd=None):
@@ -146,38 +146,51 @@ run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(alist),
      "-c:a", "pcm_s16le", str(voice)])
 print(f"✓ 音轨 {dur_of(voice):.1f}s", flush=True)
 
-# ---- 翻书音效轨（13 处翻页时刻对准卡段界 - TURN）----
-sfx_src = HERE / "assets" / "sfx" / "page_turn.wav"
-marks = [c["start"] - TURN for c in cards[1:]]       # 全局翻页起点
-with contextlib.closing(wave.open(str(sfx_src), "rb")) as w:
-    _sr, _ch, _n = w.getframerate(), w.getnchannels(), w.getnframes()
-    _sfx = np.frombuffer(w.readframes(_n), np.int16).reshape(-1, _ch).astype(np.float32)
-_track = np.zeros((int((total + 1.0) * _sr), _ch), np.float32)
-for _t in marks:
-    _i = int(_t * _sr)
-    _track[_i:_i + len(_sfx)] += _sfx * SFX_GAIN
-_track = np.clip(_track, -32768, 32767).astype(np.int16)
+# ---- 翻书音效轨（SFX_GAIN > 0 时生成；13 处翻页对准卡段界 - TURN）----
 sfx_track = work / "sfx_track.wav"
-with contextlib.closing(wave.open(str(sfx_track), "wb")) as w:
-    w.setnchannels(_ch)
-    w.setsampwidth(2)
-    w.setframerate(_sr)
-    w.writeframes(_track.tobytes())
-print(f"✓ 音效轨 {len(marks)} 处翻页", flush=True)
+if SFX_GAIN > 0:
+    sfx_src = HERE / "assets" / "sfx" / "page_turn.wav"
+    marks = [c["start"] - TURN for c in cards[1:]]   # 全局翻页起点
+    with contextlib.closing(wave.open(str(sfx_src), "rb")) as w:
+        _sr, _ch, _n = w.getframerate(), w.getnchannels(), w.getnframes()
+        _sfx = np.frombuffer(w.readframes(_n), np.int16).reshape(-1, _ch).astype(np.float32)
+    _track = np.zeros((int((total + 1.0) * _sr), _ch), np.float32)
+    for _t in marks:
+        _i = int(_t * _sr)
+        _track[_i:_i + len(_sfx)] += _sfx * SFX_GAIN
+    _track = np.clip(_track, -32768, 32767).astype(np.int16)
+    with contextlib.closing(wave.open(str(sfx_track), "wb")) as w:
+        w.setnchannels(_ch)
+        w.setsampwidth(2)
+        w.setframerate(_sr)
+        w.writeframes(_track.tobytes())
+    print(f"✓ 音效轨 {len(marks)} 处翻页", flush=True)
+else:
+    print("· 翻书音效关闭（SFX_GAIN=0）", flush=True)
 
-# ---- 总装：纯解说 + 翻书音效（BGM 可选）+ 双语字幕 ----
+# ---- 总装：解说（+ 可选音效/BGM）+ 双语字幕 ----
 bgm = HERE / "assets" / "bgm" / "bagpipes.mp3"
 final = OUT / "final_henry8_en.mp4"
 sub_style = ("PlayResX=1280,PlayResY=720,FontSize=30,MarginV=46,Outline=3,"
              "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Bold=1")
-cmd = [FF, "-y", "-i", str(video), "-i", str(voice), "-i", str(sfx_track)]
+cmd = [FF, "-y", "-i", str(video), "-i", str(voice)]
+chain, mix_ins, n_in = ["[1:a]volume=1.0[v]"], ["[v]"], 1
+if SFX_GAIN > 0:
+    cmd += ["-i", str(sfx_track)]
+    n_in += 1
+    chain.append(f"[{n_in}:a]volume=1.0[s]")
+    mix_ins.append("[s]")
 if BGM_GAIN > 0:
     cmd += ["-stream_loop", "-1", "-i", str(bgm)]
-    mix = (f"[1:a]volume=1.0[v];[2:a]volume=1.0[s];[3:a]volume={BGM_GAIN}[b];"
-           f"[v][s][b]amix=inputs=3:duration=first:dropout_transition=2:normalize=0[a]")
+    n_in += 1
+    chain.append(f"[{n_in}:a]volume={BGM_GAIN}[b]")
+    mix_ins.append("[b]")
+if n_in == 1:
+    mix = "[1:a]anull[a]"
 else:
-    mix = ("[1:a]volume=1.0[v];[2:a]volume=1.0[s];"
-           "[v][s]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
+    chain.append(f"{''.join(mix_ins)}amix=inputs={n_in}:duration=first:"
+                 "dropout_transition=2:normalize=0[a]")
+    mix = ";".join(chain)
 cmd += ["-filter_complex", mix, "-map", "0:v", "-map", "[a]",
         "-vf", f"subtitles={OUT / 'en_bilingual.srt'}:force_style='{sub_style}'",
         "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
