@@ -100,10 +100,8 @@ async def submit_image_task(
     frontend_key: Optional[str],
 ) -> TaskSubmitResponse:
     """通用图片任务提交逻辑"""
-    if not frontend_key:
-        raise HTTPException(status_code=401, detail="Missing API key (X-API-Key header)")
-
     try:
+        from sqlalchemy import select
         from app.models.api_key import ApiKeyConfig, BackendKeyMapping
 
         if not frontend_key:
