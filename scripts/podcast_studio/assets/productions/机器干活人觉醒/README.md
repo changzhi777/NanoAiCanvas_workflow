@@ -70,6 +70,18 @@ python3 generate.py --topic "机器干活人觉醒" --style culture --resume --n
 - 图卡风格：参考视频 33s 处手绘铅笔素描知识卡（no-text 留白框，文案由字幕层承担）
 - 生成：MiniMax image-01 subject_reference 人物融合（速创 GPT-Image-2.5 维护期替代通道）
 
+## v8 数字人口播版（2026-10-16，当前交付）
+
+| 文件 | 说明 |
+|---|---|
+| `成片_V4_数字人口播_手绘图卡_流光BGM_230s.mp4` | **当前交付**：1280×720，230.3s，全片音色一致 |
+| `音轨_全片TTS.wav` | 全片 TTS 音轨（Radio_Host 男声 0.95 语速） |
+
+- 结构：数字人对口型开场 15s → 手绘知识图卡中段（nb21 全系列轮播）→ 数字人对口型收尾 15s + 感谢关注
+- 配音：**MiniMax TTS Radio_Host 男声 0.95**（全片统一音色，用户指定）
+- 口型：H3 `<d>` 台词生成 + TTS 同文本音频替换（时长匹配 duration 13/15 合法档位）
+- 图卡：NanoBanana2.1 全系列（A 对谈 3 + B 知识 5 + C 补充 5）
+
 ## 版本沿革（归档）
 
 - v1 TTS 版（Gentle_Senior 女声 + 山河古韵 BGM + TTS 时间轴）→ 音色不符
