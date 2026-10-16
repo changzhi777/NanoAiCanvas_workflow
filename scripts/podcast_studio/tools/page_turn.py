@@ -41,6 +41,8 @@ def turn_frame(A, B, p):
     xs = np.arange(W, dtype=np.float32)[None, :].repeat(H, 0)   # HxW
     ys = np.arange(H, dtype=np.float32)[:, None].repeat(W, 1)
 
+    p = p * p * (3 - 2 * p)          # smoothstep 缓动：起手蓄力→中段翻过→收尾缓落
+
     theta = p * math.pi
     c = math.cos(theta)
     spread = 1.0 + 0.10 * math.sin(p * math.pi)                  # 中段微展开（呼吸感）

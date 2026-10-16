@@ -10,17 +10,22 @@
 BGM：BGM_GAIN=0 纯解说；>0 则风笛垫底（stream_loop）
 字幕：en_bilingual.srt 中英双语烧录
 """
+import contextlib
 import json
 import pathlib
 import subprocess
 import sys
+import wave
+
+import numpy as np
 
 HERE = pathlib.Path("/Volumes/user/cz_code/NanoAiCanvas_workflow/scripts/podcast_studio")
 OUT = HERE / "out"
 FF = str(HERE / "bin" / "ffmpeg")
 W, H, FPS = 1280, 720, 30
 BGM_GAIN = 0.0    # 0 = 纯解说（用户指示：去掉BGM）；>0 = 风笛垫底音量
-TURN = 0.4        # 3D 翻页过渡时长
+SFX_GAIN = 0.5    # 翻书音效混入增益
+TURN = 0.7        # 3D 翻页过渡时长（0.7s 自然翻页节奏）
 
 def run(cmd, cwd=None):
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=cwd)
@@ -141,18 +146,38 @@ run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(alist),
      "-c:a", "pcm_s16le", str(voice)])
 print(f"✓ 音轨 {dur_of(voice):.1f}s", flush=True)
 
-# ---- 总装：BGM（可选）+ 双语字幕 ----
+# ---- 翻书音效轨（13 处翻页时刻对准卡段界 - TURN）----
+sfx_src = HERE / "assets" / "sfx" / "page_turn.wav"
+marks = [c["start"] - TURN for c in cards[1:]]       # 全局翻页起点
+with contextlib.closing(wave.open(str(sfx_src), "rb")) as w:
+    _sr, _ch, _n = w.getframerate(), w.getnchannels(), w.getnframes()
+    _sfx = np.frombuffer(w.readframes(_n), np.int16).reshape(-1, _ch).astype(np.float32)
+_track = np.zeros((int((total + 1.0) * _sr), _ch), np.float32)
+for _t in marks:
+    _i = int(_t * _sr)
+    _track[_i:_i + len(_sfx)] += _sfx * SFX_GAIN
+_track = np.clip(_track, -32768, 32767).astype(np.int16)
+sfx_track = work / "sfx_track.wav"
+with contextlib.closing(wave.open(str(sfx_track), "wb")) as w:
+    w.setnchannels(_ch)
+    w.setsampwidth(2)
+    w.setframerate(_sr)
+    w.writeframes(_track.tobytes())
+print(f"✓ 音效轨 {len(marks)} 处翻页", flush=True)
+
+# ---- 总装：纯解说 + 翻书音效（BGM 可选）+ 双语字幕 ----
 bgm = HERE / "assets" / "bgm" / "bagpipes.mp3"
 final = OUT / "final_henry8_en.mp4"
 sub_style = ("PlayResX=1280,PlayResY=720,FontSize=30,MarginV=46,Outline=3,"
              "PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Bold=1")
-cmd = [FF, "-y", "-i", str(video), "-i", str(voice)]
+cmd = [FF, "-y", "-i", str(video), "-i", str(voice), "-i", str(sfx_track)]
 if BGM_GAIN > 0:
     cmd += ["-stream_loop", "-1", "-i", str(bgm)]
-    mix = (f"[1:a]volume=1.0[v];[2:a]volume={BGM_GAIN}[b];"
-           f"[v][b]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
+    mix = (f"[1:a]volume=1.0[v];[2:a]volume=1.0[s];[3:a]volume={BGM_GAIN}[b];"
+           f"[v][s][b]amix=inputs=3:duration=first:dropout_transition=2:normalize=0[a]")
 else:
-    mix = "[1:a]anull[a]"
+    mix = ("[1:a]volume=1.0[v];[2:a]volume=1.0[s];"
+           "[v][s]amix=inputs=2:duration=first:dropout_transition=2:normalize=0[a]")
 cmd += ["-filter_complex", mix, "-map", "0:v", "-map", "[a]",
         "-vf", f"subtitles={OUT / 'en_bilingual.srt'}:force_style='{sub_style}'",
         "-shortest", "-c:v", "libx264", "-preset", "veryfast", "-crf", "22",
