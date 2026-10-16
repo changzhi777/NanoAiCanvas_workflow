@@ -13,12 +13,14 @@ BGM：BGM_GAIN=0 纯解说；>0 则风笛垫底（stream_loop）
 import json
 import pathlib
 import subprocess
+import sys
 
 HERE = pathlib.Path("/Volumes/user/cz_code/NanoAiCanvas_workflow/scripts/podcast_studio")
 OUT = HERE / "out"
 FF = str(HERE / "bin" / "ffmpeg")
 W, H, FPS = 1280, 720, 30
 BGM_GAIN = 0.0    # 0 = 纯解说（用户指示：去掉BGM）；>0 = 风笛垫底音量
+TURN = 0.4        # 3D 翻页过渡时长
 
 def run(cmd, cwd=None):
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=900, cwd=cwd)
@@ -70,8 +72,10 @@ seg_plan = sorted(seg_plan, key=lambda s: s["start"])
 seg_plan.append({"type": "lipsync", "video": str(OUT / "lipsync_henry_close.mp4"),
                  "start": close_start, "end": total})
 
-# ---- 渲染各段（图卡静态卡，多渲 0.5s 供翻页借时）----
+# ---- 渲染各段（图卡静态卡；非末卡扣 0.4s 给翻页，总轴零漂移）----
 clips = []
+n_cards = sum(1 for s in seg_plan if s["type"] != "lipsync")
+ci = 0
 for i, sp in enumerate(seg_plan):
     dur = sp["end"] - sp["start"]
     if sp["type"] == "lipsync":
@@ -83,46 +87,45 @@ for i, sp in enumerate(seg_plan):
                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
         clips.append({"clip": clip, "type": "lipsync", "start": sp["start"], "end": sp["end"]})
     else:
-        clip = work / f"pg_{i:02d}.mp4"          # pg_ = 翻页版静态卡
+        ci += 1
+        show = dur - TURN if ci < n_cards else dur      # 末卡不扣（后接口型硬切）
+        clip = work / f"pg_{i:02d}.mp4"                 # pg_ = 翻页版静态卡
         if not clip.exists():
-            if sp["type"] == "card_portrait":    # 王后竖版：crop 偏上保脸
+            if sp["type"] == "card_portrait":           # 王后竖版：crop 偏上保脸
                 vf = (f"scale={W}:{int(W * 4 / 3)}:force_original_aspect_ratio=increase,"
                       f"crop={W}:{H}:0:'(ih-oh)*0.18',fps={FPS},format=yuv420p")
             else:
                 vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
                       f"fps={FPS},format=yuv420p")
             run([FF, "-y", "-loop", "1", "-i", sp["card"], "-vf", vf,
-                 "-t", f"{dur + 0.5:.3f}",
+                 "-t", f"{show:.3f}",
                  "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
         clips.append({"clip": clip, "type": sp["type"], "start": sp["start"], "end": sp["end"]})
     print(f"  ✓ 段{i:02d} {dur:.1f}s [{'口型' if sp['type']=='lipsync' else sp['type']}]", flush=True)
 
-# ---- 图卡 xfade 翻页链（wipeleft 0.4s）→ 与首尾口型段 concat ----
-TURN = 0.4
+# ---- 图卡 3D 翻页链（page_turn 帧渲染）→ 与首尾口型段 concat ----
 cards = [c for c in clips if c["type"] != "lipsync"]
 head = clips[0]["clip"]                          # open 口型
 tail = clips[-1]["clip"]                         # close 口型
-base_t = cards[0]["start"]                       # 卡链内部时间轴原点（全局）
 
-ins, fc, prev = [], [], "0:v"
-for k, c in enumerate(cards):
-    ins += ["-i", str(c["clip"])]
-    if k > 0:
-        off = cards[k]["start"] - base_t - TURN
-        idx = k
-        fc.append(f"[{prev}][{idx}:v]xfade=transition=wipeleft:duration={TURN}:"
-                  f"offset={off:.3f}[v{k}]")
-        prev = f"v{k}"
-chain = work / "cards_chain.mp4"
-run([FF, "-y", *ins, "-filter_complex", ";".join(fc), "-map", f"[{prev}]",
-     "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(chain)])
-print(f"✓ 翻页卡链 {dur_of(chain):.1f}s（{len(cards)} 卡 / {len(cards)-1} 次翻页）", flush=True)
+# 翻页段：卡 k 与卡 k+1 之间 0.4s（各卡显示时长已扣 0.4，总轴零漂移）
+sys.path.insert(0, str(HERE / "tools"))
+from page_turn import write_turn_clip
 
 vlist = work / "v.txt"
-vlist.write_text(f"file '{head}'\nfile '{chain}'\nfile '{tail}'", encoding="utf-8")
+entries = [f"file '{head}'", f"file '{cards[0]['clip']}'"]   # 首卡显示段
+for k in range(len(cards) - 1):
+    tclip = work / f"turn_{k:02d}.mp4"
+    if not tclip.exists():
+        write_turn_clip(FF, str(cards[k]["clip"]), str(cards[k + 1]["clip"]),
+                        str(tclip), dur=TURN, fps=FPS)
+    entries.append(f"file '{tclip}'")
+    entries.append(f"file '{cards[k + 1]['clip']}'")
+entries.append(f"file '{tail}'")
+vlist.write_text("\n".join(entries), encoding="utf-8")
 video = work / "video.mp4"
 run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(vlist), "-c", "copy", str(video)])
-print(f"✓ 视频轨 {dur_of(video):.1f}s", flush=True)
+print(f"✓ 3D 翻页卡链 {dur_of(video):.1f}s（{len(cards)} 卡 / {len(cards)-1} 次翻页）", flush=True)
 
 # ---- 音轨三段拼（统一 wav 防混合容器炸）----
 for src, dst in [(OUT / "lipsync_henry_open.mp4", work / "a_open.wav"),
