@@ -735,3 +735,61 @@ GLM_API_KEY=...
 **最后更新**: 2026-09-01
 **扫描覆盖率**: 增量扫描（/nanoai 子路径迁移 + 91zm 香港生产 + 版本 2.13.36 + stores/hooks/api 统计复核），全仓约 616 源文件 + 18 部署脚本（前端 TS/TSX 约 470 / 后端 PY 约 146）
 **生成者**: BB小子 🤙
+
+---
+
+## 播客图文解说工作流（podcast_studio）🎯
+
+> **一句话**：一段文案 → 数字人对口型开场 → 手绘中文知识图卡轮播 → 数字人收束 → 3:50 成片。
+> 全链实战验证于《机器干活人觉醒》（v1-v8 迭代史见 `scripts/podcast_studio/assets/productions/` 作品档案）。
+
+**位置**：`scripts/podcast_studio/` ｜ **入口文档**：`scripts/podcast_studio/README.md`
+
+### 结构（横版 1280×720）
+
+```
+0-15s    数字人对口型开场（H3 <d> 台词 → 开口唇动）
+15-215s  手绘中文知识图卡轮播（NanoBanana2.1，每段一张：
+         中文标题居上 + 素描视觉 + 2-4 字要点标注）
+215-230s 数字人对口型收束 + 感谢关注
+全片     TTS/解说配音 + BGM 0.18 + 词级精确字幕
+```
+
+### 双音轨模式
+
+| 模式 | 触发 | 音色 |
+|---|---|---|
+| TTS（默认） | 不传 --external-audio | Radio_Host 男声 0.95（全片统一） |
+| 外部解说 | --external-audio x.mp3 | 现成专业录音（ASR 词级对齐） |
+
+### 一键出片
+
+```bash
+cd scripts/podcast_studio
+python3 tools/gen_v3_cards_zh.py        # 9 张中文知识图卡（改 JOBS 换文案）
+python3 build_final_v4_digital.py       # 总装（lipsync 首尾 + 图卡 + BGM + 字幕）
+```
+
+### 生成通道
+
+| 环节 | 首选 | fallback |
+|---|---|---|
+| 脚本 | MiniMax-M2.7 | — |
+| 配音 | MiniMax TTS speech-2.8-hd（**音色全片一致**） | voice_clone（套餐未开） |
+| 图卡 | **NanoBanana2.1**（中文渲染零乱码，短标题+2-4字标签） | image-01-live / 速创（常维护） |
+| 爆点 | 速创 H3 首帧锚定（**duration 只用 4/6/10/15**，13 等非法值降级文生） | MiniMax Hailuo-02 |
+| 口型 | 速创 video_digital_humans（视频+音频 → 唇形替换） | — |
+
+### 关键纪律
+
+- TTS 语速 **0.95** / BGM 音量 **0.18**（用户已确认的定稿参数）
+- 图卡中文标注：**短标题 + 2-4 字标签**（NanoBanana2.1 中文渲染强，长句乱码）
+- **解说音轨锁定**（assets/voice/huzong_narration.mp3）——除非用户明示换配音
+- 速创 **duration 只用合法档位 4/6/10/15**（13 等非法值触发参数校验失败降级文生）
+- 工作目录 `out/` 随时被覆盖 —— 终版产出**必须下沉** `assets/productions/<作品名>/`
+- ffmpeg 相对路径 cwd 陷阱：总装输入**必须绝对路径或 cwd 正确**
+
+### 作品库
+
+`assets/productions/` — 每个作品一个自包含资产包（成片/音轨/BGM/图卡/分镜/制作档案）。
+现有：《机器干活人觉醒》3:50（v1-v8 迭代全程归档）。
