@@ -6,7 +6,7 @@
 // ==================== 图片模型 ====================
 
 /** 图片模型 ID */
-export type ImageModelId = 'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2'
+export type ImageModelId = 'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2' | 'nano-banana2.1'
 
 /** 图片模型选项 */
 export interface ImageModelOption {

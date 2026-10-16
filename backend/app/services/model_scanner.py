@@ -15,6 +15,7 @@ WUYINKEJI_KNOWN_MODELS = [
     ("gpt-image-2", "/api/async/image_gpt"),
     ("nano-banana2", "/api/async/image_nanoBanana2"),
     ("nano-banana-pro", "/api/async/image_nanoBanana2"),
+    ("nano-banana2.1", "/api/async/NanoBanana2.1"),
 ]
 
 
@@ -70,6 +71,13 @@ async def _scan_wuyinkeji(base_url: str, api_key: str) -> List[str]:
                         f"{base_url}{endpoint}",
                         headers={"Authorization": api_key, "Content-Type": "application/json"},
                         json={"prompt": "test", "size": "auto"},
+                    )
+                elif model_name == "nano-banana2.1":
+                    # NanoBanana2.1：JSON body（imageSize/aspectRatio 驼峰）
+                    resp = await client.post(
+                        f"{base_url}{endpoint}",
+                        headers={"Authorization": api_key, "Content-Type": "application/json"},
+                        json={"prompt": "test", "imageSize": "1K", "aspectRatio": "auto"},
                     )
                 else:
                     resp = await client.post(

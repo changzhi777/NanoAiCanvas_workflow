@@ -83,6 +83,17 @@ async def submit_gpt_image_25_task(
     return await submit_image_task(request, db, frontend_key)
 
 
+@router.post("/nanobanana2-1/generate", response_model=TaskSubmitResponse)
+async def submit_nanobanana2_1_task(
+    request: ImageGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """提交 NanoBanana2.1 图片生成任务（速创新端点 /api/async/NanoBanana2.1，支持 aspectRatio 比例参数）"""
+    request.model_type = "nano-banana2.1"
+    return await submit_image_task(request, db, frontend_key)
+
+
 async def submit_image_task(
     request: ImageGenerateRequest,
     db: AsyncSession,
@@ -185,6 +196,16 @@ async def get_gpt_image_25_task_status(
 ):
     """查询 GPT Image 2.5 任务状态"""
     return await get_task_status(task_id, "gpt-image-2.5", db, frontend_key)
+
+
+@router.get("/nanobanana2-1/task/{task_id}", response_model=TaskStatusResponse)
+async def get_nanobanana2_1_task_status(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """查询 NanoBanana2.1 任务状态"""
+    return await get_task_status(task_id, "nano-banana2.1", db, frontend_key)
 
 
 async def get_task_status(

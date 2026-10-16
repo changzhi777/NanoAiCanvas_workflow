@@ -74,6 +74,7 @@ import { MINIMAX_CONFIG } from '@/config/minimax'
 import {
   SIZE_OPTIONS,
   ASPECT_RATIO_OPTIONS,
+  ASPECT_RATIO_OPTIONS_WIDE,
   STYLE_PRESETS,
   SHOT_TYPE_OPTIONS,
   CAMERA_ANGLE_OPTIONS,
@@ -158,7 +159,7 @@ export function GenerationPanel() {
   }, [user?.id, loadSessions])
 
   // ---- Advanced params ----
-  const [imageModel, setImageModel] = useState<'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2'>('gpt-image-2')
+  const [imageModel, setImageModel] = useState<'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2' | 'nano-banana2.1'>('gpt-image-2')
   const [size, setSize] = useState<'1K' | '2K' | '4K'>('1K')
   const [aspectRatio, setAspectRatio] = useState('1:1')
   const [style, setStyle] = useState('none')
@@ -820,7 +821,14 @@ export function GenerationPanel() {
                 {/* 模型 - 独占一行 */}
                 <div className="pb-2 border-b border-white/5">
                   <label className="text-xs text-muted-foreground mb-1 block">模型</label>
-                  <Select value={imageModel} onValueChange={(v) => v && setImageModel(v as typeof imageModel)}>
+                  <Select value={imageModel} onValueChange={(v) => {
+                    if (!v) return
+                    setImageModel(v as typeof imageModel)
+                    // 切离 2.1 时若当前比例不在基础集（超宽幅等），回落 1:1
+                    if (v !== 'nano-banana2.1' && !ASPECT_RATIO_OPTIONS.some((o) => o.value === aspectRatio)) {
+                      setAspectRatio('1:1')
+                    }
+                  }}>
                     <SelectTrigger className="h-8 text-xs w-full">
                       <SelectValue placeholder="生成模型" />
                     </SelectTrigger>
@@ -861,7 +869,7 @@ export function GenerationPanel() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ASPECT_RATIO_OPTIONS.map((opt) => (
+                        {(imageModel === 'nano-banana2.1' ? ASPECT_RATIO_OPTIONS_WIDE : ASPECT_RATIO_OPTIONS).map((opt) => (
                           <SelectItem key={opt.value} value={opt.value}>
                             {opt.label}
                           </SelectItem>

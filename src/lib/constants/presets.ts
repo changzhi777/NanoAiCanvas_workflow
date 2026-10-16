@@ -3,6 +3,7 @@ export const IMAGE_MODEL_OPTIONS = [
   { value: 'nano-banana2', label: 'Nano Banana2', description: '多图融合' },
   { value: 'nano-banana-pro', label: 'Nano Banana Pro', description: '专业版' },
   { value: 'gpt-image-2', label: 'GPT Image 2', description: 'OpenAI图像模型' },
+  { value: 'nano-banana2.1', label: 'Nano Banana 2.1', description: '多图融合 + 比例控制' },
 ] as const
 
 export type ImageModelType = (typeof IMAGE_MODEL_OPTIONS)[number]['value']
@@ -23,6 +24,19 @@ export const ASPECT_RATIO_OPTIONS = [
   { value: '3:4', label: '竖版 3:4' },
   { value: '3:2', label: '横版 3:2' },
   { value: '2:3', label: '竖版 2:3' },
+] as const
+
+// NanoBanana2.1 完整比例集（含超宽幅，仅该端点消费 aspectRatio 参数）
+export const ASPECT_RATIO_OPTIONS_WIDE = [
+  { value: 'auto', label: '自动 auto' },
+  ...ASPECT_RATIO_OPTIONS,
+  { value: '5:4', label: '横版 5:4' },
+  { value: '4:5', label: '竖版 4:5' },
+  { value: '21:9', label: '宽银幕 21:9' },
+  { value: '1:4', label: '超竖 1:4' },
+  { value: '1:8', label: '超竖 1:8' },
+  { value: '4:1', label: '超横 4:1' },
+  { value: '8:1', label: '超横 8:1' },
 ] as const
 
 // Style presets - 扩展版本（步骤2.1-A：新增6种风格）

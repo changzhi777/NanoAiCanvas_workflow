@@ -34,17 +34,33 @@ class WuyinkejiProvider(BaseImageProvider):
         size = params.get("size", "1K")
         urls = params.get("urls", [])
 
-        # 选择端点（速创新规范：gpt-image-2.5 独立端点）
+        # 选择端点（速创新规范：gpt-image-2.5 / nano-banana2.1 独立端点）
         endpoint_map = {
             "nano-banana2": "/api/async/image_nanoBanana2",
             "nano-banana-pro": "/api/async/image_nanoBanana2",
             "gpt-image-2": "/api/async/image_gpt",
             "gpt-image-2.5": "/api/async/image_gpt_2.5",
+            "nano-banana2.1": "/api/async/NanoBanana2.1",
         }
         endpoint = endpoint_map.get(model_type, "/api/async/image_nanoBanana2")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            if model_type in ("gpt-image-2", "gpt-image-2.5"):
+            if model_type == "nano-banana2.1":
+                # NanoBanana2.1：JSON body，参数驼峰（imageSize/aspectRatio），key 走 Authorization header
+                # 首个支持比例参数的端点（auto/1:1/.../21:9/1:4/1:8/4:1/8:1）
+                body = {
+                    "prompt": prompt,
+                    "imageSize": size,
+                    "aspectRatio": params.get("aspect_ratio", "auto") or "auto",
+                }
+                if urls:
+                    body["urls"] = ",".join(urls) if isinstance(urls, list) else urls
+                response = await client.post(
+                    f"{self.base_url}{endpoint}",
+                    headers=_wuyin_headers(self.api_key),
+                    json=body,
+                )
+            elif model_type in ("gpt-image-2", "gpt-image-2.5"):
                 # GPT-Image-2 / 2.5：JSON body，key 通过 Authorization header
                 body = {"prompt": prompt, "size": size}
                 if urls:
