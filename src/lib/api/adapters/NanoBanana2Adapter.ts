@@ -12,7 +12,7 @@ const API_BASE = '/v2/image/nanobanana2'
 interface TaskStatusResponse {
   task_id: string
   status: string
-  images?: string[]
+  images?: Array<string | { url?: string }>
   error?: string
 }
 
@@ -64,7 +64,11 @@ export class NanoBanana2Adapter implements ImageGeneratorAdapter {
 
       if (statusResponse.status === 'success' && statusResponse.images && statusResponse.images.length > 0) {
         onProgress(100)
-        return statusResponse.images
+        // 后端 images 可能是 [{url}] 对象数组（TaskStatusResponse: List[Dict]），拍平为字符串
+        const urls = statusResponse.images
+          .map((it) => (typeof it === 'string' ? it : (it as { url?: string })?.url))
+          .filter((u): u is string => !!u)
+        return urls
       }
 
       if (statusResponse.status === 'failed') {

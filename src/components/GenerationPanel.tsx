@@ -159,7 +159,7 @@ export function GenerationPanel() {
   }, [user?.id, loadSessions])
 
   // ---- Advanced params ----
-  const [imageModel, setImageModel] = useState<'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2' | 'nano-banana2.1'>('gpt-image-2')
+  const [imageModel, setImageModel] = useState<'nano-banana2' | 'nano-banana-pro' | 'gpt-image-2' | 'nano-banana2.1'>('nano-banana2.1')
   const [size, setSize] = useState<'1K' | '2K' | '4K'>('1K')
   const [aspectRatio, setAspectRatio] = useState('1:1')
   const [style, setStyle] = useState('none')
@@ -177,14 +177,10 @@ export function GenerationPanel() {
   const [contrast, setContrast] = useState('none')
   const [noise, setNoise] = useState('none')
 
-  // ---- Enhance prompt via MiniMax m2.7 ----
+  // ---- Enhance prompt via 后端 glm_proxy（deepseek-flash 直连） ----
   const handleEnhancePrompt = useCallback(async () => {
     if (!prompt.trim()) {
       toast.error('请输入提示词')
-      return
-    }
-    if (!MINIMAX_CONFIG.API_KEY) {
-      toast.error('请先在 .env 中配置 VITE_MINIMAX_API_KEY')
       return
     }
 
@@ -192,7 +188,7 @@ export function GenerationPanel() {
     try {
       const result = await enhancePrompt({
         prompt: prompt.trim(),
-        apiKey: MINIMAX_CONFIG.API_KEY,
+        styleCode: style,
         options: {
           styleLabel: getLabel(STYLE_PRESETS, style),
           shotTypeLabel: getLabel(SHOT_TYPE_OPTIONS, shotType),

@@ -106,6 +106,17 @@ async def submit_image_task(
     try:
         from app.models.api_key import ApiKeyConfig, BackendKeyMapping
 
+        if not frontend_key:
+            # 未带 X-API-Key（如新注册用户）→ 兜底默认 active 前端 key
+            # frontend_key 是公开的浏览器侧租户标识（机密 backend_key 永不出库），可安全兜底
+            fallback = await db.execute(
+                select(ApiKeyConfig).where(ApiKeyConfig.is_active == True).limit(1)
+            )
+            fallback_config = fallback.scalar_one_or_none()
+            if not fallback_config:
+                raise HTTPException(status_code=401, detail="Missing API key (X-API-Key header)")
+            frontend_key = fallback_config.frontend_key
+
         result = await db.execute(
             select(ApiKeyConfig).where(ApiKeyConfig.frontend_key == frontend_key)
         )
@@ -217,6 +228,15 @@ async def get_task_status(
     """通用任务状态查询逻辑"""
     from sqlalchemy import select
     from app.models.api_key import ApiKeyConfig, BackendKeyMapping
+
+    if not frontend_key:
+        # 未带 X-API-Key（如新注册用户）→ 兜底默认 active 前端 key（与提交逻辑一致）
+        fallback = await db.execute(
+            select(ApiKeyConfig).where(ApiKeyConfig.is_active == True).limit(1)
+        )
+        fallback_config = fallback.scalar_one_or_none()
+        if fallback_config:
+            frontend_key = fallback_config.frontend_key
 
     # 查询数据库中的任务 (使用 SQLAlchemy 2.0 async API)
     result = await db.execute(
