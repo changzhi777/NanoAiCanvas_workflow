@@ -1,11 +1,13 @@
-"""Henry VIII 英文版终装 —— Tudor 图卡 + 数字人口型首尾 + 英文 TTS 三段 + 风笛 BGM + 双语字幕。
+"""Henry VIII 英文版终装 —— Tudor 图卡 + 数字人口型首尾 + 英文 TTS 三段 + 双语字幕。
 
 时间线（en_timeline.json，全片 180.8s）：
   0-14.12s     lipsync_henry_open（数字人对口型·开场）
   14.12-169.78s Tudor 图卡轮播（seg1-8 主卡；seg3 = 总卡 + 六王后竖版连播）
   169.78-180.8s lipsync_henry_close（数字人对口型·收束+CTA）
+翻页：图卡之间 wipeleft 0.4s（有声书翻页观感，不用缓推）；
+      每卡多渲 0.5s 供 xfade 借时，段轴与音轨严格对齐。
 音轨：lipsync_open 音轨 + tts_en_mid + lipsync_close 音轨（全片英文播音员 @0.95）
-BGM：bagpipes.mp3 风笛 0.15 垫全片（stream_loop）
+BGM：BGM_GAIN=0 纯解说；>0 则风笛垫底（stream_loop）
 字幕：en_bilingual.srt 中英双语烧录
 """
 import json
@@ -68,40 +70,56 @@ seg_plan = sorted(seg_plan, key=lambda s: s["start"])
 seg_plan.append({"type": "lipsync", "video": str(OUT / "lipsync_henry_close.mp4"),
                  "start": close_start, "end": total})
 
-# ---- 渲染各段 ----
+# ---- 渲染各段（图卡静态卡，多渲 0.5s 供翻页借时）----
 clips = []
 for i, sp in enumerate(seg_plan):
     dur = sp["end"] - sp["start"]
-    clip = work / f"seg_{i:02d}.mp4"
-    if clip.exists():
-        clips.append(clip)
-        continue
     if sp["type"] == "lipsync":
-        vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-              f"fps={FPS},format=yuv420p")
-        run([FF, "-y", "-i", sp["video"], "-vf", vf, "-t", f"{dur:.3f}",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
+        clip = work / f"seg_{i:02d}.mp4"
+        if not clip.exists():
+            vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                  f"fps={FPS},format=yuv420p")
+            run([FF, "-y", "-i", sp["video"], "-vf", vf, "-t", f"{dur:.3f}",
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
+        clips.append({"clip": clip, "type": "lipsync", "start": sp["start"], "end": sp["end"]})
     else:
-        if sp["type"] == "card_portrait":   # 王后竖版：crop 偏上保脸
-            vf = (f"scale={W}:{int(W * 4 / 3)}:force_original_aspect_ratio=increase,"
-                  f"crop={W}:{H}:0:'(ih-oh)*0.18',"
-                  f"zoompan=z='min(zoom+0.0004,1.08)':x='iw/2-(iw/zoom/2)':"
-                  f"y='ih/5-(ih/zoom/5)':d={int(dur * FPS) + 1}:s={W}x{H}:fps={FPS},"
-                  f"format=yuv420p")
-        else:
-            vf = (f"scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase,"
-                  f"crop={W * 2}:{H * 2},"
-                  f"zoompan=z='min(zoom+0.0005,1.12)':x='iw/2-(iw/zoom/2)':"
-                  f"y='ih/2-(ih/zoom/2)':d={int(dur * FPS) + 1}:s={W}x{H}:fps={FPS},"
-                  f"format=yuv420p")
-        run([FF, "-y", "-loop", "1", "-i", sp["card"], "-vf", vf, "-t", f"{dur:.3f}",
-             "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
-    clips.append(clip)
+        clip = work / f"pg_{i:02d}.mp4"          # pg_ = 翻页版静态卡
+        if not clip.exists():
+            if sp["type"] == "card_portrait":    # 王后竖版：crop 偏上保脸
+                vf = (f"scale={W}:{int(W * 4 / 3)}:force_original_aspect_ratio=increase,"
+                      f"crop={W}:{H}:0:'(ih-oh)*0.18',fps={FPS},format=yuv420p")
+            else:
+                vf = (f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                      f"fps={FPS},format=yuv420p")
+            run([FF, "-y", "-loop", "1", "-i", sp["card"], "-vf", vf,
+                 "-t", f"{dur + 0.5:.3f}",
+                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(clip)])
+        clips.append({"clip": clip, "type": sp["type"], "start": sp["start"], "end": sp["end"]})
     print(f"  ✓ 段{i:02d} {dur:.1f}s [{'口型' if sp['type']=='lipsync' else sp['type']}]", flush=True)
 
-# ---- 视频拼接 ----
+# ---- 图卡 xfade 翻页链（wipeleft 0.4s）→ 与首尾口型段 concat ----
+TURN = 0.4
+cards = [c for c in clips if c["type"] != "lipsync"]
+head = clips[0]["clip"]                          # open 口型
+tail = clips[-1]["clip"]                         # close 口型
+base_t = cards[0]["start"]                       # 卡链内部时间轴原点（全局）
+
+ins, fc, prev = [], [], "0:v"
+for k, c in enumerate(cards):
+    ins += ["-i", str(c["clip"])]
+    if k > 0:
+        off = cards[k]["start"] - base_t - TURN
+        idx = k
+        fc.append(f"[{prev}][{idx}:v]xfade=transition=wipeleft:duration={TURN}:"
+                  f"offset={off:.3f}[v{k}]")
+        prev = f"v{k}"
+chain = work / "cards_chain.mp4"
+run([FF, "-y", *ins, "-filter_complex", ";".join(fc), "-map", f"[{prev}]",
+     "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", str(chain)])
+print(f"✓ 翻页卡链 {dur_of(chain):.1f}s（{len(cards)} 卡 / {len(cards)-1} 次翻页）", flush=True)
+
 vlist = work / "v.txt"
-vlist.write_text("\n".join(f"file '{c}'" for c in clips), encoding="utf-8")
+vlist.write_text(f"file '{head}'\nfile '{chain}'\nfile '{tail}'", encoding="utf-8")
 video = work / "video.mp4"
 run([FF, "-y", "-f", "concat", "-safe", "0", "-i", str(vlist), "-c", "copy", str(video)])
 print(f"✓ 视频轨 {dur_of(video):.1f}s", flush=True)
