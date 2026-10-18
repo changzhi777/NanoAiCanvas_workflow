@@ -44,8 +44,9 @@ def _probe(path) -> dict:
             "has_audio": any(s.get("codec_type") == "audio" for s in streams)}
 
 
-def fingerprint(path, wm_id: bytes | None = None, c2pa: str | None = None) -> dict:
-    """生成内容指纹记录。图 → 单 pHash；视频 → 首中尾三帧 pHash。"""
+def fingerprint(path, wm_id: bytes | None = None, c2pa: str | None = None,
+                extra: dict | None = None) -> dict:
+    """生成内容指纹记录。图 → 单 pHash；视频 → 首中尾三帧 pHash。extra 存引擎键。"""
     path = pathlib.Path(path)
     is_video = path.suffix.lower() in (".mp4", ".mov", ".webm")
     tmp = path.parent / "_fp_f.png"
@@ -70,6 +71,8 @@ def fingerprint(path, wm_id: bytes | None = None, c2pa: str | None = None) -> di
             fh = Image.open(tmp).convert("RGB")
             frames.append(str(imagehash.phash(fh)))
         rec["frame_phash"] = frames
+    if extra:
+        rec.update(extra)
     tmp.unlink(missing_ok=True)
     return rec
 
@@ -100,6 +103,14 @@ def load_all():
             line = line.strip()
             if line:
                 yield json.loads(line)
+
+
+def find_by_key(key_field: str, key_hex: str) -> dict | None:
+    """按引擎键（如 rec['wam']）查库，返回关联记录（含完整 8B ID）。"""
+    for rec in load_all():
+        if rec.get(key_field) == key_hex:
+            return rec
+    return None
 
 
 def lookup(path, threshold: int = 10) -> list[tuple[dict, int]]:

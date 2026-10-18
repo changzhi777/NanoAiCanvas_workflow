@@ -44,32 +44,64 @@ def _fps(path) -> float:
     return float(num) / float(den or 1)
 
 
-def embed(video, wm: bytes, out, crf=18) -> str:
-    """首帧 + 中点帧嵌入（全屏 overlay），其余帧透传，一次重编码。"""
-    from wm_image import embed as img_embed
-    tmp = pathlib.Path(out).parent
-    f0, f1 = tmp / "_wm_f0.png", tmp / "_wm_f1.png"
-    # 抽首帧/中点帧 → 各自嵌入水印（PNG 就地覆盖）
-    subprocess.run([FF, "-y", "-v", "error", "-i", str(video),
-                    "-frames:v", "1", str(f0)], check=True)
-    img_embed(f0, wm, f0)
-    subprocess.run([FF, "-y", "-v", "error", "-ss", str(_dur(video) / 2),
-                    "-i", str(video), "-frames:v", "1", str(f1)], check=True)
-    img_embed(f1, wm, f1)
+def embed(video, wm: bytes, out, crf=18, all_frames: bool = False, **kw) -> str:
+    """嵌入水印。
 
-    mid = _frames(video) // 2
-    mid_t = _dur(video) / 2
-    vf = (f"[0:v][1:v]overlay=enable='eq(n,0)'[a];"
-          f"[a][2:v]overlay=enable='eq(n,{mid})'[v]")
-    subprocess.run([FF, "-y", "-v", "error", "-i", str(video), "-i", str(f0),
-                    "-i", str(f1),
-                    "-filter_complex", vf, "-map", "[v]", "-map", "0:a?",
-                    "-force_key_frames", f"0,{mid_t:.3f}",      # 水印帧定 IDR，防 GOP 预测损伤
-                    "-c:v", "libx264", "-crf", str(crf), "-preset", "veryfast",
-                    "-pix_fmt", "yuv420p", "-c:a", "copy", str(out)],
-                   check=True, timeout=3600)
-    f0.unlink(missing_ok=True)
-    f1.unlink(missing_ok=True)
+    all_frames=False：首帧+中点帧 overlay（快，秒级）
+    all_frames=True ：全帧逐帧嵌入（deep 档：抗二压/抽帧，每帧含完整 RS 位流；
+                      362 帧约 2 分钟 CPU）
+    """
+    from wm_image import embed as img_embed
+    src = pathlib.Path(video)
+    tmp = src.parent
+    if not all_frames:
+        f0, f1 = tmp / "_wm_f0.png", tmp / "_wm_f1.png"
+        subprocess.run([FF, "-y", "-v", "error", "-i", str(src),
+                        "-frames:v", "1", str(f0)], check=True)
+        img_embed(f0, wm, f0)
+        subprocess.run([FF, "-y", "-v", "error", "-ss", str(_dur(src) / 2),
+                        "-i", str(src), "-frames:v", "1", str(f1)], check=True)
+        img_embed(f1, wm, f1)
+
+        mid = _frames(src) // 2
+        mid_t = _dur(src) / 2
+        vf = (f"[0:v][1:v]overlay=enable='eq(n,0)'[a];"
+              f"[a][2:v]overlay=enable='eq(n,{mid})'[v]")
+        subprocess.run([FF, "-y", "-v", "error", "-i", str(src), "-i", str(f0),
+                        "-i", str(f1),
+                        "-filter_complex", vf, "-map", "[v]", "-map", "0:a?",
+                        "-force_key_frames", f"0,{mid_t:.3f}",
+                        "-c:v", "libx264", "-crf", str(crf), "-preset", "veryfast",
+                        "-pix_fmt", "yuv420p", "-c:a", "copy", str(out)],
+                       check=True, timeout=3600)
+        f0.unlink(missing_ok=True)
+        f1.unlink(missing_ok=True)
+        return str(out)
+
+    # ---- 全帧模式：抽帧序列 → 逐帧嵌入 → 序列回写 + 音轨 ----
+    frames_dir = tmp / "_wm_frames"
+    frames_dir.mkdir(exist_ok=True)
+    subprocess.run([FF, "-y", "-v", "error", "-i", str(src),
+                    str(frames_dir / "f%05d.png")], check=True)
+    pngs = sorted(frames_dir.glob("f*.png"))
+    from wm_image import embed as img_embed
+    wm_dir = tmp / "_wm_out"
+    wm_dir.mkdir(exist_ok=True)
+    for i, p in enumerate(pngs):
+        img_embed(p, wm, wm_dir / p.name)
+        if i % 60 == 0:
+            print(f"    全帧嵌入 {i}/{len(pngs)}", flush=True)
+    proc = subprocess.Popen(
+        [FF, "-y", "-v", "error", "-framerate", "24", "-i", str(wm_dir / "f%05d.png"),
+         "-i", str(src), "-map", "0:v", "-map", "1:a:0",
+         "-c:v", "libx264", "-crf", str(crf), "-preset", "veryfast",
+         "-pix_fmt", "yuv420p", "-c:a", "copy", str(out)],
+        stdin=subprocess.PIPE)
+    proc.communicate()
+    for d in (frames_dir, wm_dir):
+        for f in d.glob("*.png"):
+            f.unlink()
+        d.rmdir()
     return str(out)
 
 

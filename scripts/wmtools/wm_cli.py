@@ -43,12 +43,18 @@ def cmd_id(a):
 def cmd_embed(a):
     wm = bytes.fromhex(a.wm) if a.wm else make_id(a.project)[0]
     out = a.out or str(pathlib.Path(a.input).with_stem(pathlib.Path(a.input).stem + "_wm"))
-    if pathlib.Path(a.input).suffix.lower() in VIDEO_EXT:
+    engine = a.engine or "freq"
+    if engine == "wam":
+        from engines.wam_engine import WamEngine
+        WamEngine().embed(a.input, wm, out, project=a.project)
+    elif engine == "videoseal":
+        from engines.videoseal_engine import VideoSealEngine
+        VideoSealEngine().embed(a.input, wm, out)
+    elif pathlib.Path(a.input).suffix.lower() in VIDEO_EXT:
         wm_video.embed(a.input, wm, out)
     else:
         img_embed(a.input, wm, out)
-    ok, info = parse_id(wm)
-    print(f"✓ 嵌入 {out}\n  ID: {wm.hex()}  {json.dumps(info, ensure_ascii=False)}")
+    print(f"✓ [{engine}] 嵌入 {out}  ID: {wm.hex()}")
 
 
 def cmd_clean(a):
@@ -72,7 +78,7 @@ def cmd_fingerprint(a):
 
 
 def cmd_detect(a):
-    report = wm_detect.detect(a.input)
+    report = wm_detect.detect(a.input, tier=a.tier)
     print(wm_detect.summarize(report))
     if a.out:
         pathlib.Path(a.out).write_text(json.dumps(report, ensure_ascii=False, indent=1),
@@ -86,41 +92,62 @@ def cmd_pipeline(a):
     d = pathlib.Path(a.out_dir or src.parent)
     d.mkdir(parents=True, exist_ok=True)
     meta = {"project": a.project, "generator": a.generator, "source": src.name}
+    tier = a.tier
+    is_video = ext in VIDEO_EXT
 
     # 幂等：已处理则跳过
-    pre = wm_detect.detect(src)
+    pre = wm_detect.detect(src, tier=tier)
     if pre["evidence"] in ("ID_MATCH", "OURS_SIGNED"):
         print(f"↷ 已处理（{pre['evidence']}），跳过")
         return
 
     wm, info = make_id(a.project)
     work = d / f"{stem}.work{ext}"
-    print(f"[1/4] 嵌入水印 {wm.hex()}")
-    if ext in VIDEO_EXT:
+    extra = {}
+    steps = 5 if tier == "deep" else 4
+
+    print(f"[1/{steps}] L1 频域嵌入 {wm.hex()}")
+    if is_video:
         wm_video.embed(src, wm, work)
     else:
         img_embed(src, wm, work)
 
-    print("[2/4] 元数据清洗")
-    if ext in VIDEO_EXT:
+    if tier == "deep":
+        print(f"[2/{steps}] L2 深度嵌入（全帧频域：每帧含完整 RS 位流，抗二压/抽帧）")
+        if is_video:
+            vs_out = d / f"{stem}.vs{ext}"
+            wm_video.embed(src, wm, str(vs_out), all_frames=True)
+            work.unlink(missing_ok=True)
+            work = vs_out
+        else:
+            from engines.wam_engine import WamEngine, _pack32
+            wam_out = d / f"{stem}.wam{ext}"
+            WamEngine().embed(work, wm, str(wam_out), project=a.project)
+            work.unlink(missing_ok=True)
+            work = wam_out
+            extra["wam"] = _pack32(wm, a.project).hex()
+
+    print(f"[2/{steps}] 元数据清洗")
+    if is_video:
         cleaned = d / f"{stem}.clean{ext}"
         wm_c2pa.clean_video(work, cleaned)
         work.unlink(missing_ok=True)
         work = cleaned
 
-    print("[3/4] C2PA 签名")
+    print(f"[3/{steps}] C2PA 签名")
     final = d / f"{stem}_final{ext}"
     wm_c2pa.sign(work, meta, final, title=src.stem)
     if work != final:
         work.unlink(missing_ok=True)
 
-    print("[4/4] 指纹入库")
+    print(f"[4/{steps}] 指纹入库")
     state, data = wm_c2pa.verify(final)
     c2pa_id = (data.get("active_manifest") or "") if data else ""
-    rec = wm_fingerprint.fingerprint(final, wm_id=wm, c2pa=c2pa_id)
+    rec = wm_fingerprint.fingerprint(final, wm_id=wm, c2pa=c2pa_id, extra=extra)
     n = wm_fingerprint.register(rec)
 
-    print(f"✓ 交付 {final}\n  证据: OURS_SIGNED+ID_MATCH  ID: {wm.hex()}  指纹 #{n}")
+    print(f"✓ 交付 {final}\n  证据: OURS_SIGNED+ID_MATCH{'+DEEP' if tier == 'deep' else ''}"
+          f"  ID: {wm.hex()}  指纹 #{n}")
     print(f"  {json.dumps(info, ensure_ascii=False)}")
 
 
@@ -129,6 +156,15 @@ def cmd_selftest(a):
     import numpy as np
     import cv2
     from wm_id import parse_id
+
+    import engines as engine_reg
+    print("[0] 引擎探测")
+    from engines.freq import FreqEngine
+    from engines.videoseal_engine import VideoSealEngine
+    from engines.wam_engine import WamEngine
+    for e in (FreqEngine(), WamEngine(), VideoSealEngine()):
+        state = "可用" if e.available() else f"不可用（{e.unavailable_reason()[:50]}）"
+        print(f"    {e.name} [{e.tier}]: {state}")
 
     print("[1] ID 往返 + magic/RS 防线")
     wm, info = make_id("selftest")
@@ -170,6 +206,21 @@ def cmd_selftest(a):
     hit, payload, _ = img_decode("/tmp/_wm_selftest_atk.jpg")
     assert hit and payload == wm, "攻击链解码失败"
     print("    ✅")
+
+    print("[4] WAM 深度引擎（可用时）")
+    from engines.wam_engine import WamEngine
+    we = WamEngine()
+    if we.available():
+        we.embed("/tmp/_wm_selftest.png", wm, "/tmp/_wm_selftest_wam.png",
+                 project="selftest")
+        hit, key, det = we.extract("/tmp/_wm_selftest_wam.png")
+        assert hit and key is not None, "WAM 提取失败"
+        # 关联校验：重算 32-bit pack 比对
+        from engines.wam_engine import _pack32
+        assert key == _pack32(wm, "selftest"), "WAM msg 与 pack 不一致"
+        print("    ✅")
+    else:
+        print("    ↷ 不可用，跳过（bash setup_engines.sh 安装）")
     print("selftest 全绿")
 
 
@@ -185,6 +236,7 @@ def main():
     s.add_argument("input")
     s.add_argument("--project", default="default")
     s.add_argument("--wm", help="已有 ID(hex)，缺省生成新 ID")
+    s.add_argument("--engine", choices=["freq", "wam", "videoseal"], default="freq")
     s.add_argument("--out")
     s.set_defaults(fn=cmd_embed)
 
@@ -207,13 +259,16 @@ def main():
 
     s = sub.add_parser("detect", help="三层检测")
     s.add_argument("input")
+    s.add_argument("--tier", choices=["light", "deep"], default="light")
     s.add_argument("--out", help="JSON 报告输出路径")
     s.set_defaults(fn=cmd_detect)
 
-    s = sub.add_parser("pipeline", help="一条龙：幂等检测→嵌入→清洗→签名→指纹")
+    s = sub.add_parser("pipeline", help="一条龙：幂等检测→嵌入(L1[+L2])→清洗→签名→指纹")
     s.add_argument("input")
     s.add_argument("--project", required=True)
     s.add_argument("--generator", default="NanoAiCanvas")
+    s.add_argument("--tier", choices=["light", "deep"], default="light",
+                   help="deep = L1+L2 双引擎（WAM/VideoSeal，抗重度失真）")
     s.add_argument("--out-dir")
     s.set_defaults(fn=cmd_pipeline)
 

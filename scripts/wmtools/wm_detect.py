@@ -40,9 +40,10 @@ def _ai_declaration(path) -> list[str]:
     return found
 
 
-def detect(path) -> dict:
+def detect(path, tier: str = "light") -> dict:
     path = pathlib.Path(path)
-    report = {"file": str(path), "evidence": None, "layers": {}}
+    is_video = path.suffix.lower() in (".mp4", ".mov", ".webm")
+    report = {"file": str(path), "evidence": None, "tier": tier, "layers": {}}
 
     # ---- 层 1：C2PA / 元数据 ----
     c2pa_state, c2pa_data = wm_c2pa.verify(path)
@@ -50,9 +51,9 @@ def detect(path) -> dict:
     report["layers"]["c2pa"] = {"state": c2pa_state}
     report["layers"]["ai_declaration"] = decl
 
-    # ---- 层 2：水印 ----
+    # ---- 层 2：L1 频域水印 ----
     wm_hit, payload, wm_detail = False, None, None
-    if path.suffix.lower() in (".mp4", ".mov", ".webm"):
+    if is_video:
         votes, frames, payload = wm_video.detect(path)
         wm_hit = votes > 0
         wm_detail = {"votes": votes, "frames": frames}
@@ -63,14 +64,39 @@ def detect(path) -> dict:
     if wm_hit:
         ok, wm_info = parse_id(payload)
         wm_hit = ok
-    report["layers"]["watermark"] = wm_detail
+    report["layers"]["freq"] = wm_detail
     report["wm_info"] = wm_info
 
-    # ---- 层 3：指纹库 ----
+    # ---- 层 3：L2 深度引擎（deep tier）----
+    deep_detail: dict = {}
+    deep_id8 = None
+    if tier == "deep":
+        if is_video:
+            from engines.videoseal_engine import VideoSealEngine
+            hit2, id8, det = VideoSealEngine().extract(path)
+            deep_detail["videoseal"] = {**det, "hit": hit2}
+            if hit2:
+                deep_id8 = id8
+        else:
+            from engines.wam_engine import WamEngine
+            hit2, msg32, det = WamEngine().extract(path)
+            assoc = (wm_fingerprint.find_by_key("wam", msg32.hex()) if msg32 else None)
+            deep_detail["wam"] = {**det, "hit": hit2,
+                                  "linked_id": assoc["wm"] if assoc else None}
+            if hit2 and assoc:
+                deep_id8 = bytes.fromhex(assoc["wm"])
+            elif hit2:
+                deep_detail["wam"]["note"] = "msg 命中但库内无关联"
+        report["layers"]["deep"] = deep_detail
+
+    # ---- 层 4：指纹库 ----
     reg_hit = wm_fingerprint.lookup(path)
     lib_wm = None
     for rec in wm_fingerprint.load_all():       # 水印 ID 直接比对（转码后 pHash 可能失配）
         if payload and rec.get("wm") == payload.hex():
+            lib_wm = rec
+            break
+        if deep_id8 and rec.get("wm") == deep_id8.hex():
             lib_wm = rec
             break
     report["layers"]["registry"] = {
@@ -83,12 +109,16 @@ def detect(path) -> dict:
         report["evidence"] = "OURS_SIGNED"
     elif lib_wm:
         report["evidence"] = "ID_MATCH"
+    elif deep_id8:
+        report["evidence"] = "DEEP_MATCH"
     elif wm_hit:
         report["evidence"] = "WM_FOUND"
     elif c2pa_state == "THIRD_PARTY":
         report["evidence"] = "SIGNED"
     elif reg_hit:
         report["evidence"] = "DIST_MATCH"
+    elif deep_detail:
+        report["evidence"] = "DEEP_TRACE"
     elif decl:
         report["evidence"] = "PROBABLE_AI"
     else:
