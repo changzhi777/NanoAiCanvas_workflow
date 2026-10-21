@@ -20,7 +20,10 @@ PROBE = "ffprobe"
 def _dur(path) -> float:
     r = subprocess.run([PROBE, "-v", "error", "-show_entries", "format=duration",
                         "-of", "csv=p=0", str(path)], capture_output=True, text=True)
-    return float(r.stdout.strip())
+    out = r.stdout.strip()
+    if not out:
+        raise FileNotFoundError(f"文件不存在或非视频: {path}")
+    return float(out)
 
 
 def _frames(path) -> int:
