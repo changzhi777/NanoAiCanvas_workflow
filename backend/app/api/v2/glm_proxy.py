@@ -431,6 +431,45 @@ STORYBOARD_SCRIPT_PROMPT = """你是一个专业的电影分镜师和AI图片提
 }}"""
 
 
+class JsonGenRequest(BaseModel):
+    system: str
+    user: str
+    model: str = "deepseek-flash"
+    max_tokens: int = 2400
+    temperature: float = 0.7
+
+
+@router.post("/json-gen")
+async def json_gen(
+    req: JsonGenRequest,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """通用 JSON 生成（墨笔AI 云端兜底）：system+user → 模型原文"""
+    try:
+        data = await _glm_chat(
+            model=req.model,
+            messages=[
+                {"role": "system", "content": req.system},
+                {"role": "user", "content": req.user},
+            ],
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+        )
+        msg = data.get("choices", [{}])[0].get("message", {})
+        content = (msg.get("content") or "").strip()
+        if not content:
+            content = (msg.get("reasoning_content") or "").strip()
+        if not content:
+            raise HTTPException(status_code=502, detail="模型返回为空")
+        return {"content": content}
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="模型超时")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/optimize")
 async def optimize_prompt(
     req: OptimizeRequest,
