@@ -60,8 +60,21 @@ class WuyinkejiProvider(BaseImageProvider):
                     headers=_wuyin_headers(self.api_key),
                     json=body,
                 )
-            elif model_type in ("gpt-image-2", "gpt-image-2.5"):
-                # GPT-Image-2 / 2.5：JSON body，key 通过 Authorization header
+            elif model_type == "gpt-image-2.5":
+                # GPT-Image-2.5：只认 prompt / aspectRatio / urls（size 会报“未绑定的参数”）
+                body = {"prompt": prompt}
+                ar = params.get("aspect_ratio") or "auto"
+                if ar and ar != "auto":
+                    body["aspectRatio"] = ar
+                if urls:
+                    body["urls"] = ",".join(urls) if isinstance(urls, list) else urls
+                response = await client.post(
+                    f"{self.base_url}{endpoint}",
+                    headers=_wuyin_headers(self.api_key),
+                    json=body,
+                )
+            elif model_type == "gpt-image-2":
+                # GPT-Image-2：JSON body，key 通过 Authorization header
                 body = {"prompt": prompt, "size": size}
                 if urls:
                     body["urls"] = ",".join(urls) if isinstance(urls, list) else urls
