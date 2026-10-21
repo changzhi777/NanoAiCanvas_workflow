@@ -27,6 +27,16 @@ class ImageGenerateRequest(BaseModel):
     urls: List[str] = []
 
 
+class VideoGenerateRequest(BaseModel):
+    prompt: str
+    first_frame: Optional[str] = None
+    last_frame: Optional[str] = None
+    images: List[str] = []
+    resolution: str = "768P"
+    ratio: str = "adaptive"
+    duration: int = 4
+
+
 class TaskSubmitResponse(BaseModel):
     task_id: str
     status: str
@@ -92,6 +102,97 @@ async def submit_nanobanana2_1_task(
     """提交 NanoBanana2.1 图片生成任务（速创新端点 /api/async/NanoBanana2.1，支持 aspectRatio 比例参数）"""
     request.model_type = "nano-banana2.1"
     return await submit_image_task(request, db, frontend_key)
+
+
+@router.post("/video/generate", response_model=TaskSubmitResponse)
+async def submit_video_task(
+    request: VideoGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """提交图生视频（MiniMax H3）：首帧/尾帧/参考图 + 时长/分辨率/比例"""
+    from app.models.api_key import ApiKeyConfig, BackendKeyMapping
+
+    if not frontend_key:
+        fallback = await db.execute(select(ApiKeyConfig).where(ApiKeyConfig.is_active == True).limit(1))
+        fb = fallback.scalar_one_or_none()
+        if fb:
+            frontend_key = fb.frontend_key
+    if not frontend_key:
+        raise HTTPException(status_code=401, detail="Missing API key (X-API-Key header)")
+
+    cfg_res = await db.execute(select(ApiKeyConfig).where(ApiKeyConfig.frontend_key == frontend_key))
+    cfg = cfg_res.scalar_one_or_none()
+    if not cfg:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    map_res = await db.execute(
+        select(BackendKeyMapping)
+        .where(
+            BackendKeyMapping.frontend_key_id == cfg.id,
+            BackendKeyMapping.model_type == "minimax-h3",
+            BackendKeyMapping.is_active == True,
+        )
+        .order_by(BackendKeyMapping.priority.desc())
+    )
+    mappings = list(map_res.scalars().all())
+    if not mappings:
+        raise HTTPException(status_code=400, detail="No provider mapping for model type: minimax-h3")
+
+    task_id = ""
+    used = ""
+    last_err: Exception | None = None
+    for mapping in mappings:
+        ptype = (mapping.provider_type or "wuyinkeji").lower()
+        try:
+            provider = ProviderFactory.create(ptype, mapping.backend_key, mapping.mcp_config or {})
+            task_id = await provider.generate_image({
+                "model_type": "minimax-h3",
+                "prompt": request.prompt,
+                "first_frame": request.first_frame,
+                "last_frame": request.last_frame,
+                "images": request.images,
+                "resolution": request.resolution,
+                "ratio": request.ratio,
+                "duration": request.duration,
+            })
+            used = ptype
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            logger.warning("Video provider %s failed: %s", ptype, e)
+            continue
+    if not task_id:
+        raise HTTPException(status_code=502, detail=f"All providers failed: {last_err}")
+
+    task = ImageTask(
+        id=str(uuid.uuid4()),
+        task_id=task_id,
+        frontend_key=frontend_key,
+        model_type="minimax-h3",
+        status="pending",
+        request_params={
+            "provider": used,
+            "prompt": request.prompt,
+            "first_frame": request.first_frame,
+            "resolution": request.resolution,
+            "ratio": request.ratio,
+            "duration": request.duration,
+        },
+    )
+    db.add(task)
+    await db.commit()
+    return TaskSubmitResponse(task_id=task_id, status="pending")
+
+
+@router.get("/video/task/{task_id}", response_model=TaskStatusResponse)
+async def get_video_task_status(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    frontend_key: Optional[str] = Depends(get_frontend_key),
+):
+    """查询视频任务状态"""
+    return await get_task_status(task_id, "minimax-h3", db, frontend_key)
 
 
 async def submit_image_task(

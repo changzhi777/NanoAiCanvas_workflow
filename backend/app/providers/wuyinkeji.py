@@ -41,11 +41,27 @@ class WuyinkejiProvider(BaseImageProvider):
             "gpt-image-2": "/api/async/image_gpt",
             "gpt-image-2.5": "/api/async/image_gpt_2.5",
             "nano-banana2.1": "/api/async/NanoBanana2.1",
+            "minimax-h3": "/api/async/video_minimax_h3",
         }
         endpoint = endpoint_map.get(model_type, "/api/async/image_nanoBanana2")
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            if model_type == "nano-banana2.1":
+            if model_type == "minimax-h3":
+                # MiniMax H3 图生视频：首帧/尾帧/参考图 + 分辨率/比例/时长
+                body = {"prompt": prompt}
+                for k in ("first_frame", "last_frame", "resolution", "ratio", "duration"):
+                    v = params.get(k)
+                    if v not in (None, ""):
+                        body[k] = v
+                imgs = params.get("images") or []
+                if imgs:
+                    body["images"] = ",".join(imgs) if isinstance(imgs, list) else imgs
+                response = await client.post(
+                    f"{self.base_url}{endpoint}",
+                    headers=_wuyin_headers(self.api_key),
+                    json=body,
+                )
+            elif model_type == "nano-banana2.1":
                 # NanoBanana2.1：JSON body，参数驼峰（imageSize/aspectRatio），key 走 Authorization header
                 # 首个支持比例参数的端点（auto/1:1/.../21:9/1:4/1:8/4:1/8:1）
                 body = {
