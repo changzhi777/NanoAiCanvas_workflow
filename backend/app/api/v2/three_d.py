@@ -9,7 +9,7 @@ import re
 from typing import Any, List, Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
@@ -23,10 +23,12 @@ router = APIRouter(prefix="/v2/3d", tags=["v2-3d"])
 MODELS = ("3.0", "3.1", "rapid")
 GENERATE_TYPES = ("Normal", "LowPoly", "Geometry", "Sketch")
 RESULT_FORMATS = ("GLB", "STL", "USDZ", "FBX")
+SKELETON_TYPES = ("human", "fox", "bird", "dragon", "kaiju", "spider", "snake")
+RIGGING_METHODS = ("auto", "mesh2motion", "instance-rig")
 VIEW_TYPES = (
     "left", "right", "back", "top", "bottom", "left_front", "right_front",
 )
-JOB_ID_RE = re.compile(r"^job_[A-Za-z0-9]{8,32}$")
+JOB_ID_RE = re.compile(r"^(job|rig)_[A-Za-z0-9]{8,32}$")
 
 
 # ---------- 请求模型 ----------
@@ -193,6 +195,52 @@ async def list_tasks(
     if task_type:
         params["task_type"] = task_type
     return await _request("GET", "/api/v1/tasks", params=params)
+
+
+@router.delete("/tasks/{job_id}")
+async def delete_task(job_id: str):
+    if not JOB_ID_RE.match(job_id):
+        raise HTTPException(422, "非法 job_id")
+    return await _request("DELETE", f"/api/v1/tasks/{job_id}")
+
+
+@router.post("/auto-rig")
+async def create_auto_rig(
+    file: UploadFile = File(..., description="GLB/GLTF 模型"),
+    skeleton_type: str = Form("human"),
+    rigging_method: str = Form("auto"),
+    target_animations: str = Form('["run","jump"]'),
+    smooth_weights: str = Form("true"),
+    t_pose: str = Form("true"),
+):
+    if skeleton_type not in SKELETON_TYPES:
+        raise HTTPException(422, f"skeleton_type 必须是 {SKELETON_TYPES} 之一")
+    if rigging_method not in RIGGING_METHODS:
+        raise HTTPException(422, f"rigging_method 必须是 {RIGGING_METHODS} 之一")
+    content = await file.read()
+    if not content:
+        raise HTTPException(422, "模型文件为空")
+
+    data = {
+        "skeleton_type": skeleton_type,
+        "rigging_method": rigging_method,
+        "target_animations": target_animations,
+        "smooth_weights": smooth_weights,
+        "t_pose": t_pose,
+    }
+    files = {"file": (file.filename or "model.glb", content, "model/gltf-binary")}
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(180.0, connect=10.0), headers=_headers()
+        ) as client:
+            resp = await client.post(f"{_base_url()}/api/v1/auto-rig", data=data, files=files)
+    except httpx.TimeoutException:
+        raise HTTPException(504, "3D 绑骨服务超时，请重试")
+    except httpx.RequestError:
+        raise HTTPException(502, "无法连接 3D 服务")
+    if resp.status_code >= 400:
+        _raise_upstream(resp.status_code, _upstream_detail(resp))
+    return resp.json()
 
 
 @router.get("/download/{job_id}")
