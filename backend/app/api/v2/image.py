@@ -25,6 +25,7 @@ class ImageGenerateRequest(BaseModel):
     size: str = "1K"
     aspect_ratio: str = "auto"
     urls: List[str] = []
+    mask: Optional[str] = None
 
 
 class VideoGenerateRequest(BaseModel):
@@ -249,13 +250,16 @@ async def submit_image_task(
             ptype = (mapping.provider_type or "wuyinkeji").lower()
             try:
                 provider = ProviderFactory.create(ptype, mapping.backend_key, mapping.mcp_config or {})
-                external_task_id = await provider.generate_image({
+                provider_params = {
                     "model_type": request.model_type,
                     "prompt": request.prompt,
                     "size": request.size,
                     "aspect_ratio": request.aspect_ratio,
                     "urls": request.urls,
-                })
+                }
+                if request.mask:
+                    provider_params["mask"] = request.mask
+                external_task_id = await provider.generate_image(provider_params)
                 used_provider = ptype
                 break
             except Exception as e:  # noqa: BLE001
@@ -287,6 +291,7 @@ async def submit_image_task(
             "size": request.size,
             "aspect_ratio": request.aspect_ratio,
             "urls": request.urls,
+            **({"mask": request.mask} if request.mask else {}),
         }
     )
     db.add(task)

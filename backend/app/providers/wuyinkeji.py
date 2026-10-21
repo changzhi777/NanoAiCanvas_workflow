@@ -78,12 +78,16 @@ class WuyinkejiProvider(BaseImageProvider):
                 )
             elif model_type == "gpt-image-2.5":
                 # GPT-Image-2.5：只认 prompt / aspectRatio / urls（size 会报“未绑定的参数”）
+                # 局部重绘：mask 为黑底白区蒙版（白=可改），速创原生透传给 GPT 编辑通道
                 body = {"prompt": prompt}
                 ar = params.get("aspect_ratio") or "auto"
                 if ar and ar != "auto":
                     body["aspectRatio"] = ar
                 if urls:
                     body["urls"] = ",".join(urls) if isinstance(urls, list) else urls
+                mask = params.get("mask")
+                if mask:
+                    body["mask"] = mask
                 response = await client.post(
                     f"{self.base_url}{endpoint}",
                     headers=_wuyin_headers(self.api_key),
