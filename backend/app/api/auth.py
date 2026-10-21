@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -241,8 +241,16 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    payload = decode_token(refresh_token)
+async def refresh(
+    refresh_token: Optional[str] = None,
+    body: Optional[dict] = Body(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    # 兼容 query 与 JSON body（Web 客户端发 body，桌面端发 query）
+    token = refresh_token or (body or {}).get("refresh_token")
+    if not token:
+        raise HTTPException(status_code=422, detail="refresh_token required")
+    payload = decode_token(token)
     if payload is None or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
