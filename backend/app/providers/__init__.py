@@ -6,6 +6,7 @@ from typing import Dict, Any
 from .base import BaseImageProvider
 from .wuyinkeji import WuyinkejiProvider
 from .caohua_jimeng import CaohuaJimengProvider
+from .openai_image import OpenAIImageProvider
 
 
 class ProviderFactory:
@@ -14,6 +15,7 @@ class ProviderFactory:
     _providers = {
         "wuyinkeji": WuyinkejiProvider,
         "caohua_jimeng": CaohuaJimengProvider,
+        "openai_image": OpenAIImageProvider,
     }
 
     @classmethod

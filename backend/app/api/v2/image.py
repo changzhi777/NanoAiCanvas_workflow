@@ -1,8 +1,8 @@
-"""
-import logging; logger = logging.getLogger(__name__)
-V2 图片生成 API 路由
+"""V2 图片生成 API 路由
 支持多 Provider、多模型、API Key 路由
 """
+import logging
+logger = logging.getLogger(__name__)
 import uuid
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
@@ -131,25 +131,41 @@ async def submit_image_task(
                 BackendKeyMapping.is_active == True
             )
             .order_by(BackendKeyMapping.priority.desc())
-            .limit(1)
         )
-        mapping = mapping_result.scalar_one_or_none()
+        mappings = list(mapping_result.scalars().all())
 
-        if not mapping:
+        if not mappings:
             raise HTTPException(
                 status_code=400,
                 detail=f"No provider mapping for model type: {request.model_type}"
             )
 
-        provider = ProviderFactory.create("wuyinkeji", mapping.backend_key, {})
+        # 多 Provider 故障切换：按 priority 依次尝试
+        external_task_id = ""
+        used_provider = ""
+        last_error: Exception | None = None
+        for mapping in mappings:
+            ptype = (mapping.provider_type or "wuyinkeji").lower()
+            try:
+                provider = ProviderFactory.create(ptype, mapping.backend_key, mapping.mcp_config or {})
+                external_task_id = await provider.generate_image({
+                    "model_type": request.model_type,
+                    "prompt": request.prompt,
+                    "size": request.size,
+                    "aspect_ratio": request.aspect_ratio,
+                    "urls": request.urls,
+                })
+                used_provider = ptype
+                break
+            except Exception as e:  # noqa: BLE001
+                last_error = e
+                logger.warning("Provider %s failed for %s: %s", ptype, request.model_type, e)
+                continue
 
-        external_task_id = await provider.generate_image({
-            "model_type": request.model_type,
-            "prompt": request.prompt,
-            "size": request.size,
-            "aspect_ratio": request.aspect_ratio,
-            "urls": request.urls,
-        })
+        if not external_task_id:
+            raise HTTPException(status_code=502, detail=f"All providers failed: {last_error}")
+
+        request_params_extra = {"provider": used_provider}
 
     except HTTPException:
         raise
@@ -165,6 +181,7 @@ async def submit_image_task(
         model_type=request.model_type,
         status="pending",
         request_params={
+            "provider": used_provider,
             "prompt": request.prompt,
             "size": request.size,
             "aspect_ratio": request.aspect_ratio,
@@ -224,6 +241,31 @@ async def get_task_status(
     frontend_key: Optional[str],
 ) -> TaskStatusResponse:
     """通用任务状态查询逻辑"""
+    from app.providers.openai_image import sync_status
+
+    # 同步 Provider（OpenAI 兼容中转）：进程内状态优先
+    st = sync_status(task_id)
+    if st is not None:
+        mapped = {"pending": "pending", "success": "success", "failed": "failed"}.get(st.get("status"), "pending")
+        try:
+            result = await db.execute(select(ImageTask).where(ImageTask.task_id == task_id))
+            row = result.scalar_one_or_none()
+            if row:
+                row.status = mapped
+                if st.get("images"):
+                    row.result = {"images": st["images"]}
+                if st.get("error"):
+                    row.error = st["error"]
+                await db.commit()
+        except Exception:
+            pass
+        return TaskStatusResponse(
+            task_id=task_id,
+            status=mapped,
+            images=st.get("images"),
+            error=st.get("error"),
+        )
+
     from sqlalchemy import select
     from app.models.api_key import ApiKeyConfig, BackendKeyMapping
 
