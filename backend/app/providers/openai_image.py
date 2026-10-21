@@ -41,11 +41,17 @@ def _public_url(filename: str) -> str:
     return f"{base}/asset-uploads/{filename}"
 
 
-def _save_b64(b64: str) -> str:
-    upload_dir = os.environ.get(
-        "ASSET_UPLOAD_DIR",
-        os.path.join(os.path.dirname(__file__), "..", "..", "asset-uploads"),
+def _asset_dir() -> str:
+    """与 main.py 的 /asset-uploads 静态目录保持一致"""
+    chat_dir = os.environ.get(
+        "CHAT_UPLOAD_DIR",
+        os.path.join(os.path.dirname(__file__), "..", "..", "chat-uploads"),
     )
+    return os.environ.get("ASSET_UPLOAD_DIR", os.path.join(chat_dir, "assets"))
+
+
+def _save_b64(b64: str) -> str:
+    upload_dir = _asset_dir()
     os.makedirs(upload_dir, exist_ok=True)
     name = f"relay_{uuid.uuid4().hex}.png"
     with open(os.path.join(upload_dir, name), "wb") as f:
