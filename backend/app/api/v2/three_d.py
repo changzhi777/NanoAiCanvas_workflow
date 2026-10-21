@@ -6,15 +6,20 @@
 
 import logging
 import re
+from datetime import datetime
 from typing import Any, List, Optional
+from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
+from app.api.auth import get_current_user_optional
 from app.config import get_settings
+from app.models.user import User
+from app.redis import redis_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,43 @@ VIEW_TYPES = (
     "left", "right", "back", "top", "bottom", "left_front", "right_front",
 )
 JOB_ID_RE = re.compile(r"^(job|rig)_[A-Za-z0-9]{8,32}$")
+
+
+# ---------- 每日配额（Redis 计数；未登录不限额） ----------
+
+def _today() -> str:
+    return datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
+
+
+def _quota_key(user: User) -> str:
+    return f"hy3d:quota:{user.id}:{_today()}"
+
+
+async def _quota_status(user: Optional[User]) -> dict[str, Any]:
+    limit = get_settings().HY3D_DAILY_LIMIT
+    if user is None:
+        return {"authenticated": False, "limit": limit, "used": 0, "remaining": None}
+    used = int(await redis_client.get(_quota_key(user)) or 0)
+    remaining = max(0, limit - used) if limit > 0 else None
+    return {"authenticated": True, "limit": limit, "used": used, "remaining": remaining}
+
+
+async def _check_quota(user: Optional[User]) -> None:
+    limit = get_settings().HY3D_DAILY_LIMIT
+    if user is None or limit <= 0:
+        return
+    used = int(await redis_client.get(_quota_key(user)) or 0)
+    if used >= limit:
+        raise HTTPException(429, f"今日 3D 生成额度已用完（{limit} 次/天），请明日再试")
+
+
+async def _consume_quota(user: Optional[User]) -> None:
+    limit = get_settings().HY3D_DAILY_LIMIT
+    if user is None or limit <= 0:
+        return
+    key = _quota_key(user)
+    await redis_client.incr(key)
+    await redis_client.expire(key, 172800)
 
 
 # ---------- 请求模型 ----------
@@ -162,17 +204,34 @@ async def _request(method: str, path: str, **kwargs: Any) -> Any:
 # ---------- 路由 ----------
 
 @router.post("/text2mesh")
-async def create_text2mesh(req: Text2MeshRequest):
+async def create_text2mesh(
+    req: Text2MeshRequest,
+    user: Optional[User] = Depends(get_current_user_optional),
+):
     _validate_common(req)
+    await _check_quota(user)
     payload = req.model_dump(exclude_none=True)
-    return await _request("POST", "/api/v1/text2mesh", json=payload)
+    result = await _request("POST", "/api/v1/text2mesh", json=payload)
+    await _consume_quota(user)
+    return result
 
 
 @router.post("/img2mesh")
-async def create_img2mesh(req: Img2MeshRequest):
+async def create_img2mesh(
+    req: Img2MeshRequest,
+    user: Optional[User] = Depends(get_current_user_optional),
+):
     _validate_img(req)
+    await _check_quota(user)
     payload = req.model_dump(exclude_none=True)
-    return await _request("POST", "/api/v1/img2mesh", json=payload)
+    result = await _request("POST", "/api/v1/img2mesh", json=payload)
+    await _consume_quota(user)
+    return result
+
+
+@router.get("/quota")
+async def get_quota(user: Optional[User] = Depends(get_current_user_optional)):
+    return await _quota_status(user)
 
 
 @router.get("/tasks/{job_id}")
@@ -212,6 +271,7 @@ async def create_auto_rig(
     target_animations: str = Form('["run","jump"]'),
     smooth_weights: str = Form("true"),
     t_pose: str = Form("true"),
+    user: Optional[User] = Depends(get_current_user_optional),
 ):
     if skeleton_type not in SKELETON_TYPES:
         raise HTTPException(422, f"skeleton_type 必须是 {SKELETON_TYPES} 之一")
@@ -220,6 +280,7 @@ async def create_auto_rig(
     content = await file.read()
     if not content:
         raise HTTPException(422, "模型文件为空")
+    await _check_quota(user)
 
     data = {
         "skeleton_type": skeleton_type,
@@ -240,7 +301,9 @@ async def create_auto_rig(
         raise HTTPException(502, "无法连接 3D 服务")
     if resp.status_code >= 400:
         _raise_upstream(resp.status_code, _upstream_detail(resp))
-    return resp.json()
+    result = resp.json()
+    await _consume_quota(user)
+    return result
 
 
 @router.get("/download/{job_id}")

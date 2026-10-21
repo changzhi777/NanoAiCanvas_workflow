@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     # 注意：代码拼 /api/v1/... → 实际 https://3d.inkforge.com.cn/3d/api/api/v1/...
     HY3D_API_BASE_URL: str = "https://3d.inkforge.com.cn/3d/api"
     HY3D_API_KEY: str = ""  # 生产由 118 Caddy 注入；直连时填写
+    HY3D_DAILY_LIMIT: int = 20  # 登录用户每日 3D 任务上限（0=不限；未登录不限额）
 
     # Image description cache（minimax M3 视觉描述）
     IMG_DESC_CACHE_MAX_ROWS: int = 5000  # LRU 上限
