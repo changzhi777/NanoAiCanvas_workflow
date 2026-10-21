@@ -24,6 +24,7 @@ from wm_id import parse_id
 from wm_image import decode as image_decode
 
 EXIF = "exiftool"
+AUDIO_EXT = {".mp3", ".wav", ".aac", ".m4a", ".flac"}
 AI_MARKERS = ("aigc", "ai_generated", "aimetadata", "generativeai", "synthid",
               "com.nanocanvas", "生成合成", "ai生成")
 
@@ -51,9 +52,12 @@ def detect(path, tier: str = "light") -> dict:
     report["layers"]["c2pa"] = {"state": c2pa_state}
     report["layers"]["ai_declaration"] = decl
 
-    # ---- 层 2：L1 频域水印 ----
+    # ---- 层 2：L1 频域水印（音频域无 L1）----
     wm_hit, payload, wm_detail = False, None, None
-    if is_video:
+    is_audio = path.suffix.lower() in AUDIO_EXT
+    if is_audio:
+        wm_detail = {"note": "音频域无 L1 频层（deep=WavMark）"}
+    elif is_video:
         votes, frames, payload = wm_video.detect(path)
         wm_hit = votes > 0
         wm_detail = {"votes": votes, "frames": frames}
@@ -71,12 +75,25 @@ def detect(path, tier: str = "light") -> dict:
     deep_detail: dict = {}
     deep_id8 = None
     if tier == "deep":
-        if is_video:
-            from engines.videoseal_engine import VideoSealEngine
-            hit2, id8, det = VideoSealEngine().extract(path)
-            deep_detail["videoseal"] = {**det, "hit": hit2}
-            if hit2:
-                deep_id8 = id8
+        if is_audio:
+            from engines.audio_engine import AudioEngine
+            hit2, key2b, det = AudioEngine().extract(path)
+            assoc = (wm_fingerprint.find_by_key("wavmark", key2b.hex()) if key2b else None)
+            deep_detail["wavmark"] = {**det, "hit": hit2,
+                                      "linked_id": assoc["wm"] if assoc else None}
+            if hit2 and assoc:
+                deep_id8 = bytes.fromhex(assoc["wm"])
+            elif hit2:
+                deep_detail["wavmark"]["note"] = "key 命中但库内无关联"
+        elif is_video:
+            from engines.wam_engine import WamEngine
+            votes, frames, key4 = WamEngine().extract_video_votes(path)
+            assoc = (wm_fingerprint.find_by_key("wam", key4.hex()) if key4 else None)
+            deep_detail["wam_video"] = {"votes": votes, "frames": frames,
+                                        "linked_id": assoc["wm"] if assoc else None,
+                                        "hit": votes >= 2 or bool(assoc)}
+            if assoc:
+                deep_id8 = bytes.fromhex(assoc["wm"])
         else:
             from engines.wam_engine import WamEngine
             hit2, msg32, det = WamEngine().extract(path)
@@ -94,6 +111,9 @@ def detect(path, tier: str = "light") -> dict:
     lib_wm = None
     for rec in wm_fingerprint.load_all():       # 水印 ID 直接比对（转码后 pHash 可能失配）
         if payload and rec.get("wm") == payload.hex():
+            lib_wm = rec
+            break
+        if deep_id8 and rec.get("wm") == deep_id8.hex():
             lib_wm = rec
             break
         if deep_id8 and rec.get("wm") == deep_id8.hex():

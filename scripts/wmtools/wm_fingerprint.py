@@ -49,20 +49,25 @@ def fingerprint(path, wm_id: bytes | None = None, c2pa: str | None = None,
     """生成内容指纹记录。图 → 单 pHash；视频 → 首中尾三帧 pHash。extra 存引擎键。"""
     path = pathlib.Path(path)
     is_video = path.suffix.lower() in (".mp4", ".mov", ".webm")
+    is_audio = path.suffix.lower() in AUDIO_EXT
     tmp = path.parent / "_fp_f.png"
-    if is_video:
+    if is_audio:
+        rec = {
+            "file": path.name, "sha": _sha256(path),
+            "phash": None, "dhash": None,
+            "wm": wm_id.hex() if wm_id else None, "c2pa": c2pa,
+            **_probe(path),
+        }
+    elif is_video:
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(path),
                         "-frames:v", "1", str(tmp)], check=True)
         im = Image.open(tmp).convert("RGB")          # 视频不能直接 Image.open
-    else:
-        im = Image.open(path).convert("RGB")
-    rec = {
-        "file": path.name, "sha": _sha256(path),
-        "phash": str(imagehash.phash(im)), "dhash": str(imagehash.dhash(im)),
-        "wm": wm_id.hex() if wm_id else None, "c2pa": c2pa,
-        **_probe(path),
-    }
-    if is_video:
+        rec = {
+            "file": path.name, "sha": _sha256(path),
+            "phash": str(imagehash.phash(im)), "dhash": str(imagehash.dhash(im)),
+            "wm": wm_id.hex() if wm_id else None, "c2pa": c2pa,
+            **_probe(path),
+        }
         frames = []
         total = rec.get("duration") or 1
         for t in [0, total / 2, max(total - 0.1, 0)]:
@@ -71,8 +76,18 @@ def fingerprint(path, wm_id: bytes | None = None, c2pa: str | None = None,
             fh = Image.open(tmp).convert("RGB")
             frames.append(str(imagehash.phash(fh)))
         rec["frame_phash"] = frames
+    else:
+        im = Image.open(path).convert("RGB")
+        rec = {
+            "file": path.name, "sha": _sha256(path),
+            "phash": str(imagehash.phash(im)), "dhash": str(imagehash.dhash(im)),
+            "wm": wm_id.hex() if wm_id else None, "c2pa": c2pa,
+            **_probe(path),
+        }
     if extra:
         rec.update(extra)
+    if is_audio:
+        return rec                      # 音频无视觉帧序列，直接返回
     tmp.unlink(missing_ok=True)
     return rec
 
@@ -113,9 +128,15 @@ def find_by_key(key_field: str, key_hex: str) -> dict | None:
     return None
 
 
+AUDIO_EXT = {".mp3", ".wav", ".aac", ".m4a", ".flac"}
+
+
 def lookup(path, threshold: int = 10) -> list[tuple[dict, int]]:
-    """按 pHash 汉明距离检索库内近似内容。返回 [(记录, 距离)] 升序。视频取首帧。"""
+    """按 pHash 汉明距离检索库内近似内容。返回 [(记录, 距离)] 升序。
+    视频取首帧；音频无视觉 pHash → 返回空（音频靠 wavmark key 比对）。"""
     path = pathlib.Path(path)
+    if path.suffix.lower() in AUDIO_EXT:
+        return []
     if path.suffix.lower() in (".mp4", ".mov", ".webm"):
         tmp = path.parent / "_wm_lk.png"
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(path),

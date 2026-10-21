@@ -152,3 +152,105 @@ def _load_with_args(args, ckpt_path: str):
     checkpoint = torch.load(ckpt_path, map_location="cpu")
     wam.load_state_dict(checkpoint)
     return wam
+
+# ===================== 视频逐帧扩展（维度二十实测：crf30 三帧 100%）=====================
+
+def embed_video(self, src: str, wm_id: bytes, out: str, project: str = "default",
+                max_frames: int | None = None, crf: int = 18, **kw) -> str:
+    """逐帧 WAM 嵌入视频（每帧独立完整 32-bit 水印，任意抽帧可验）。MPS/CPU 自动。"""
+    import subprocess
+    import av
+    from PIL import Image
+    from engines.notebooks_shim import default_transform, unnormalize_img
+
+    wam = self._load()
+    msg32 = _pack32(wm_id, project)
+    bits = torch.tensor([[int(b) for b in format(int.from_bytes(msg32, "big"), "032b")]],
+                        dtype=torch.float32).to(self._device)
+
+    container = av.open(src)
+    frames = []
+    for i, frame in enumerate(container.decode(video=0)):
+        if max_frames and i >= max_frames:
+            break
+        frames.append(frame.to_ndarray(format="rgb24"))
+    fps = float(container.streams.video[0].average_rate or 24)
+    container.close()
+
+    wm_frames = []
+    with torch.no_grad():
+        for i, arr in enumerate(frames):
+            im = Image.fromarray(arr)
+            t = default_transform(im).unsqueeze(0).to(self._device)
+            with torch.no_grad():
+                o = wam.embed(t, bits)
+            pix = unnormalize_img(o["imgs_w"]).clamp(0, 1)
+            wm_frames.append((pix[0].permute(1, 2, 0).cpu().numpy() * 255).astype("uint8"))
+            if i % 30 == 0:
+                print(f"    WAM 逐帧 {i}/{len(frames)}", flush=True)
+
+    h, w = wm_frames[0].shape[:2]
+    proc = subprocess.Popen(
+        ["ffmpeg", "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{w}x{h}", "-r", str(int(fps)), "-i", "-",
+         "-c:v", "libx264", "-crf", str(crf), "-preset", "veryfast",
+         "-pix_fmt", "yuv420p", "/tmp/_wam_vid_na.mp4"], stdin=subprocess.PIPE)
+    for f in wm_frames:
+        proc.stdin.write(f.tobytes())
+    proc.stdin.close()
+    proc.wait()
+    if any(s for s in av.open(src).streams if s.type == "audio"):
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", "/tmp/_wam_vid_na.mp4",
+                        "-i", src, "-map", "0:v", "-map", "1:a:0", "-c:v", "copy",
+                        "-c:a", "aac", "-shortest", out], check=True)
+    else:
+        pathlib.Path("/tmp/_wam_vid_na.mp4").replace(out)
+    return out
+
+
+def extract_video_votes(self, path: str, project: str = "default", samples: int = 3
+                        ) -> tuple[int, list[dict], bytes | None]:
+    """抽帧 WAM 提取投票。返回 (命中帧数, 各帧记录, key4b|None)。"""
+    import av
+    from PIL import Image
+    from engines.notebooks_shim import default_transform
+    from watermark_anything.data.metrics import msg_predict_inference
+
+    wam = self._load()
+    container = av.open(path)
+    all_frames = []
+    for i, frame in enumerate(container.decode(video=0)):
+        all_frames.append(frame.to_ndarray(format="rgb24"))
+    total = len(all_frames)
+    container.close()
+    pts = sorted({0, total // 2, total - 1}) if samples == 3 else \
+        [int(total * i / samples) for i in range(samples)]
+
+    msg_gt_candidate = None
+    frames_report, votes = [], 0
+    for i, nf in enumerate(pts):
+        arr = all_frames[nf]
+        atk = default_transform(Image.fromarray(arr)).unsqueeze(0).to(self._device)
+        with torch.no_grad():
+            preds = wam.detect(atk)
+        masks = torch.sigmoid(preds["preds"][:, 0:1])
+        cover = float((masks > 0.5).float().mean())
+        detail = {"frame": nf, "mask_cover": round(cover, 2)}
+        hit = False
+        if cover >= 0.05:
+            bits_mean = msg_predict_inference(
+                preds["preds"][:, 1:].cpu(), masks.cpu())
+            b = (bits_mean > 0.5)[0].cpu().numpy().astype(int)
+            key4 = int("".join(map(str, b)), 2).to_bytes(4, "big")
+            if msg_gt_candidate is None:
+                msg_gt_candidate = key4
+            hit = key4 == msg_gt_candidate
+            detail["key4"] = key4.hex()
+        frames_report.append(detail)
+        votes += int(hit)
+    return votes, frames_report, msg_gt_candidate
+
+
+# 实例方法绑定
+WamEngine.embed_video = embed_video
+WamEngine.extract_video_votes = extract_video_votes

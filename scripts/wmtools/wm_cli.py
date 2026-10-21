@@ -32,6 +32,7 @@ from wm_image import decode as img_decode  # noqa: E402
 from wm_image import embed as img_embed  # noqa: E402
 
 VIDEO_EXT = {".mp4", ".mov", ".webm"}
+AUDIO_EXT = {".mp3", ".wav", ".aac", ".m4a", ".flac"}
 
 
 def cmd_id(a):
@@ -106,19 +107,34 @@ def cmd_pipeline(a):
     extra = {}
     steps = 5 if tier == "deep" else 4
 
-    print(f"[1/{steps}] L1 频域嵌入 {wm.hex()}")
-    if is_video:
+    is_audio = ext in AUDIO_EXT
+    print(f"[1/{steps}] L1 嵌入 {wm.hex()}")
+    if is_audio:
+        if tier == "deep":
+            pass                                   # 音频 deep 由 L2 WavMark 承担
+        else:
+            print("    ↷ 音频 light：无频域 L1，仅元数据标识（--tier deep 启用 WavMark）")
+    elif is_video:
         wm_video.embed(src, wm, work)
     else:
         img_embed(src, wm, work)
 
     if tier == "deep":
-        print(f"[2/{steps}] L2 深度嵌入（全帧频域：每帧含完整 RS 位流，抗二压/抽帧）")
-        if is_video:
-            vs_out = d / f"{stem}.vs{ext}"
-            wm_video.embed(src, wm, str(vs_out), all_frames=True)
+        print(f"[2/{steps}] L2 深度嵌入")
+        if is_audio:
+            from engines.audio_engine import AudioEngine, _pack16
+            aud_out = d / f"{stem}.wm{ext}"
+            AudioEngine().embed(src, wm, str(aud_out), project=a.project)
+            work = aud_out
+            extra["wavmark"] = _pack16(wm, a.project).hex()
+        elif is_video:
+            from engines.wam_engine import WamEngine
+            wam_out = d / f"{stem}.wam{ext}"
+            WamEngine().embed_video(work, wm, str(wam_out), project=a.project)
             work.unlink(missing_ok=True)
-            work = vs_out
+            work = wam_out
+            from engines.wam_engine import _pack32
+            extra["wam"] = _pack32(wm, a.project).hex()
         else:
             from engines.wam_engine import WamEngine, _pack32
             wam_out = d / f"{stem}.wam{ext}"
@@ -127,14 +143,14 @@ def cmd_pipeline(a):
             work = wam_out
             extra["wam"] = _pack32(wm, a.project).hex()
 
-    print(f"[2/{steps}] 元数据清洗")
+    print(f"[{3 if tier == 'deep' else 2}/{steps}] 元数据清洗")
     if is_video:
         cleaned = d / f"{stem}.clean{ext}"
         wm_c2pa.clean_video(work, cleaned)
         work.unlink(missing_ok=True)
         work = cleaned
 
-    print(f"[3/{steps}] C2PA 签名")
+    print(f"[{3 if tier == 'deep' else 3}/{steps}] C2PA 签名")
     final = d / f"{stem}_final{ext}"
     wm_c2pa.sign(work, meta, final, title=src.stem)
     if work != final:
@@ -207,7 +223,7 @@ def cmd_selftest(a):
     assert hit and payload == wm, "攻击链解码失败"
     print("    ✅")
 
-    print("[4] WAM 深度引擎（可用时）")
+    print("[4] WAM 图像深度引擎（可用时）")
     from engines.wam_engine import WamEngine
     we = WamEngine()
     if we.available():
@@ -221,6 +237,37 @@ def cmd_selftest(a):
         print("    ✅")
     else:
         print("    ↷ 不可用，跳过（bash setup_engines.sh 安装）")
+    print("[5] WAM 视频逐帧深度引擎（可用时）")
+    from engines.wam_engine import WamEngine as WE2
+    we2 = WE2()
+    if we2.available():
+        td = HERE / "testdata"
+        sample = td / "sample_5s.mp4"
+        if sample.exists():
+            we2.embed_video(str(sample), wm, "/tmp/_st_wamvid.mp4", project="selftest")
+            votes, frames, key4 = we2.extract_video_votes("/tmp/_st_wamvid.mp4")
+            assert votes >= 2 and key4 == _pack32(wm, "selftest"), f"WAM 视频投票失败 {votes}"
+            print(f"    ✅ 投票 {votes}/3")
+        else:
+            print("    ↷ 缺 testdata/sample_5s.mp4，跳过")
+    else:
+        print("    ↷ 不可用，跳过")
+
+    print("[6] WavMark 音频深度引擎（可用时）")
+    from engines.audio_engine import AudioEngine, _pack16
+    ae = AudioEngine()
+    if ae.available():
+        tsa = HERE / "testdata" / "sample_tts16k.wav"
+        if tsa.exists():
+            ae.embed(str(tsa), wm, "/tmp/_st_wm.wav", project="selftest")
+            hit_a, key2b, _ = ae.extract("/tmp/_st_wm.wav")
+            assert hit_a and key2b == _pack16(wm, "selftest"), "WavMark 提取失败"
+            print("    ✅")
+        else:
+            print("    ↷ 缺 testdata/sample_tts16k.wav，跳过")
+    else:
+        print("    ↷ 不可用，跳过")
+
     print("selftest 全绿")
 
 

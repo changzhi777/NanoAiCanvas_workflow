@@ -45,7 +45,7 @@ def sign(src, meta: dict, out, title: str = "") -> str:
         json.dump(manifest, f, ensure_ascii=False)
         mpath = f.name
     try:
-        subprocess.run([C2PA, str(src), "-m", mpath, "-o", str(out)],
+        subprocess.run([C2PA, "-f", str(src), "-m", mpath, "-o", str(out)],
                        check=True, timeout=600, capture_output=True)
     finally:
         pathlib.Path(mpath).unlink(missing_ok=True)
