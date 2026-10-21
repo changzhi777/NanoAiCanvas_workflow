@@ -106,3 +106,30 @@ async def transfer_with_fallback(source_url: str, key_hint: str = "", asset_type
     # 降级：本地 asset-uploads（image_downloader 已有完整实现）
     local_url, _ = await download_image(source_url, asset_type)
     return local_url or source_url
+
+
+async def upload_bytes_to_cos(content: bytes, key_hint: str = "uploads", ext: str = "png") -> str | None:
+    """直接上传内存字节到 COS（参考图/抠像输入图公网化）；未配置/失败返回 None。"""
+    if not is_cos_enabled():
+        return None
+    try:
+        from qcloud_cos import CosConfig, CosS3Client
+    except ImportError:
+        logger.warning("cos-python-sdk-v5 未安装，上传跳过")
+        return None
+    try:
+        key = f"{key_hint.rstrip('/')}/{uuid.uuid4().hex}.{ext.lstrip('.')}"
+        config = CosConfig(
+            Region=os.environ["COS_REGION"],
+            SecretId=os.environ["COS_SECRET_ID"],
+            SecretKey=os.environ["COS_SECRET_KEY"],
+        )
+        client = CosS3Client(config)
+        bucket = os.environ["COS_BUCKET"]
+        await asyncio.to_thread(client.put_object, Bucket=bucket, Body=content, Key=key)
+        url = f"{_public_base().rstrip('/')}/{key}"
+        logger.info(f"COS 上传成功: {url}")
+        return url
+    except Exception as e:
+        logger.warning(f"COS 上传失败: {e}")
+        return None

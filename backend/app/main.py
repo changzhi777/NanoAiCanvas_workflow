@@ -21,6 +21,7 @@ from app.api.v2 import workflow_tasks as v2_workflow_tasks
 from app.api.v2 import generation_log as v2_genlog
 from app.api.v2 import tvc_config as v2_tvc_config
 from app.api.v2 import library as v2_library
+from app.api.v2 import uploads as v2_uploads
 from app.api.v2 import tvc_projects as v2_tvc_projects
 from app.api.v2 import tvc_acceptance as v2_tvc_acceptance
 from app.api.v2 import showcase as v2_showcase
@@ -108,6 +109,7 @@ app.include_router(chat.router, prefix="/api")
 
 # V2 routers
 app.include_router(v2_image.router)
+app.include_router(v2_uploads.router)
 app.include_router(v2_skills.router)
 app.include_router(v2_admin.router)
 app.include_router(v2_glm.router)
