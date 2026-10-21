@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     MINIMAX_API_KEY: str = ""
     MINIMAX_API_BASE_URL: str = "https://api.minimax.cn/v1"
 
+    # 混元 3D（hy3d-cli，线上 118）
+    # 注意：代码拼 /api/v1/... → 实际 https://3d.inkforge.com.cn/3d/api/api/v1/...
+    HY3D_API_BASE_URL: str = "https://3d.inkforge.com.cn/3d/api"
+    HY3D_API_KEY: str = ""  # 生产由 118 Caddy 注入；直连时填写
+
     # Image description cache（minimax M3 视觉描述）
     IMG_DESC_CACHE_MAX_ROWS: int = 5000  # LRU 上限
     IMG_DESC_CACHE_TTL_DAYS: int = 30   # TTL（天）
