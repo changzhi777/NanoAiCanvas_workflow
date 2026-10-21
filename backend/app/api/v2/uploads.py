@@ -2,8 +2,12 @@
 
 POST /v2/uploads  multipart(file)  → {"url": "https://..."}
 """
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from typing import Optional
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+
+from app.api.auth import get_current_user_optional
+from app.models import User
 from app.services.cos_upload import is_cos_enabled, upload_bytes_to_cos
 
 router = APIRouter(prefix="/v2/uploads", tags=["v2-uploads"])
@@ -13,7 +17,12 @@ MAX_SIZE = 15 * 1024 * 1024
 
 
 @router.post("")
-async def upload(file: UploadFile = File(...)):
+async def upload(
+    file: UploadFile = File(...),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录后上传")
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="仅支持图片文件")
     content = await file.read()
