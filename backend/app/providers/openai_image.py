@@ -61,13 +61,18 @@ class OpenAIImageProvider(BaseImageProvider):
         cfg = config or {}
         self.base_url = (cfg.get("base_url") or "https://api.openai.com").rstrip("/")
         self.model = cfg.get("model") or "gpt-image-1"
-        self.timeout = float(cfg.get("timeout", 180))
+        self.timeout = float(cfg.get("timeout", 100))  # 与桌面 BFF 120s 超时留余量
         self.api_key = api_key
 
     async def generate_image(self, params: dict) -> str:
+        """提交即等待结果：失败会抛出异常，供上层多 Provider 故障切换。"""
         task_id = f"sync_{uuid.uuid4().hex}"
         _JOBS[task_id] = {"status": "pending", "images": None, "error": None}
-        asyncio.create_task(self._run(task_id, params))
+        await self._run(task_id, params)
+        st = _JOBS.get(task_id) or {}
+        if st.get("status") != "success":
+            _JOBS.pop(task_id, None)
+            raise RuntimeError(st.get("error") or "Provider 生成失败")
         return task_id
 
     async def _run(self, task_id: str, params: dict) -> None:
