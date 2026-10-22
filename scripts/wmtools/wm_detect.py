@@ -88,7 +88,7 @@ def detect(path, tier: str = "light") -> dict:
         elif is_video:
             from engines.wam_engine import WamEngine
             votes, frames, key4 = WamEngine().extract_video_votes(path)
-            assoc = (wm_fingerprint.find_by_key("wam", key4.hex()) if key4 else None)
+            assoc = (wm_fingerprint.find_by_key_fuzzy("wam", key4.hex()) if key4 else None)
             deep_detail["wam_video"] = {"votes": votes, "frames": frames,
                                         "linked_id": assoc["wm"] if assoc else None,
                                         "hit": votes >= 2 or bool(assoc)}
@@ -97,7 +97,7 @@ def detect(path, tier: str = "light") -> dict:
         else:
             from engines.wam_engine import WamEngine
             hit2, msg32, det = WamEngine().extract(path)
-            assoc = (wm_fingerprint.find_by_key("wam", msg32.hex()) if msg32 else None)
+            assoc = (wm_fingerprint.find_by_key_fuzzy("wam", msg32.hex()) if msg32 else None)
             deep_detail["wam"] = {**det, "hit": hit2,
                                   "linked_id": assoc["wm"] if assoc else None}
             if hit2 and assoc:

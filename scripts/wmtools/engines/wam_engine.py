@@ -210,7 +210,7 @@ def embed_video(self, src: str, wm_id: bytes, out: str, project: str = "default"
 
 def extract_video_votes(self, path: str, project: str = "default", samples: int = 3
                         ) -> tuple[int, list[dict], bytes | None]:
-    """抽帧 WAM 提取投票。返回 (命中帧数, 各帧记录, key4b|None)。"""
+    """抽帧 WAM 提取投票（位级多数聚合，抗单帧 bit 抖动）。"""
     import av
     from PIL import Image
     from engines.notebooks_shim import default_transform
@@ -218,17 +218,14 @@ def extract_video_votes(self, path: str, project: str = "default", samples: int 
 
     wam = self._load()
     container = av.open(path)
-    all_frames = []
-    for i, frame in enumerate(container.decode(video=0)):
-        all_frames.append(frame.to_ndarray(format="rgb24"))
+    all_frames = [f.to_ndarray(format="rgb24") for f in container.decode(video=0)]
     total = len(all_frames)
     container.close()
-    pts = sorted({0, total // 2, total - 1}) if samples == 3 else \
+    pts = sorted({0, total // 2, max(total - 1, 0)}) if samples == 3 else \
         [int(total * i / samples) for i in range(samples)]
 
-    msg_gt_candidate = None
-    frames_report, votes = [], 0
-    for i, nf in enumerate(pts):
+    frames_report, bits_stack = [], []
+    for nf in pts:
         arr = all_frames[nf]
         atk = default_transform(Image.fromarray(arr)).unsqueeze(0).to(self._device)
         with torch.no_grad():
@@ -236,21 +233,20 @@ def extract_video_votes(self, path: str, project: str = "default", samples: int 
         masks = torch.sigmoid(preds["preds"][:, 0:1])
         cover = float((masks > 0.5).float().mean())
         detail = {"frame": nf, "mask_cover": round(cover, 2)}
-        hit = False
         if cover >= 0.05:
-            bits_mean = msg_predict_inference(
-                preds["preds"][:, 1:].cpu(), masks.cpu())
+            bits_mean = msg_predict_inference(preds["preds"][:, 1:].cpu(), masks.cpu())
             b = (bits_mean > 0.5)[0].cpu().numpy().astype(int)
-            key4 = int("".join(map(str, b)), 2).to_bytes(4, "big")
-            if msg_gt_candidate is None:
-                msg_gt_candidate = key4
-            hit = key4 == msg_gt_candidate
-            detail["key4"] = key4.hex()
+            bits_stack.append(b)
+            detail["key4"] = int("".join(map(str, b)), 2).to_bytes(4, "big").hex()
         frames_report.append(detail)
-        votes += int(hit)
-    return votes, frames_report, msg_gt_candidate
+
+    key4 = None
+    if bits_stack:
+        agg = (sum(bits_stack) * 2 > len(bits_stack)).astype(int)   # 位级多数
+        key4 = int("".join(map(str, agg)), 2).to_bytes(4, "big")
+    votes = len(bits_stack)
+    return votes, frames_report, key4
 
 
-# 实例方法绑定
 WamEngine.embed_video = embed_video
 WamEngine.extract_video_votes = extract_video_votes

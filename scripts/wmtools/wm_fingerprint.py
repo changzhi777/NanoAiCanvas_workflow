@@ -120,6 +120,28 @@ def load_all():
                 yield json.loads(line)
 
 
+def find_by_key_fuzzy(key_field: str, key_hex: str, max_bits: int = 2) -> dict | None:
+    """按引擎键模糊查找（汉明距离 ≤ max_bits），抗提取 bit 抖动。"""
+    try:
+        target = bytes.fromhex(key_hex)
+    except ValueError:
+        return None
+    for rec in load_all():
+        v = rec.get(key_field)
+        if not v:
+            continue
+        try:
+            b = bytes.fromhex(v)
+        except ValueError:
+            continue
+        if len(b) != len(target):
+            continue
+        dist = sum(bin(x ^ y).count("1") for x, y in zip(b, target))
+        if dist <= max_bits:
+            return rec
+    return None
+
+
 def find_by_key(key_field: str, key_hex: str) -> dict | None:
     """按引擎键（如 rec['wam']）查库，返回关联记录（含完整 8B ID）。"""
     for rec in load_all():
