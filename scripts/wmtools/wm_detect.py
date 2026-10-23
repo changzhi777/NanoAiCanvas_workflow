@@ -76,7 +76,7 @@ def detect(path, tier: str = "light") -> dict:
     deep_id8 = None
     if tier == "deep":
         if is_audio:
-            from engines.audio_engine import AudioEngine
+            from engines.audio_engine import AudioEngine, _pack16
             hit2, key2b, det = AudioEngine().extract(path)
             assoc = (wm_fingerprint.find_by_key("wavmark", key2b.hex()) if key2b else None)
             deep_detail["wavmark"] = {**det, "hit": hit2,

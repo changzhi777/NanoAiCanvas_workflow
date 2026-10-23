@@ -1,18 +1,15 @@
-"""engines.audio_engine — L2 音频深度引擎（WavMark，16-bit payload，恒 CPU）。
+"""engines.audio_engine — L2 音频深度引擎（WavMark，16-bit payload）。
 
-实测背书（维度二十）：TTS 音轨（16kHz）无损/AAC 96k/AAC 48k 全部 bit 100%；
-8k 降采样为边界。AudioSeal py3.14 硬不兼容（Moshi SEANet LSTM 崩），弃用。
+实测背书：TTS 16kHz 音轨 无损/AAC 96k/AAC 48k 全部 bit 100%；8k 降采样为边界。
+选型说明：AudioSeal 0.2.0 在 torch≥2.4 存在 LSTM/permute 上游崩溃 bug，弃用。
 
-容量适配：WavMark 真实容量 16-bit payload（16 固定 pattern + 16 payload）。
-  16-bit = 项目 hash 高 4b + 序号 12b；完整 8B ID 经 registry rec['wavmark'] 关联。
+容量：16-bit payload = 项目 hash 高 4b + ID 尾 12b；完整 8B ID 经 registry rec['wavmark'] 关联。
+输入任意格式（ffmpeg 转 16k 单声道），输出恒为 16kHz wav。
 
-依赖：wavmark（pip，py3.14 直通）、soundfile、ffmpeg（重采样）。
-坑：torchaudio 2.11 IO 迁 TorchCodec → 标准 wave 模块绕行。
-
-用法（模块级单例）：
+用法：
     from engines.audio_engine import AudioEngine
     e = AudioEngine()
-    e.embed("in.mp3", id8, "out.wav", project="p")   # 输出恒 wav 16k
+    e.embed("in.mp3", id8, "out.wav", project="p")
     hit, key2b, detail = e.extract("out.wav")
 """
 from __future__ import annotations
@@ -22,24 +19,25 @@ import pathlib
 import subprocess
 import wave as _wave
 
+import numpy as np
+import soundfile as sf
+import torch
+
 from engines.base import Engine, _torch_ok
 
-_model_cache: dict = {}
 AUDIO_EXT = {".mp3", ".wav", ".aac", ".m4a", ".flac"}
 
 
 def _pack16(id8: bytes, project: str) -> bytes:
-    """16-bit 精简键：项目 hash 高 4b + ID 尾 12b（seq 低 12 位）。"""
     proj4 = int(hashlib.sha256(project.encode()).hexdigest(), 16) & 0xF
     seq12 = int.from_bytes(id8[6:8], "big") & 0xFFF
     return bytes([(proj4 << 4) | (seq12 >> 8), seq12 & 0xFF])
 
 
-def _load_wav(path: str) -> tuple["object", int]:  # -> (torch C×N, sr)
+def _load_wav(path: str):
     w = _wave.open(path, "rb")
     sr = w.getframerate()
     ch = w.getnchannels()
-    import numpy as np
     data = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32) / 32768
     w.close()
     import torch
@@ -61,6 +59,7 @@ class AudioEngine(Engine):
     name = "wavmark"
     tier = "deep"
     domain = "audio"
+    _model = None
 
     def available(self) -> bool:
         try:
@@ -74,23 +73,25 @@ class AudioEngine(Engine):
         return "WavMark 引擎缺失——pip3 install --break-system-packages wavmark soundfile"
 
     def _load(self):
-        if _model_cache.get("wm") is None:
-            import wavmark
-            _model_cache["wm"] = wavmark.load_model()
-        return _model_cache["wm"]
+        import wavmark
+        if AudioEngine._model is None:
+            AudioEngine._model = wavmark.load_model()
+        return AudioEngine._model
+
+    def _to16k(self, src: str, out_wav: str) -> str:
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src,
+                        "-ar", "16000", "-ac", "1", out_wav], check=True)
+        return out_wav
 
     def embed(self, src: str, wm_id: bytes, out: str, project: str = "default", **kw) -> str:
-        """音频深嵌。任意输入格式 → ffmpeg 转 16k wav → WavMark → 输出 wav 16k。"""
-        import numpy as np
         import soundfile as sf
         import torch
         import wavmark
 
         model = self._load()
-        tmp16 = pathlib.Path(out).parent / "_aud16.wav"
-        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src,
-                        "-ar", "16000", "-ac", "1", str(tmp16)], check=True)
-        sig, sr = sf.read(str(tmp16), dtype="float32")
+        tmp = str(pathlib.Path(out).parent / "_aud16.wav")
+        self._to16k(src, tmp)
+        sig, sr = sf.read(tmp, dtype="float32")
         if sig.ndim > 1:
             sig = sig[:, 0]
 
@@ -100,37 +101,30 @@ class AudioEngine(Engine):
         with torch.no_grad():
             wm_sig, _ = wavmark.encode_watermark(model, sig, payload)
         sf.write(out, wm_sig, sr)
-        tmp16.unlink(missing_ok=True)
+        pathlib.Path(tmp).unlink(missing_ok=True)
         return out
 
     def extract(self, path: str) -> tuple[bool, bytes | None, dict]:
-        """提取 16-bit 键。命中=解出 payload（bit 级存在性）；全 ID 需 registry 关联。"""
-        import numpy as np
         import soundfile as sf
         import torch
         import wavmark
 
         model = self._load()
-        tmp16 = pathlib.Path(path).parent / "_audchk16.wav"
+        tmp = pathlib.Path(path).parent / "_audchk16.wav"
         if pathlib.Path(path).suffix.lower() != ".wav":
             subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", path,
-                            "-ar", "16000", "-ac", "1", str(tmp16)], check=True)
-            src = str(tmp16)
+                            "-ar", "16000", "-ac", "1", str(tmp)], check=True)
+            src = str(tmp)
         else:
             src = path
-        sig, _ = sf.read(src, dtype="float32")
+        sig, sr = sf.read(src, dtype="float32")
         if sig.ndim > 1:
             sig = sig[:, 0]
         with torch.no_grad():
-            dec, info = wavmark.decode_watermark(model, sig)
-        tmp16.unlink(missing_ok=True)
+            dec, _ = wavmark.decode_watermark(model, sig)
+        tmp_p = pathlib.Path(tmp)
+        tmp_p.unlink(missing_ok=True)
         if dec is None:
-            return False, None, {"note": "start-bit 未对齐（无水印或已损毁）"}
+            return False, None, {"note": "起始位未对齐（无水印或已损毁）"}
         key16 = int("".join(map(str, dec)), 2).to_bytes(2, "big")
         return True, key16, {"key16": key16.hex()}
-
-    # 便捷：拿 2B 键反查全 ID
-    def link_full_id(self, key2b: bytes):
-        import wm_fingerprint
-        rec = wm_fingerprint.find_by_key("wavmark", key2b.hex())
-        return (bytes.fromhex(rec["wm"]), rec) if rec else (None, None)
