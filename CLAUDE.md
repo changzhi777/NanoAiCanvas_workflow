@@ -793,3 +793,19 @@ python3 build_final_v4_digital.py       # 总装（lipsync 首尾 + 图卡 + BGM
 
 `assets/productions/` — 每个作品一个自包含资产包（成片/音轨/BGM/图卡/分镜/制作档案）。
 现有：《机器干活人觉醒》3:50（v1-v8 迭代全程归档）。
+
+## 科学纪录片模板（science_doc）🔬
+
+> **一句话**：一个元素/主题 → 旁白脚本（事实核校）→ 手绘图卡静止展示 → H3 插画活化高光 → 速创 TTS 抒情男声 → WAM 逐帧 deep 水印 → ~2.5 分钟科普成片。
+> 全链实战验证于《锂 · 会跳舞的金属》（153.3s，档案 `scripts/podcast_studio/assets/productions/锂_会跳舞的金属/`）。
+
+**位置**：`scripts/podcast_studio/out/lithium_science/` ｜ **模板文档**：`scripts/podcast_studio/out/lithium_science/科学纪录片模板.md`（含分镜结构/提示词三铁律/字幕规范/BGM 人声复检流程/一键复刻命令）
+
+### 快速要点
+
+- **结构**：S0 螺旋英雄镜头 → 钩子/发现史/性质 → 实验演示 ×2 → 原理（禁 H3）→ 应用 → 金句
+- **图卡完全静止**（一次 resize 缓存零重采样，帧间差分必须 ≈0）；动效只在 H3 高光与文字
+- **字幕**：FontSize 20 / 自动换行 ≤20 字 / 边距 40（30 过大已返工）；特殊字形 ₂³ 用 Arial Unicode
+- **BGM 选曲**：先过 demucs 人声复检（vocals ≤ -28dB），tech_clean/awakening 含吟唱已禁用
+- **旁白**：速创 audio_tts（返回 tar 含 titles 字幕时间轴）；安全提示角标必配（实验段）
+- **水印**：出片后 wmtools pipeline --tier deep（WAM 逐帧+C2PA+指纹），幂等可重跑
