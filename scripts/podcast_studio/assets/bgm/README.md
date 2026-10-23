@@ -45,3 +45,14 @@ curl -sL "<AUDIO-URL>" -H "Referer: https://www.minimaxi.com/audio/music" \
 - **culture**：中国传统古风配乐：古琴与箫为主，空灵悠远，慢板，安静内省，书卷气与山河意境，留白呼吸感，纯音乐无人声，时长约60秒
 
 （成本：600 声贝/首；当前账户 9,138 声贝 ≈ 15 首）
+
+## ⚠️ 人声污染警示（2026-10-23）
+
+- `tech_clean.mp3` 实测含**人声吟唱和声层**（demucs vocals 轨 mean -19.7dB）——已挪入
+  `_archive_vocal_contaminated/`，**禁止再用于成片**
+- `awakening.mp3` 同样含人声哼鸣（更早投诉记录），同禁
+- **BGM 选曲标准流程**：候选曲必须先过 `demucs --two-stems=vocals` 分离复检，
+  vocals 轨 mean_volume ≤ -28dB 方可使用
+- 已验证干净：`culture_slow.mp3`（vocals -31.5dB）✅ 锂篇采用
+- `bagpipes.mp3` vocals -18.7dB 为风笛旋律误判（纯器乐），风格限欧洲历史题材
+- `tech_clean_instrumental.mp3` 为 demucs 伴奏提取版（亦含吟唱残留，同禁）
