@@ -64,14 +64,15 @@ class CanvasErrorBoundary extends Component<{ children: ReactNode }, { error: Er
   }
 }
 import { cn } from '@/lib/utils';
-import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X, Bot } from 'lucide-react';
+import { BarChart3, Search, Code, Keyboard, Focus, ChevronLeft, ChevronRight, Eye, EyeOff, LayoutGrid, GitBranch, FlaskConical, Map, X, Bot, AudioLines } from 'lucide-react';
 import type { WorkflowNodeType, NodePort } from '@/stores/nanoaiWorkflowStore';
 
-export type PageKey = 'canvas' | 'workflow' | 'nano2'
+export type PageKey = 'canvas' | 'workflow' | 'nano2' | 'dubbing'
 export const PAGES: { key: PageKey; label: string; icon: React.ReactNode }[] = [
   { key: 'canvas', label: '无限画布', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
   { key: 'workflow', label: 'Workflow', icon: <GitBranch className="w-3.5 h-3.5" /> },
   { key: 'nano2', label: 'Nano2', icon: <FlaskConical className="w-3.5 h-3.5" /> },
+  { key: 'dubbing', label: '配音大师', icon: <AudioLines className="w-3.5 h-3.5" /> },
 ]
 
 export function PageSwitcher({ isDark }: { isDark: boolean }) {

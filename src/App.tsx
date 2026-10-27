@@ -12,6 +12,7 @@ import { loadRoutes } from './lib/api/model-routing'
 const CanvasPage = lazy(() => import('./pages/CanvasPage'))
 const NanoaiWorkflowPage = lazy(() => import('./pages/NanoaiWorkflowPage'))
 const Nano2Page = lazy(() => import('./app/nano2/page'))
+const DubbingPage = lazy(() => import('./app/dubbing/page'))
 const AdminPage = lazy(() => import('./app/admin/page'))
 const AdminProvidersPage = lazy(() => import('./app/admin/providers/page'))
 const AdminApiKeysPage = lazy(() => import('./app/admin/api-keys/page'))
@@ -35,7 +36,7 @@ const AdminTvcOneShotPage = lazy(() => import('./app/admin/tvc-one-shot/page'))
 const NotificationsPage = lazy(() => import('./app/notifications/page'))
 import { AdminSidebar } from './components/admin/AdminSidebar'
 
-type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps' | 'admin-apps-workflow' | 'admin-apps-nano2' | 'admin-tvc-config' | 'admin-tvc-one-shot' | 'notifications'
+type AdminPageType = 'canvas' | 'workflow' | 'nano2' | 'dubbing' | 'admin' | 'admin-providers' | 'admin-api-keys' | 'admin-system' | 'admin-models' | 'admin-mqtt' | 'admin-teams' | 'admin-user-apply' | 'admin-statistics' | 'admin-notifications-send' | 'admin-notifications-records' | 'admin-points-grant' | 'admin-api-key-pool' | 'admin-mcp' | 'admin-kevin' | 'admin-apps' | 'admin-apps-workflow' | 'admin-apps-nano2' | 'admin-tvc-config' | 'admin-tvc-one-shot' | 'notifications'
 
 function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -226,6 +227,7 @@ function AppContent() {
         {currentPage === 'canvas' && <CanvasPage />}
         {currentPage === 'workflow' && <NanoaiWorkflowPage />}
         {currentPage === 'nano2' && <Nano2Page />}
+        {currentPage === 'dubbing' && <DubbingPage />}
         {currentPage === 'admin' && <AdminLayout><AdminPage /></AdminLayout>}
         {currentPage === 'admin-providers' && <AdminLayout><AdminProvidersPage /></AdminLayout>}
         {currentPage === 'admin-api-keys' && <AdminLayout><AdminApiKeysPage /></AdminLayout>}
