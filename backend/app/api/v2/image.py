@@ -225,6 +225,10 @@ async def submit_image_task(
         if not config:
             raise HTTPException(status_code=401, detail="Invalid API key")
 
+        # Key 池调度（P1）：候选计划 + 失败切换 + rest 分级休息
+        # 原为 order_by(priority.desc()).limit(1) 取单条——单 key 故障即失败
+        from app.services import key_scheduler
+
         mapping_result = await db.execute(
             select(BackendKeyMapping)
             .where(
@@ -236,41 +240,41 @@ async def submit_image_task(
         )
         mappings = list(mapping_result.scalars().all())
 
-        if not mappings:
+        # mapping 行装进 Candidate.extra（provider_type/mask/mcp_config 随候选流转）
+        candidates = [
+            key_scheduler.Candidate(
+                mapping_id=m.id,
+                backend_key=m.backend_key,
+                priority=m.priority or 0,
+                extra={
+                    "provider_type": (m.provider_type or "wuyinkeji").lower(),
+                    "mcp_config": m.mcp_config or {},
+                },
+            )
+            for m in mappings
+        ]
+        if not candidates:
             raise HTTPException(
                 status_code=400,
                 detail=f"No provider mapping for model type: {request.model_type}"
             )
 
-        # 多 Provider 故障切换：按 priority 依次尝试
-        external_task_id = ""
-        used_provider = ""
-        last_error: Exception | None = None
-        for mapping in mappings:
-            ptype = (mapping.provider_type or "wuyinkeji").lower()
-            try:
-                provider = ProviderFactory.create(ptype, mapping.backend_key, mapping.mcp_config or {})
-                provider_params = {
-                    "model_type": request.model_type,
-                    "prompt": request.prompt,
-                    "size": request.size,
-                    "aspect_ratio": request.aspect_ratio,
-                    "urls": request.urls,
-                }
-                if request.mask:
-                    provider_params["mask"] = request.mask
-                external_task_id = await provider.generate_image(provider_params)
-                used_provider = ptype
-                break
-            except Exception as e:  # noqa: BLE001
-                last_error = e
-                logger.warning("Provider %s failed for %s: %s", ptype, request.model_type, e)
-                continue
+        async def _submit(cand: "key_scheduler.Candidate") -> str:
+            ptype = cand.extra["provider_type"]
+            provider = ProviderFactory.create(ptype, cand.backend_key, cand.extra["mcp_config"])
+            provider_params = {
+                "model_type": request.model_type,
+                "prompt": request.prompt,
+                "size": request.size,
+                "aspect_ratio": request.aspect_ratio,
+                "urls": request.urls,
+            }
+            if request.mask:
+                provider_params["mask"] = request.mask
+            return await provider.generate_image(provider_params)
 
-        if not external_task_id:
-            raise HTTPException(status_code=502, detail=f"All providers failed: {last_error}")
-
-        request_params_extra = {"provider": used_provider}
+        external_task_id, _attempt = await key_scheduler.attempt_with_failover(candidates, _submit)
+        request_params_extra = {"provider": _attempt.candidate.extra["provider_type"]}
 
     except HTTPException:
         raise
