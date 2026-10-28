@@ -122,18 +122,18 @@ export function randomSampleText(): string {
 export async function voiceDesign(
   prompt: string, previewText: string, token?: string,
 ): Promise<VoiceDesignResult> {
-  const r = await client.post<VoiceDesignResult>('/api/v2/dubbing/voice-design',
+  const r = await client.post<VoiceDesignResult>('/v2/dubbing/voice-design',
     { prompt, preview_text: previewText }, token)
   return { ...r, trial_audio_url: assetUrl(r.trial_audio_url) }
 }
 
 export async function textToSpeech(params: TtsParams, token?: string): Promise<TtsResult> {
-  const r = await client.post<TtsResult>('/api/v2/dubbing/tts', params, token)
+  const r = await client.post<TtsResult>('/v2/dubbing/tts', params, token)
   return { ...r, audio_url: assetUrl(r.audio_url) || '', subtitle_url: assetUrl(r.subtitle_url) }
 }
 
 export async function ttsAsyncCreate(params: TtsParams, token?: string): Promise<TtsAsyncCreateResult> {
-  return client.post<TtsAsyncCreateResult>('/api/v2/dubbing/tts-async', params, token)
+  return client.post<TtsAsyncCreateResult>('/v2/dubbing/tts-async', params, token)
 }
 
 export async function ttsAsyncQuery(taskId: string, download = true, token?: string): Promise<TtsAsyncQueryResult> {
@@ -143,7 +143,7 @@ export async function ttsAsyncQuery(taskId: string, download = true, token?: str
 }
 
 export async function listVoices(token?: string): Promise<VoicesResponse> {
-  return client.get<VoicesResponse>('/api/v2/dubbing/voices', token)
+  return client.get<VoicesResponse>('/v2/dubbing/voices', token)
 }
 
 export async function deleteVoice(voiceId: string, token?: string): Promise<{ deleted: boolean }> {

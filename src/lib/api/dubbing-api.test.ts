@@ -13,7 +13,7 @@ describe('dubbing-api', () => {
     mockFetchResponse({ voice_id: 'moss_v1', trial_audio_url: '/asset-uploads/dubbing/x.mp3' })
     const r = await voiceDesign('低沉男声', '你好', 'token')
     expect(r.voice_id).toBe('moss_v1')
-    expect(lastFetchUrl()).toContain('/api/v2/dubbing/voice-design')
+    expect(lastFetchUrl()).toContain('/v2/dubbing/voice-design')
   })
 
   it('textToSpeech posts params', async () => {
@@ -41,7 +41,7 @@ describe('dubbing-api', () => {
     const r = await listVoices('token')
     expect(r.system).toHaveLength(1)
     expect(r.designed).toHaveLength(0)
-    expect(lastFetchUrl()).toContain('/api/v2/dubbing/voices')
+    expect(lastFetchUrl()).toContain('/v2/dubbing/voices')
   })
 
   it('deleteVoice encodes voice_id', async () => {
