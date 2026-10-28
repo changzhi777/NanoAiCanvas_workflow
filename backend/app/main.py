@@ -127,6 +127,7 @@ app.include_router(v2_showcase.router)
 app.include_router(v2_agent.router)
 app.include_router(v2_three_d.router)
 app.include_router(v2_dubbing.router)
+app.include_router(v2_dubbing.router_v2)
 
 
 @app.websocket("/ws/tasks/{task_id}")

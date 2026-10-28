@@ -26,6 +26,8 @@ from app.api.auth import get_current_user_optional
 from app.models import User
 
 router = APIRouter(prefix="/api/v2/dubbing", tags=["dubbing"])
+# 兼容前缀：inkforge Caddy 把 /nanoai/api/v2/* 剥成 /v2/*（老 V2 路由惯例），同组 handler 双挂
+router_v2 = APIRouter(prefix="/v2/dubbing", tags=["dubbing"])
 
 # 可选模型档位（对齐 C 端：hd 默认 / turbo 省钱快速）
 TTS_MODELS = ["speech-2.8-hd", "speech-2.8-turbo", "speech-2.6-hd", "speech-2.6-turbo"]
@@ -120,6 +122,7 @@ class VoiceDesignRequest(BaseModel):
     voice_id: Optional[str] = None
 
 
+@router_v2.post("/voice-design")
 @router.post("/voice-design")
 async def voice_design(req: VoiceDesignRequest):
     """文字描述设计新音色，返回 voice_id 与试听音频 URL"""
@@ -152,6 +155,7 @@ class TtsRequest(BaseModel):
     subtitle: bool = True
 
 
+@router_v2.post("/tts")
 @router.post("/tts")
 async def text_to_speech(req: TtsRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
     """同步文字转语音（≤10000 字符），音频落盘并登记资产历史"""
@@ -219,6 +223,7 @@ class TtsAsyncRequest(BaseModel):
     pitch: int = Field(0, ge=-12, le=12)
 
 
+@router_v2.post("/tts-async")
 @router.post("/tts-async")
 async def text_to_speech_async(req: TtsAsyncRequest):
     """长文本异步合成（≤50000 字符），返回 task_id 供轮询"""
@@ -264,6 +269,7 @@ async def _download_file(file_id: int, current_user: Optional[User], text_hint: 
     return url
 
 
+@router_v2.get("/tts-async/{task_id}")
 @router.get("/tts-async/{task_id}")
 async def query_tts_async(
     task_id: str,
@@ -329,6 +335,7 @@ class _VoiceCache:
             pass
 
 
+@router_v2.get("/voices")
 @router.get("/voices")
 async def list_voices(voice_type: str = Query("all", pattern="^(system|voice_generation|all)$")):
     """音色库：system 系统音色 + voice_generation 设计音色（Redis 60s 缓存）"""
@@ -351,6 +358,7 @@ async def list_voices(voice_type: str = Query("all", pattern="^(system|voice_gen
     return out
 
 
+@router_v2.delete("/voices/{voice_id}")
 @router.delete("/voices/{voice_id}")
 async def delete_voice(voice_id: str):
     """删除设计音色（voice_generation 类），同时清缓存"""
