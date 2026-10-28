@@ -101,7 +101,7 @@ function AppContent() {
     const path = window.location.pathname
     if (path === '/nano2' || path === '/nano2/') {
       setCurrentPage('nano2')
-    } else if (path === '/canvas') {
+    } else if (path === '/canvas' || path === '/nanoai/canvas' || path === '/nanoai/canvas/') {
       setCurrentPage('canvas')
     } else if (path.startsWith('/nanoai/admin/mqtt')) {
       setCurrentPage('admin-mqtt')
@@ -156,7 +156,7 @@ function AppContent() {
       const path = window.location.pathname
       if (path === '/nano2' || path === '/nano2/') {
         setCurrentPage('nano2')
-      } else if (path === '/canvas') {
+      } else if (path === '/canvas' || path === '/nanoai/canvas' || path === '/nanoai/canvas/') {
         setCurrentPage('canvas')
       } else if (path.startsWith('/nanoai/admin/mqtt')) {
         setCurrentPage('admin-mqtt')
