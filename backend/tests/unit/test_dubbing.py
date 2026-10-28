@@ -186,3 +186,96 @@ async def test_delete_voice_uses_generation_type(monkeypatch):
     out = await dubbing.delete_voice("moss_v1")
     assert captured["payload"] == {"voice_type": "voice_generation", "voice_id": "moss_v1"}
     assert out["deleted"] is True and cleared
+
+
+# —— Breeze 本地引擎 ——
+
+@pytest.mark.asyncio
+async def test_breeze_tts_not_configured_503(monkeypatch):
+    monkeypatch.setattr(dubbing.get_settings, "__wrapped__", dubbing.get_settings, raising=False)
+    import app.config as cfg
+    orig = cfg.get_settings
+    monkeypatch.setattr(dubbing, "get_settings", lambda: type("S", (), {"BREEZE_BASE_URL": ""})())
+    with pytest.raises(HTTPException) as e:
+        await dubbing.breeze_tts(dubbing.BreezeTtsRequest(text="t"))
+    assert e.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_breeze_tts_forwards_form_and_wav(monkeypatch, tmp_path):
+    monkeypatch.setattr(dubbing, "get_settings", lambda: type("S", (), {"BREEZE_BASE_URL": "http://b:8137"})())
+    captured = {}
+
+    class FakeResp:
+        status_code = 200
+        headers = {"X-Sample-Rate": "24000"}
+        content = b"\x01\x02" * 480  # 960B PCM = 20ms@24k
+        text = ""
+
+    class FakeClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def post(self, url, data=None):
+            captured["url"], captured["data"] = url, data
+            return FakeResp()
+
+    with patch("httpx.AsyncClient", return_value=FakeClient()):
+        out = await dubbing.breeze_tts(dubbing.BreezeTtsRequest(
+            text="你好", voice_id="harbour", instruction="warm voice", cfg_scale=2.0))
+    assert captured["url"] == "http://b:8137/v1/audio/speech"
+    assert captured["data"]["voice_id"] == "harbour"
+    assert captured["data"]["cfg_scale"] == "2.0"
+    # WAV 头校验：RIFF + 长度一致
+    fname = out["audio_url"].rsplit("/", 1)[-1]
+    wav = open(os.path.join(str(tmp_path), fname), "rb").read()
+    assert wav[:4] == b"RIFF" and wav[8:12] == b"WAVE"
+    import struct as _s
+    assert _s.pack("<I", 36 + 960) == wav[4:8]
+    assert out["engine"] == "breeze"
+
+
+@pytest.mark.asyncio
+async def test_breeze_tts_busy_502(monkeypatch):
+    monkeypatch.setattr(dubbing, "get_settings", lambda: type("S", (), {"BREEZE_BASE_URL": "http://b:8137"})())
+
+    class FakeResp:
+        status_code = 409
+        headers = {}
+        content = b""
+        text = '{"error":"busy"}'
+
+    class FakeClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def post(self, *a, **k): return FakeResp()
+
+    with patch("httpx.AsyncClient", return_value=FakeClient()):
+        with pytest.raises(HTTPException) as e:
+            await dubbing.breeze_tts(dubbing.BreezeTtsRequest(text="t"))
+    assert e.value.status_code == 502 and "忙碌" in e.value.detail
+
+
+@pytest.mark.asyncio
+async def test_breeze_voices_mapping(monkeypatch):
+    monkeypatch.setattr(dubbing, "get_settings", lambda: type("S", (), {"BREEZE_BASE_URL": "http://b:8137"})())
+
+    class FakeResp:
+        status_code = 200
+        text = ""
+
+        def json(self):
+            return [{"id": "harbour", "seconds": 5.36, "saved": True, "description": "Calm narrator"}]
+
+    class FakeClient:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): pass
+        async def get(self, url):
+            assert url == "http://b:8137/v1/voices"
+            return FakeResp()
+
+    with patch("httpx.AsyncClient", return_value=FakeClient()):
+        out = await dubbing.breeze_voices()
+    assert out["system"] == []
+    assert out["designed"][0]["voice_id"] == "harbour"
+    assert out["designed"][0]["description"] == ["Calm narrator"]
+    assert "saved" in out["designed"][0]["created_time"]

@@ -162,3 +162,30 @@ export async function pollTtsAsync(
   }
   throw new Error('长文本合成超时')
 }
+
+// ==================== Breeze 本地引擎（可选，BREEZE_BASE_URL 开启）====================
+
+export interface BreezeTtsResult extends TtsResult {
+  engine: "breeze"
+}
+
+export interface BreezeVoice {
+  voice_id: string
+  description: string[]
+  created_time: string
+}
+
+/** Breeze 本地合成（24k PCM 服务端封 WAV，免费，内部使用） */
+export async function breezeTts(
+  params: { text: string; voice_id?: string; instruction: string; cfg_scale?: number; seed?: number },
+  token?: string,
+): Promise<BreezeTtsResult> {
+  const r = await client.post<BreezeTtsResult>("/v2/dubbing/breeze/tts", params, token)
+  return { ...r, audio_url: assetUrl(r.audio_url) || "" }
+}
+
+/** Breeze 音色库（saved + cached） */
+export async function listBreezeVoices(token?: string): Promise<BreezeVoice[]> {
+  const r = await client.get<{ system: unknown[]; designed: BreezeVoice[] }>("/v2/dubbing/breeze/voices", token)
+  return r.designed
+}

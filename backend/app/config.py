@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     # MiniMax
     MINIMAX_API_KEY: str = ""
     MINIMAX_API_BASE_URL: str = "https://api.minimax.cn/v1"
+    # Breeze-TTS 本地引擎（breeze-server，如 http://10.10.10.142:8137）；空=通道关闭
+    BREEZE_BASE_URL: str = ""
 
     # 混元 3D（hy3d-cli，线上 118）
     # 注意：代码拼 /api/v1/... → 实际 https://3d.inkforge.com.cn/3d/api/api/v1/...

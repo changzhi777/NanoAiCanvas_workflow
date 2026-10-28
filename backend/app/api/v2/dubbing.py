@@ -365,3 +365,96 @@ async def delete_voice(voice_id: str):
     await _post_upstream("/delete_voice", {"voice_type": "voice_generation", "voice_id": voice_id})
     await _VoiceCache.clear()
     return {"voice_id": voice_id, "deleted": True}
+
+
+# —— Breeze 本地引擎（可选；BREEZE_BASE_URL 非空开启，breeze-server 提供）——
+# 语义映射：instruction=音色描述、/v1/voices=音色库、合成输出 24k s16le PCM 流。
+# ⚠️ BreezeBlue 权重为非商用许可，breeze 通道仅限内部使用，不得对外开放。
+
+import struct as _struct
+
+
+class BreezeTtsRequest(BaseModel):
+    text: str = Field(..., min_length=1)
+    voice_id: Optional[str] = None
+    instruction: str = Field("Speak clearly and naturally.", description="音色描述/演绎指令")
+    cfg_scale: float = Field(1.0, ge=1.0, le=5.0)
+    seed: int = 42
+
+
+class BreezeVoicesResponse(BaseModel):
+    id: str
+    seconds: Optional[float] = None
+    saved: bool = False
+    description: Optional[str] = None
+
+
+def _pcm_to_wav(pcm: bytes, sample_rate: int = 24000, channels: int = 1, bits: int = 16) -> bytes:
+    """无头 s16le PCM 包 44 字节 WAV 头"""
+    byte_rate = sample_rate * channels * bits // 8
+    block_align = channels * bits // 8
+    header = (
+        b"RIFF" + _struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " +
+        _struct.pack("<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits) +
+        b"data" + _struct.pack("<I", len(pcm))
+    )
+    return header + pcm
+
+
+def _breeze_base() -> str:
+    settings = get_settings()
+    base = (settings.BREEZE_BASE_URL or "").rstrip("/")
+    if not base:
+        raise HTTPException(status_code=503, detail="Breeze 引擎未配置（BREEZE_BASE_URL 为空）")
+    return base
+
+
+@router.post("/breeze/tts")
+@router_v2.post("/breeze/tts")
+async def breeze_tts(req: BreezeTtsRequest, current_user: Optional[User] = Depends(get_current_user_optional)):
+    """Breeze 本地合成：转发 breeze-server /v1/audio/speech（chunked PCM），落盘登记"""
+    base = _breeze_base()
+    form = {"text": req.text, "instruction": req.instruction,
+            "cfg_scale": str(req.cfg_scale), "seed": str(req.seed)}
+    if req.voice_id:
+        form["voice_id"] = req.voice_id
+    try:
+        async with httpx.AsyncClient(timeout=600) as client:
+            resp = await client.post(f"{base}/v1/audio/speech", data=form)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Breeze 引擎不可达: {type(e).__name__}")
+    if resp.status_code == 409:
+        raise HTTPException(status_code=502, detail="Breeze 忙碌（单并发），请稍后重试")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Breeze 错误 {resp.status_code}: {resp.text[:200]}")
+
+    sample_rate = int(resp.headers.get("X-Sample-Rate", "24000"))
+    wav_bytes = _pcm_to_wav(resp.content, sample_rate)
+    audio_url = _save_audio(wav_bytes)
+    await _register_asset(current_user, audio_url, f"Breeze配音_{req.text[:20]}",
+                          {"source": "dubbing", "engine": "breeze", "voice_id": req.voice_id,
+                           "instruction": req.instruction[:200], "sample_rate": sample_rate})
+    return {"audio_url": audio_url, "subtitle_url": None,
+            "audio_length_ms": round(len(resp.content) / (sample_rate * 2) * 1000),
+            "usage_characters": None, "engine": "breeze"}
+
+
+@router.get("/breeze/voices")
+@router_v2.get("/breeze/voices")
+async def breeze_voices():
+    """Breeze 音色库（saved + cached），映射为前端 designed 结构"""
+    base = _breeze_base()
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(f"{base}/v1/voices")
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=503, detail=f"Breeze 引擎不可达: {type(e).__name__}")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Breeze 错误 {resp.status_code}: {resp.text[:200]}")
+    items = resp.json() if isinstance(resp.json(), list) else []
+    designed = [
+        {"voice_id": v.get("id"), "description": [v.get("description")] if v.get("description") else [],
+         "created_time": f"{'saved' if v.get('saved') else 'cached'}·{v.get('seconds', 0)}s"}
+        for v in items
+    ]
+    return {"system": [], "designed": designed}
